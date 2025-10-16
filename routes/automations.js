@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { verifySessionToken } from '../middlewares/auth.js';
+import * as ctrl from '../controllers/automations.js';
+const r = Router();
+r.get('/', verifySessionToken, ctrl.list);
+r.get('/:type', verifySessionToken, ctrl.getOne);
+r.patch('/:type', verifySessionToken, ctrl.update);
+r.post('/:type/reset', verifySessionToken, ctrl.reset);
+r.get('/stats/summary', verifySessionToken, ctrl.stats);
+r.post('/preview', verifySessionToken, ctrl.preview);
+export default r;

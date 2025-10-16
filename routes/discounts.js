@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { verifySessionToken } from '../middlewares/auth.js';
+import * as ctrl from '../controllers/discounts.js';
+const r = Router();
+r.get('/', verifySessionToken, ctrl.list);
+r.get('/validate/:code', verifySessionToken, ctrl.validate);
+r.get('/campaign/:code', verifySessionToken, ctrl.campaign);
+r.get('/apply-url', verifySessionToken, ctrl.applyUrl);
+r.get('/search', verifySessionToken, ctrl.search);
+r.get('/conflicts', verifySessionToken, ctrl.conflicts);
+export default r;

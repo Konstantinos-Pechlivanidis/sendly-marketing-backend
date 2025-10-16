@@ -1,0 +1,13 @@
+import { Router } from 'express';
+import { verifySessionToken } from '../middlewares/auth.js';
+import { rlReportsOverview, rlReportsGeneral, rlReportsExport } from '../middlewares/rateLimits.js';
+import * as ctrl from '../controllers/reports.js';
+const r = Router();
+r.get('/overview', rlReportsOverview, verifySessionToken, ctrl.overview);
+r.get('/campaigns', rlReportsGeneral, verifySessionToken, ctrl.campaigns);
+r.get('/campaigns/:id', rlReportsGeneral, verifySessionToken, ctrl.campaignById);
+r.get('/automations', rlReportsGeneral, verifySessionToken, ctrl.automations);
+r.get('/messaging', rlReportsGeneral, verifySessionToken, ctrl.messaging);
+r.get('/revenue', rlReportsGeneral, verifySessionToken, ctrl.revenue);
+r.get('/export', rlReportsExport, verifySessionToken, ctrl.exportData);
+export default r;

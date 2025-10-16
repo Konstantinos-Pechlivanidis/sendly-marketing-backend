@@ -1,0 +1,264 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+// Enums
+enum SmsConsent {
+  opted_in
+  opted_out
+  unknown
+}
+
+enum CampaignStatus {
+  draft
+  scheduled
+  sending
+  sent
+  failed
+  cancelled
+}
+
+enum ScheduleType {
+  immediate
+  scheduled
+  recurring
+}
+
+enum MessageDirection {
+  outbound
+  inbound
+}
+
+enum MessageStatus {
+  queued
+  sent
+  delivered
+  failed
+  received
+}
+
+enum TransactionType {
+  purchase
+  debit
+  credit
+  refund
+  adjustment
+}
+
+enum AutomationTrigger {
+  welcome
+  abandoned_cart
+  order_confirmation
+  shipping_update
+  delivery_confirmation
+  review_request
+  reorder_reminder
+  birthday
+}
+
+// Base shop (one per Shopify store)
+model Shop {
+  id           String   @id @default(cuid())
+  shopDomain   String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  wallet       Wallet?
+  contacts     Contact[]
+  campaigns    Campaign[]
+  segments     Segment[]
+  templates    TemplateUsage[]
+  discounts    DiscountLink[]
+  messages     MessageLog[]
+  transactions WalletTransaction[]
+  automations  Automation[]
+}
+
+// Contacts stored/managed by our app (optional: can mirror Shopify customers)
+model Contact {
+  id           String   @id @default(cuid())
+  shopId       String
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  firstName    String?
+  lastName     String?
+  phoneE164    String
+  email        String?
+  gender       String?   // 'male' | 'female' | 'other' | null
+  smsConsent   SmsConsent @default(unknown)
+  tags         String[]  @default([])    // NEW
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  memberships  SegmentMembership[]
+  recipients   CampaignRecipient[]
+
+  @@index([shopId, phoneE164])
+}
+
+model Segment {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name        String
+  ruleJson    Json               // e.g. { gender: 'male', tags: ['vip'] }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships SegmentMembership[]
+}
+
+model SegmentMembership {
+  id          String   @id @default(cuid())
+  segmentId   String
+  segment     Segment  @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([segmentId, contactId])
+}
+
+// Campaign & Recipients
+model Campaign {
+  id            String   @id @default(cuid())
+  shopId        String
+  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name          String
+  message       String
+  audience      String   // 'all' | 'men' | 'women' | 'segment:<id>' ...
+  discountId    String?  // linked discount (if any)
+  scheduleType  ScheduleType
+  scheduleAt    DateTime?
+  recurringDays Int?
+  status        CampaignStatus @default(draft)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  recipients    CampaignRecipient[]
+  metrics       CampaignMetrics?
+  messages      MessageLog[]
+}
+
+model CampaignRecipient {
+  id            String    @id @default(cuid())
+  campaignId    String
+  campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId     String?
+  contact       Contact?  @relation(fields: [contactId], references: [id])
+  phoneE164     String
+  status        String    // 'queued' | 'sent' | 'delivered' | 'failed'
+  mittoMessageId String?
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  error         String?
+}
+
+model CampaignMetrics {
+  id             String   @id @default(cuid())
+  campaignId     String   @unique
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  totalSent      Int      @default(0)
+  totalDelivered Int      @default(0)
+  totalFailed    Int      @default(0)
+  totalClicked   Int      @default(0) // for future (if tracking)
+}
+
+// Message logs (DLR/inbound etc.)
+model MessageLog {
+  id             String   @id @default(cuid())
+  shopId         String
+  shop           Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  phoneE164      String
+  direction      MessageDirection
+  provider       String   // 'mitto'
+  providerMsgId  String?
+  status         MessageStatus?
+  payload        Json?
+  error          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  campaignId     String?
+  campaign       Campaign? @relation(fields: [campaignId], references: [id])
+}
+
+// Wallet & packages & transactions
+model Wallet {
+  id          String   @id @default(cuid())
+  shopId      String   @unique
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  balance     Int      @default(0)   // credits (messages)
+  totalUsed   Int      @default(0)
+  totalBought Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SmsPackage {
+  id          String   @id @default(cuid())
+  name        String
+  credits     Int
+  priceCents  Int
+  currency    String   @default("EUR")
+  description String?
+  features    String[] @default([])
+  isPopular   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  credits     Int
+  ref         String?  // e.g. campaignId or packageId
+  meta        Json?
+  createdAt   DateTime @default(now())
+}
+
+// Templates & discounts (light linkage)
+model TemplateUsage {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  templateId  String
+  usedCount   Int      @default(0)
+  lastUsedAt  DateTime?
+}
+
+model Automation {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name        String
+  trigger     AutomationTrigger
+  description String?
+  message     String?
+  conditions  Json?    // Store trigger conditions as JSON
+  isActive    Boolean  @default(true)
+  priority    Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([shopId, name])
+}
+
+model DiscountLink {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  code        String
+  campaignId  String?
+  createdAt   DateTime @default(now())
+  @@index([shopId, code])
+}

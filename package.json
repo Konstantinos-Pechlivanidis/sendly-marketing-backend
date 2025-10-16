@@ -1,0 +1,81 @@
+{
+  "name": "sendly-marketing-backend",
+  "version": "1.0.0",
+  "description": "SMS Blossom - Shopify SMS Marketing Extension Backend",
+  "main": "index.js",
+  "type": "module",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "node scripts/build.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:reset": "prisma migrate reset",
+    "db:seed": "node scripts/seed-packages.js && node scripts/seed-templates.js && node scripts/seed-automations.js",
+    "db:studio": "prisma studio",
+    "db:status": "prisma migrate status",
+    "audit": "node scripts/audit.js",
+    "deploy": "node scripts/deploy-render.sh"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.1",
+    "@shopify/shopify-api": "^8.1.1",
+    "axios": "^1.6.2",
+    "bullmq": "^4.15.4",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "hpp": "^0.2.3",
+    "ioredis": "^5.3.2",
+    "joi": "^17.11.0",
+    "morgan": "^1.10.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.8",
+    "eslint": "^8.55.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.1.0",
+    "prisma": "^5.7.1",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "shopify",
+    "sms",
+    "marketing",
+    "automation",
+    "api",
+    "backend"
+  ],
+  "author": "Konstantinos Pechlivanidis",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/sendly-marketing-backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/sendly-marketing-backend/issues"
+  },
+  "homepage": "https://github.com/your-username/sendly-marketing-backend#readme"
+}
