@@ -87,7 +87,8 @@ export const helmetConfig = helmet({
 export const corsConfig = {
   origin: (origin, callback) => {
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-      'https://sendly-marketing-app.onrender.com',
+      'https://sendly-marketing-backend.onrender.com',
+      'https://sendly-marketing-frontend.onrender.com'
     ];
     
     // Allow requests with no origin (mobile apps, Postman, etc.)

@@ -168,7 +168,7 @@ async function createRenderConfig() {
   
   const renderYaml = `services:
   - type: web
-    name: sendly-marketing-api
+    name: sendly-marketing-backend
     env: node
     plan: starter
     buildCommand: npm run build

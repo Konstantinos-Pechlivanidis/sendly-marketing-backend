@@ -102,8 +102,8 @@ npm run dev
    SHOPIFY_API_SECRET=your_shopify_api_secret
    MITTO_API_KEY=your_mitto_api_key
    MITTO_WEBHOOK_SECRET=your_webhook_secret
-   HOST=https://your-app.onrender.com
-   ALLOWED_ORIGINS=https://your-app.onrender.com
+   HOST=https://sendly-marketing-backend.onrender.com
+   ALLOWED_ORIGINS=https://sendly-marketing-backend.onrender.com
    ```
 
 4. **Deploy**
@@ -142,16 +142,16 @@ npm run dev
 
 ```bash
 # Basic health check
-curl https://your-app.onrender.com/health
+curl https://sendly-marketing-backend.onrender.com/health
 
 # Full health check
-curl https://your-app.onrender.com/health/full
+curl https://sendly-marketing-backend.onrender.com/health/full
 
 # Metrics (JSON)
-curl https://your-app.onrender.com/metrics
+curl https://sendly-marketing-backend.onrender.com/metrics
 
 # Metrics (Prometheus)
-curl https://your-app.onrender.com/metrics?format=prometheus
+curl https://sendly-marketing-backend.onrender.com/metrics?format=prometheus
 ```
 
 ## 🧪 Testing
@@ -255,7 +255,7 @@ npm run test:watch
 ### Debug Commands
 ```bash
 # Check application health
-curl https://your-app.onrender.com/health/full
+curl https://sendly-marketing-backend.onrender.com/health/full
 
 # Check database connection
 npm run db:studio
@@ -308,7 +308,7 @@ For production issues:
 3. Verify environment variables
 4. Test database and Redis connections
 
-**Health Check URL**: `https://your-app.onrender.com/health/full`
-**Metrics URL**: `https://your-app.onrender.com/metrics`
+**Health Check URL**: `https://sendly-marketing-backend.onrender.com/health/full`
+**Metrics URL**: `https://sendly-marketing-backend.onrender.com/metrics`
 
 This setup provides a production-ready SMS Blossom backend with comprehensive monitoring, security, and deployment capabilities.

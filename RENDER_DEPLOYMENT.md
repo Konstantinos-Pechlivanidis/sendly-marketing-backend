@@ -43,8 +43,8 @@ In the Render dashboard, set these environment variables:
 | `SHOPIFY_API_SECRET` | `your_shopify_api_secret` | Shopify API secret |
 | `MITTO_API_KEY` | `your_mitto_api_key` | Mitto SMS API key |
 | `MITTO_WEBHOOK_SECRET` | `your_webhook_secret` | Webhook secret |
-| `HOST` | `https://your-app-name.onrender.com` | Your app URL |
-| `ALLOWED_ORIGINS` | `https://your-app-name.onrender.com` | CORS origins |
+| `HOST` | `https://sendly-marketing-backend.onrender.com` | Your backend URL |
+| `ALLOWED_ORIGINS` | `https://sendly-marketing-backend.onrender.com,https://sendly-marketing-frontend.onrender.com` | CORS origins |
 | `APP_DEFAULT_CURRENCY` | `EUR` | Default currency |
 
 ### 4. Build and Start Commands
@@ -70,7 +70,7 @@ npm start
 ### 1. Health Check
 Visit your app URL + `/health`:
 ```
-https://your-app-name.onrender.com/health
+https://sendly-marketing-backend.onrender.com/health
 ```
 
 Expected response:
@@ -84,7 +84,7 @@ Expected response:
 ### 2. Full Health Check
 Visit your app URL + `/health/full`:
 ```
-https://your-app-name.onrender.com/health/full
+https://sendly-marketing-backend.onrender.com/health/full
 ```
 
 This will show comprehensive system health including:
@@ -96,7 +96,7 @@ This will show comprehensive system health including:
 ### 3. Metrics Endpoint
 Visit your app URL + `/metrics`:
 ```
-https://your-app-name.onrender.com/metrics
+https://sendly-marketing-backend.onrender.com/metrics
 ```
 
 ## 🛠️ Render.com Configuration Details
@@ -164,7 +164,7 @@ https://your-app-name.onrender.com/metrics
 
 ```bash
 # Check application health
-curl https://your-app-name.onrender.com/health/full
+curl https://sendly-marketing-backend.onrender.com/health/full
 
 # Check database connection
 npx prisma migrate status
@@ -235,6 +235,6 @@ If you encounter issues:
 
 Your SMS Blossom backend is now deployed and production-ready! 
 
-**Your app URL**: `https://your-app-name.onrender.com`
-**Health Check**: `https://your-app-name.onrender.com/health/full`
-**Metrics**: `https://your-app-name.onrender.com/metrics`
+**Your app URL**: `https://sendly-marketing-backend.onrender.com`
+**Health Check**: `https://sendly-marketing-backend.onrender.com/health/full`
+**Metrics**: `https://sendly-marketing-backend.onrender.com/metrics`
