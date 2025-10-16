@@ -43,8 +43,14 @@ export const createRedisConnection = (config = {}) => {
   // Handle Redis URL format
   if (process.env.REDIS_URL) {
     return new IORedis(process.env.REDIS_URL, {
-      ...finalConfig,
       maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      lazyConnect: true,
+      connectTimeout: 10000,
+      commandTimeout: 5000,
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+      enableOfflineQueue: false,
     });
   }
   
@@ -68,6 +74,16 @@ export const sessionRedis = createRedisConnection({
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
 });
+
+// Fallback Redis connections with error handling
+export const createSafeRedisConnection = (config = {}) => {
+  try {
+    return createRedisConnection(config);
+  } catch (error) {
+    console.warn('Redis connection failed, using fallback:', error.message);
+    return null;
+  }
+};
 
 // Health check function
 export const checkRedisHealth = async (redis) => {

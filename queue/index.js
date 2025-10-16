@@ -1,9 +1,9 @@
 import { Queue } from 'bullmq';
-import { queueRedis } from '../config/redis.js';
+import { queueRedis, createSafeRedisConnection } from '../config/redis.js';
 
 // SMS Queue configuration
 export const smsQueue = new Queue('sms-send', {
-  connection: queueRedis,
+  connection: createSafeRedisConnection() || queueRedis,
   defaultJobOptions: {
     removeOnComplete: 100,
     removeOnFail: 50,
@@ -17,7 +17,7 @@ export const smsQueue = new Queue('sms-send', {
 
 // Campaign Queue for bulk operations
 export const campaignQueue = new Queue('campaign-send', {
-  connection: queueRedis,
+  connection: createSafeRedisConnection() || queueRedis,
   defaultJobOptions: {
     removeOnComplete: 50,
     removeOnFail: 25,
@@ -31,7 +31,7 @@ export const campaignQueue = new Queue('campaign-send', {
 
 // Automation Queue for triggered messages
 export const automationQueue = new Queue('automation-trigger', {
-  connection: queueRedis,
+  connection: createSafeRedisConnection() || queueRedis,
   defaultJobOptions: {
     removeOnComplete: 200,
     removeOnFail: 100,
