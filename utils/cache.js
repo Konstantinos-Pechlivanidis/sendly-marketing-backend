@@ -1,4 +1,5 @@
 import IORedis from 'ioredis';
+import { fallbackCache } from './fallback-cache.js';
 
 class CacheManager {
   constructor() {
@@ -16,6 +17,8 @@ class CacheManager {
           retryDelayOnFailover: 100,
           enableReadyCheck: false,
           lazyConnect: true,
+          connectTimeout: 10000,
+          commandTimeout: 5000,
         });
 
         this.redis.on('error', (err) => {
@@ -28,6 +31,8 @@ class CacheManager {
         console.warn('Redis connection failed, falling back to memory cache:', error.message);
         this.redis = null;
       }
+    } else {
+      console.log('No Redis URL provided, using fallback cache');
     }
   }
 
