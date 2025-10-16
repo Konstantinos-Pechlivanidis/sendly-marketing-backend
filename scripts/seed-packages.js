@@ -1,5 +1,5 @@
-import prisma from '../server/services/prisma.js';
-import { logger } from '../server/utils/logger.js';
+import prisma from '../services/prisma.js';
+import { logger } from '../utils/logger.js';
 
 const smsPackages = [
   {
