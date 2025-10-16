@@ -76,7 +76,7 @@ describe('Security Tests', () => {
     it('should allow requests from allowed origins', async () => {
       const response = await request(app)
         .get('/health')
-        .set('Origin', 'https://sendly-marketing-app.onrender.com')
+        .set('Origin', 'https://sendly-marketing-backend.onrender.com')
         .expect(200);
 
       expect(response.headers['access-control-allow-origin']).toBeDefined();
@@ -85,7 +85,7 @@ describe('Security Tests', () => {
     it('should include CORS headers for preflight requests', async () => {
       const response = await request(app)
         .options('/health')
-        .set('Origin', 'https://sendly-marketing-app.onrender.com')
+        .set('Origin', 'https://sendly-marketing-backend.onrender.com')
         .set('Access-Control-Request-Method', 'GET')
         .expect(204);
 

@@ -3,7 +3,7 @@ services:
     name: sendly-marketing-backend
     env: node
     plan: starter
-    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy
+    buildCommand: npm ci && npx prisma generate && npx prisma db push
     startCommand: npm start
     healthCheckPath: /health
     envVars:
@@ -27,9 +27,9 @@ services:
       - key: MITTO_WEBHOOK_SECRET
         sync: false
       - key: HOST
-        value: https://sendly-marketing-app.onrender.com
+        value: https://sendly-marketing-backend.onrender.com
       - key: ALLOWED_ORIGINS
-        value: https://sendly-marketing-app.onrender.com
+        value: https://sendly-marketing-backend.onrender.com,https://sendly-marketing-frontend.onrender.com
 
 databases:
   - name: sendly-marketing-db

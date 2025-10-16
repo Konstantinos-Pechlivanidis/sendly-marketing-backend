@@ -247,7 +247,7 @@ ISC License - see [LICENSE](LICENSE) file for details.
 For issues and questions:
 
 1. Check the [documentation](docs/)
-2. Review [health endpoints](https://your-app.onrender.com/health/full)
+2. Review [health endpoints](https://sendly-marketing-backend.onrender.com/health/full)
 3. Check application logs
 4. Verify environment variables
 

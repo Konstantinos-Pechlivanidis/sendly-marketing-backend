@@ -1,7 +1,7 @@
 export const productionConfig = {
   // Server Configuration
   port: process.env.PORT || 3000,
-  host: process.env.HOST || 'https://sendly-marketing-app.onrender.com',
+  host: process.env.HOST || 'https://sendly-marketing-backend.onrender.com',
   
   // Database Configuration
   database: {
@@ -23,7 +23,10 @@ export const productionConfig = {
   // Security Configuration
   security: {
     cors: {
-      origin: process.env.ALLOWED_ORIGINS?.split(',') || ['https://sendly-marketing-app.onrender.com'],
+      origin: process.env.ALLOWED_ORIGINS?.split(',') || [
+        'https://sendly-marketing-backend.onrender.com',
+        'https://sendly-marketing-frontend.onrender.com'
+      ],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID', 'API-Version'],

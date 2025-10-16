@@ -43,8 +43,8 @@ MITTO_SENDER_NAME=Sendly
 MITTO_WEBHOOK_SECRET=your_webhook_secret
 
 # Application
-HOST=https://your-app.onrender.com
-ALLOWED_ORIGINS=https://your-app.onrender.com
+HOST=https://sendly-marketing-backend.onrender.com
+ALLOWED_ORIGINS=https://sendly-marketing-backend.onrender.com,https://sendly-marketing-frontend.onrender.com
 APP_DEFAULT_CURRENCY=EUR
 NODE_ENV=production
 ```
@@ -113,8 +113,8 @@ Set these environment variables in your Render dashboard:
 | `SHOPIFY_API_SECRET` | Shopify API secret | `your_shopify_api_secret` |
 | `MITTO_API_KEY` | Mitto SMS API key | `your_mitto_api_key` |
 | `MITTO_WEBHOOK_SECRET` | Webhook secret | `your_webhook_secret` |
-| `HOST` | Your app URL | `https://your-app.onrender.com` |
-| `ALLOWED_ORIGINS` | CORS origins | `https://your-app.onrender.com` |
+| `HOST` | Your app URL | `https://sendly-marketing-backend.onrender.com` |
+| `ALLOWED_ORIGINS` | CORS origins | `https://sendly-marketing-backend.onrender.com` |
 
 ### 4. Database Migration
 
@@ -130,9 +130,9 @@ npm run db:seed
 
 Your deployed application includes comprehensive health checks:
 
-- **Basic Health**: `https://your-app.onrender.com/health`
-- **Configuration Health**: `https://your-app.onrender.com/health/config`
-- **Full Health Check**: `https://your-app.onrender.com/health/full`
+- **Basic Health**: `https://sendly-marketing-backend.onrender.com/health`
+- **Configuration Health**: `https://sendly-marketing-backend.onrender.com/health/config`
+- **Full Health Check**: `https://sendly-marketing-backend.onrender.com/health/full`
 
 ## 📊 Monitoring
 
@@ -206,7 +206,7 @@ Your deployed application includes comprehensive health checks:
 
 2. **Health Check**
    ```bash
-   curl https://your-app.onrender.com/health/full
+   curl https://sendly-marketing-backend.onrender.com/health/full
    ```
 
 3. **Database Connection**
