@@ -3,7 +3,7 @@ services:
     name: sendly-marketing-backend
     env: node
     plan: starter
-    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy
+    buildCommand: npm ci && npx prisma generate && npx prisma db push
     startCommand: npm start
     healthCheckPath: /health
     envVars:

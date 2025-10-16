@@ -58,7 +58,7 @@ APP_DEFAULT_CURRENCY=EUR
 
 ### Build Command:
 ```bash
-npm ci && npx prisma generate && npx prisma migrate deploy
+npm ci && npx prisma generate && npx prisma db push
 ```
 
 ### Start Command:
