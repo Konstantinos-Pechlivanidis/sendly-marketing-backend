@@ -30,6 +30,7 @@ import billingRoutes from './routes/billing.js';
 import mittoRoutes from './routes/mitto.js';
 import docsRoutes from './routes/docs.js';
 import { notFound, errorHandler } from './middlewares/error.js';
+import { setDevShop } from './middlewares/dev-shop.js';
 
 initShopifyContext();
 
@@ -105,14 +106,14 @@ app.use(
 app.use('/', mittoRoutes); // Mitto webhooks (no auth)
 app.use('/', coreRoutes); // health, webhooks, auth helpers
 if (process.env.NODE_ENV !== 'production') app.use('/', docsRoutes); // Swagger UI (dev only)
-app.use('/dashboard', dashboardRoutes);
-app.use('/contacts', contactsRoutes);
-app.use('/campaigns', campaignsRoutes);
-app.use('/templates', templatesRoutes);
-app.use('/automations', automationsRoutes);
-app.use('/reports', reportsRoutes);
-app.use('/discounts', discountsRoutes);
-app.use('/billing', billingRoutes);
+app.use('/dashboard', setDevShop, dashboardRoutes);
+app.use('/contacts', setDevShop, contactsRoutes);
+app.use('/campaigns', setDevShop, campaignsRoutes);
+app.use('/templates', setDevShop, templatesRoutes);
+app.use('/automations', setDevShop, automationsRoutes);
+app.use('/reports', setDevShop, reportsRoutes);
+app.use('/discounts', setDevShop, discountsRoutes);
+app.use('/billing', setDevShop, billingRoutes);
 
 // Error handling
 app.use(notFoundHandler);
