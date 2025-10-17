@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { verifySessionToken } from '../middlewares/auth.js';
 import { diagnostics as shopifyDiag } from '../services/shopify.js';
 import prisma from '../services/prisma.js';
 import IORedis from 'ioredis';
@@ -136,7 +135,7 @@ r.post('/webhooks/app_uninstalled', async (req, res) => {
 });
 
 // example "whoami" with session token
-r.get('/whoami', verifySessionToken, (req, res) => {
+r.get('/whoami', (req, res) => {
   res.json({ shop: req.shop });
 });
 

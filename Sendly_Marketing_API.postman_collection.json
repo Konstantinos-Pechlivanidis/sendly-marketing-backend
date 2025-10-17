@@ -1,29 +1,17 @@
 {
   "info": {
     "name": "Sendly Marketing API",
-    "description": "Complete API collection for Sendly Marketing Backend - SMS Marketing Platform",
+    "description": "Complete API collection for Sendly Marketing Backend - SMS Marketing Platform (No Authentication Required for Development)",
     "version": "1.0.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
-    "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{session_token}}",
-        "type": "string"
-      }
-    ]
+    "type": "noauth"
   },
   "variable": [
     {
       "key": "base_url",
       "value": "https://sendly-marketing-backend.onrender.com",
-      "type": "string"
-    },
-    {
-      "key": "session_token",
-      "value": "your_shopify_session_token_here",
       "type": "string"
     },
     {
