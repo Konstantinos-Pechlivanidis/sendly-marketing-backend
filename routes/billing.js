@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { verifySessionToken } from '../middlewares/auth.js';
 import * as ctrl from '../controllers/billing.js';
 const r = Router();
-r.get('/packages', verifySessionToken, ctrl.listPackages);
-r.post('/packages/seed', verifySessionToken, ctrl.seedPackages); // dev-only seed
-r.post('/purchase/:packageId', verifySessionToken, ctrl.purchasePackage);
-r.get('/balance', verifySessionToken, ctrl.balance);
-r.get('/transactions', verifySessionToken, ctrl.transactions);
+r.get('/packages',  ctrl.listPackages);
+r.post('/packages/seed',  ctrl.seedPackages); // dev-only seed
+r.post('/purchase/:packageId',  ctrl.purchasePackage);
+r.get('/balance',  ctrl.balance);
+r.get('/transactions',  ctrl.transactions);
 export default r;
