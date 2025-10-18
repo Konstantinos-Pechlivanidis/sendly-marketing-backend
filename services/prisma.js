@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
-let prisma;
+
+const prisma = global.__prisma || new PrismaClient();
 if (!global.__prisma) {
-  global.__prisma = new PrismaClient();
+  global.__prisma = prisma;
 }
-prisma = global.__prisma;
 export default prisma;

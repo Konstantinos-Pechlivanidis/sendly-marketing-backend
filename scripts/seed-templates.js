@@ -1,240 +1,111 @@
 import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 
-const smsTemplates = [
+const sampleTemplates = [
   {
-    name: 'Welcome Message',
-    category: 'welcome',
-    trigger: 'customer_signup',
-    message: 'Welcome to {store_name}! Get {discount}% off your first order with code {coupon_code}',
-    variables: ['store_name', 'discount', 'coupon_code'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.85
+    title: 'Welcome New Customer',
+    category: 'Welcome',
+    content: 'Welcome to {{shopName}}! Thank you for joining us. Use code WELCOME10 for 10% off your first order!',
+    tags: ['welcome', 'new-customer', 'discount'],
   },
   {
-    name: 'Order Confirmation',
-    category: 'order',
-    trigger: 'order_created',
-    message: 'Thank you for your order #{order_number}! Total: {order_total}. We\'ll send tracking info soon.',
-    variables: ['order_number', 'order_total'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.92
+    title: 'Abandoned Cart Reminder',
+    category: 'Abandoned Cart',
+    content: 'Hi {{firstName}}! You left some items in your cart at {{shopName}}. Complete your purchase now and save 15% with code CART15!',
+    tags: ['abandoned-cart', 'reminder', 'discount'],
   },
   {
-    name: 'Abandoned Cart Reminder',
-    category: 'cart',
-    trigger: 'cart_abandoned',
-    message: 'You left {item_count} items in your cart worth {cart_total}! Complete your purchase: {cart_url}',
-    variables: ['item_count', 'cart_total', 'cart_url'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.78
+    title: 'Order Confirmation',
+    category: 'Order Updates',
+    content: 'Thank you for your order #{{orderNumber}}! Your items are being prepared and will ship within 1-2 business days.',
+    tags: ['order-confirmation', 'shipping'],
   },
   {
-    name: 'Birthday Wishes',
-    category: 'celebration',
-    trigger: 'customer_birthday',
-    message: 'Happy Birthday {customer_name}! Enjoy {discount}% off with code BIRTHDAY{discount}',
-    variables: ['customer_name', 'discount'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.88
+    title: 'Shipping Update',
+    category: 'Order Updates',
+    content: 'Great news! Your order #{{orderNumber}} has shipped. Track your package: {{trackingLink}}',
+    tags: ['shipping', 'tracking'],
   },
   {
-    name: 'Shipping Notification',
-    category: 'shipping',
-    trigger: 'order_fulfilled',
-    message: 'Your order #{order_number} has shipped! Track it: {tracking_url}. Expected delivery: {delivery_date}',
-    variables: ['order_number', 'tracking_url', 'delivery_date'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.94
+    title: 'Birthday Special',
+    category: 'Holiday Offers',
+    content: 'Happy Birthday {{firstName}}! 🎉 Enjoy 20% off your entire order with code BIRTHDAY20. Valid for 7 days!',
+    tags: ['birthday', 'special-offer', 'discount'],
   },
   {
-    name: 'Review Request',
-    category: 'feedback',
-    trigger: 'order_delivered',
-    message: 'How was your order? We\'d love your feedback! Leave a review: {review_url}',
-    variables: ['review_url'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.65
+    title: 'Flash Sale Alert',
+    category: 'Promotional',
+    content: '⚡ FLASH SALE! 50% off everything for the next 24 hours only. Use code FLASH50 at checkout. Don\'t miss out!',
+    tags: ['flash-sale', 'urgent', 'discount'],
   },
   {
-    name: 'Flash Sale Alert',
-    category: 'promotion',
-    trigger: 'flash_sale',
-    message: 'FLASH SALE! {product_name} is {discount}% off for the next {time_left}! Shop now: {product_url}',
-    variables: ['product_name', 'discount', 'time_left', 'product_url'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.82
+    title: 'Product Back in Stock',
+    category: 'Inventory',
+    content: 'Good news! {{productName}} is back in stock. Get yours before they\'re gone again!',
+    tags: ['back-in-stock', 'inventory'],
   },
   {
-    name: 'Back in Stock',
-    category: 'inventory',
-    trigger: 'product_restocked',
-    message: 'Good news! {product_name} is back in stock. Order now before it\'s gone again: {product_url}',
-    variables: ['product_name', 'product_url'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.76
+    title: 'Review Request',
+    category: 'Feedback',
+    content: 'Hi {{firstName}}! How was your recent purchase? We\'d love to hear your thoughts. Leave a review and get 10% off your next order!',
+    tags: ['review', 'feedback', 'discount'],
   },
   {
-    name: 'Loyalty Reward',
-    category: 'loyalty',
-    trigger: 'loyalty_points_earned',
-    message: 'You earned {points} loyalty points! You now have {total_points} points. Redeem them: {redeem_url}',
-    variables: ['points', 'total_points', 'redeem_url'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.89
+    title: 'Holiday Greetings',
+    category: 'Holiday Offers',
+    content: 'Happy Holidays from {{shopName}}! 🎄 Enjoy 25% off everything with code HOLIDAY25. Wishing you joy and savings!',
+    tags: ['holiday', 'greetings', 'discount'],
   },
   {
-    name: 'Seasonal Greeting',
-    category: 'seasonal',
-    trigger: 'holiday_season',
-    message: 'Happy {holiday}! Enjoy {discount}% off everything with code {holiday_code}. Valid until {expiry_date}',
-    variables: ['holiday', 'discount', 'holiday_code', 'expiry_date'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.81
+    title: 'Re-order Reminder',
+    category: 'Re-engagement',
+    content: 'Hi {{firstName}}! It\'s been a while since your last order. We miss you! Here\'s 15% off to welcome you back: WELCOME15',
+    tags: ['re-engagement', 'win-back', 'discount'],
   },
-  {
-    name: 'Low Stock Alert',
-    category: 'inventory',
-    trigger: 'product_low_stock',
-    message: 'Hurry! {product_name} is running low on stock. Only {stock_count} left! Order now: {product_url}',
-    variables: ['product_name', 'stock_count', 'product_url'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.73
-  },
-  {
-    name: 'Payment Reminder',
-    category: 'payment',
-    trigger: 'payment_failed',
-    message: 'Payment failed for order #{order_number}. Please update your payment method: {payment_url}',
-    variables: ['order_number', 'payment_url'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.91
-  },
-  {
-    name: 'New Product Launch',
-    category: 'product',
-    trigger: 'product_launched',
-    message: 'New arrival: {product_name}! Be the first to get it with early access: {product_url}',
-    variables: ['product_name', 'product_url'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.77
-  },
-  {
-    name: 'Customer Support',
-    category: 'support',
-    trigger: 'support_request',
-    message: 'We received your support request #{ticket_number}. We\'ll get back to you within 24 hours.',
-    variables: ['ticket_number'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.95
-  },
-  {
-    name: 'Re-engagement',
-    category: 'retention',
-    trigger: 'customer_inactive',
-    message: 'We miss you! Come back and discover our latest products. Special offer: {offer_description}',
-    variables: ['offer_description'],
-    isActive: true,
-    usageCount: 0,
-    successRate: 0.68
-  }
 ];
 
 async function seedTemplates() {
   try {
-    logger.info('Starting SMS templates seeding...');
+    console.log('Starting template seeding...');
+    logger.info('Starting template seeding...');
 
-    // Get all shops to create templates for each
-    const shops = await prisma.shop.findMany();
-    
-    if (shops.length === 0) {
-      logger.warn('No shops found. Please create a shop first.');
-      return;
+    // Clear existing templates
+    console.log('Clearing existing templates...');
+    await prisma.templateUsage.deleteMany();
+    await prisma.template.deleteMany();
+
+    // Create templates
+    console.log(`Creating ${sampleTemplates.length} templates...`);
+    for (const templateData of sampleTemplates) {
+      const template = await prisma.template.create({
+        data: templateData,
+      });
+      console.log(`Created template: ${template.title}`);
+      logger.info(`Created template: ${template.title}`);
     }
 
-    let totalCreated = 0;
-
-    for (const shop of shops) {
-      logger.info(`Creating templates for shop: ${shop.shopDomain}`);
-
-      for (const template of smsTemplates) {
-        try {
-          // Check if template already exists
-          const existing = await prisma.templateUsage.findFirst({
-            where: {
-              shopId: shop.id,
-              name: template.name
-            }
-          });
-
-          if (existing) {
-            logger.info(`Template '${template.name}' already exists for shop ${shop.shopDomain}`);
-            continue;
-          }
-
-          // Create template usage record
-          await prisma.templateUsage.create({
-            data: {
-              shopId: shop.id,
-              name: template.name,
-              category: template.category,
-              trigger: template.trigger,
-              message: template.message,
-              variables: template.variables,
-              isActive: template.isActive,
-              usageCount: template.usageCount,
-              successRate: template.successRate,
-              createdAt: new Date(),
-              updatedAt: new Date()
-            }
-          });
-
-          totalCreated++;
-          logger.info(`Created template: ${template.name} for shop ${shop.shopDomain}`);
-        } catch (error) {
-          logger.error(`Error creating template '${template.name}' for shop ${shop.shopDomain}:`, error);
-        }
-      }
-    }
-
-    logger.info(`Template seeding completed. Created ${totalCreated} templates across ${shops.length} shops.`);
-    
-    return {
-      success: true,
-      message: `Created ${totalCreated} templates across ${shops.length} shops`,
-      totalCreated,
-      shopsProcessed: shops.length
-    };
-
+    console.log(`Successfully seeded ${sampleTemplates.length} templates`);
+    logger.info(`Successfully seeded ${sampleTemplates.length} templates`);
   } catch (error) {
-    logger.error('Error seeding templates:', error);
+    console.error('Failed to seed templates:', error.message);
+    logger.error('Failed to seed templates', {
+      error: error.message,
+    });
     throw error;
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   seedTemplates()
-    .then((result) => {
-      console.log('Template seeding result:', result);
+    .then(() => {
+      logger.info('Template seeding completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Template seeding failed:', error);
+      logger.error('Template seeding failed', { error: error.message });
       process.exit(1);
     });
 }

@@ -1,9 +1,12 @@
-import { Router } from 'express';
+import express from 'express';
 import * as ctrl from '../controllers/billing.js';
-const r = Router();
-r.get('/packages',  ctrl.listPackages);
-r.post('/packages/seed',  ctrl.seedPackages); // dev-only seed
-r.post('/purchase/:packageId',  ctrl.purchasePackage);
-r.get('/balance',  ctrl.balance);
-r.get('/transactions',  ctrl.transactions);
+
+const r = express.Router();
+
+// Billing routes (requires shop context)
+r.get('/balance', ctrl.getBalance);
+r.get('/packages', ctrl.getPackages);
+r.get('/history', ctrl.getBillingHistory);
+r.post('/purchase', ctrl.createPurchaseSession);
+
 export default r;

@@ -1,42 +1,121 @@
-export async function list(req, res, next) {
+import { getDiscountCodes, getDiscountCode } from '../services/shopify.js';
+import { logger } from '../utils/logger.js';
+
+/**
+ * Get available discount codes for a shop
+ * GET /api/shopify/discounts
+ */
+export async function getShopifyDiscounts(req, res, next) {
   try {
-    res.json({ success: true, data: { discounts: [] } });
-  } catch (e) {
-    next(e);
+    const shopDomain = req.shop;
+
+    const discountCodes = await getDiscountCodes(shopDomain);
+
+    // Filter only active and non-expired discounts
+    const activeDiscounts = discountCodes.filter(discount =>
+      discount.isActive && !discount.isExpired,
+    );
+
+    logger.info('Shopify discounts retrieved', {
+      shopDomain,
+      total: discountCodes.length,
+      active: activeDiscounts.length,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        discounts: activeDiscounts,
+        total: discountCodes.length,
+        active: activeDiscounts.length,
+      },
+    });
+  } catch (error) {
+    logger.error('Error in getShopifyDiscounts', {
+      shopDomain: req.shop,
+      error: error.message,
+    });
+    next(error);
   }
 }
-export async function validate(req, res, next) {
+
+/**
+ * Get a specific discount code by ID
+ * GET /api/shopify/discounts/:id
+ */
+export async function getShopifyDiscount(req, res, next) {
   try {
-    res.json({ success: true, data: { valid: false } });
-  } catch (e) {
-    next(e);
+    const { id } = req.params;
+    const shopDomain = req.shop;
+
+    const discount = await getDiscountCode(shopDomain, id);
+
+    logger.info('Shopify discount retrieved', {
+      shopDomain,
+      discountId: id,
+      title: discount.title,
+    });
+
+    res.json({
+      success: true,
+      data: discount,
+    });
+  } catch (error) {
+    logger.error('Error in getShopifyDiscount', {
+      shopDomain: req.shop,
+      discountId: req.params.id,
+      error: error.message,
+    });
+    next(error);
   }
 }
-export async function campaign(req, res, next) {
+
+/**
+ * Validate discount code for campaign use
+ * POST /api/shopify/discounts/validate
+ */
+export async function validateDiscount(req, res, next) {
   try {
-    res.json({ success: true, data: {} });
-  } catch (e) {
-    next(e);
-  }
-}
-export async function applyUrl(req, res, next) {
-  try {
-    res.json({ success: true, data: { url: '' } });
-  } catch (e) {
-    next(e);
-  }
-}
-export async function search(req, res, next) {
-  try {
-    res.json({ success: true, data: { results: [] } });
-  } catch (e) {
-    next(e);
-  }
-}
-export async function conflicts(req, res, next) {
-  try {
-    res.json({ success: true, data: {} });
-  } catch (e) {
-    next(e);
+    const { discountId } = req.body;
+    const shopDomain = req.shop;
+
+    if (!discountId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Discount ID is required',
+      });
+    }
+
+    const discount = await getDiscountCode(shopDomain, discountId);
+
+    // Check if discount is valid for campaign use
+    const isValid = discount.isActive && !discount.isExpired;
+    const canUse = isValid && discount.status === 'ACTIVE';
+
+    logger.info('Discount validation', {
+      shopDomain,
+      discountId,
+      isValid,
+      canUse,
+      status: discount.status,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        discount,
+        isValid,
+        canUse,
+        reason: !isValid ? 'Discount is not active or has expired' :
+          !canUse ? 'Discount is not available for use' : null,
+      },
+    });
+  } catch (error) {
+    logger.error('Error in validateDiscount', {
+      shopDomain: req.shop,
+      discountId: req.body.discountId,
+      error: error.message,
+    });
+    next(error);
   }
 }

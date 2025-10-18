@@ -1,6 +1,8 @@
 import prisma from '../services/prisma.js';
-import { ensureShopAndWallet, debitForMessages } from '../services/wallet.js';
 import { smsQueue } from '../queue/index.js';
+import { getStoreId } from '../middlewares/store-resolution.js';
+import { validateAndConsumeCredits, InsufficientCreditsError } from '../services/credit-validation.js';
+import { logger } from '../utils/logger.js';
 
 function normalizeAudienceQuery(audience) {
   // supports 'all' | 'men' | 'women' | 'segment:<id>'
@@ -121,7 +123,7 @@ export async function prepare(req, res, next) {
 
 export async function sendNow(req, res, next) {
   try {
-    const shopDomain = req.shop;
+    // const shopDomain = req.shop; // Not used in current implementation
     const campaignId = req.params.id;
     const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
     if (!campaign) throw new Error('campaign_not_found');
@@ -132,8 +134,27 @@ export async function sendNow(req, res, next) {
       return res.json({ success: true, data: { queued: false, reason: 'no_contacts' } });
     }
 
-    // debit credits once
-    await debitForMessages(shopDomain, recipients.length, campaignId);
+    // Validate and consume credits
+    const storeId = getStoreId(req);
+    try {
+      const creditResult = await validateAndConsumeCredits(storeId, recipients.length);
+      logger.info('Credits validated and consumed for campaign', {
+        campaignId,
+        storeId,
+        creditsConsumed: creditResult.creditsConsumed,
+        creditsRemaining: creditResult.creditsRemaining,
+      });
+    } catch (error) {
+      if (error instanceof InsufficientCreditsError) {
+        return res.status(400).json({
+          success: false,
+          error: 'Insufficient credits',
+          message: error.message,
+          missingCredits: error.missingCredits,
+        });
+      }
+      throw error;
+    }
 
     // status -> sending
     await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'sending' } });

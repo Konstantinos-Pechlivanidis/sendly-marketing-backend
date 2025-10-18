@@ -1,15 +1,19 @@
 import prisma from '../services/prisma.js';
-import { getBalance } from '../services/wallet.js';
+import { getStoreId } from '../middlewares/store-resolution.js';
+import { logger } from '../utils/logger.js';
 
 export async function overview(req, res, next) {
   try {
-    const shopDomain = req.shop;
-    console.log('📊 Overview - Shop domain:', shopDomain);
-    
-    const shop = await prisma.shop.findUnique({ where: { shopDomain } });
-    
+    const storeId = getStoreId(req);
+    logger.info('Dashboard overview requested', { storeId });
+
+    const shop = await prisma.shop.findUnique({
+      where: { id: storeId },
+      select: { id: true, credits: true, currency: true },
+    });
+
     if (!shop) {
-      console.log('❌ Shop not found:', shopDomain);
+      logger.info('❌ Shop not found:', storeId);
       return res.json({
         success: true,
         data: {
@@ -21,35 +25,35 @@ export async function overview(req, res, next) {
         },
       });
     }
-    
-    console.log('✅ Shop found:', shop.id);
-    
-    // Get real data from database
-    const wallet = await getBalance(shopDomain);
-    
+
+    logger.info('✅ Shop found:', shop.id);
+
+    // Get wallet data
+    const wallet = { balance: shop.credits || 0 };
+
     // Get SMS stats
     const smsStats = await prisma.messageLog.groupBy({
       by: ['status'],
       where: { shopId: shop.id, direction: 'outbound' },
-      _count: { status: true }
+      _count: { status: true },
     });
-    
+
     const sent = smsStats.find(s => s.status === 'sent')?._count?.status || 0;
     const delivered = smsStats.find(s => s.status === 'delivered')?._count?.status || 0;
     const failed = smsStats.find(s => s.status === 'failed')?._count?.status || 0;
     const deliveryRate = sent > 0 ? (delivered / sent) : 0;
-    
+
     // Get contact stats
     const contactStats = await prisma.contact.groupBy({
       by: ['smsConsent'],
       where: { shopId: shop.id },
-      _count: { smsConsent: true }
+      _count: { smsConsent: true },
     });
-    
+
     const total = contactStats.reduce((sum, stat) => sum + stat._count.smsConsent, 0);
     const optedIn = contactStats.find(s => s.smsConsent === 'opted_in')?._count?.smsConsent || 0;
     const optedOut = contactStats.find(s => s.smsConsent === 'opted_out')?._count?.smsConsent || 0;
-    
+
     // Get recent messages
     const recentMessages = await prisma.messageLog.findMany({
       where: { shopId: shop.id },
@@ -60,10 +64,10 @@ export async function overview(req, res, next) {
         phoneE164: true,
         status: true,
         createdAt: true,
-        payload: true
-      }
+        payload: true,
+      },
     });
-    
+
     // Get recent transactions
     const recentTransactions = await prisma.walletTransaction.findMany({
       where: { shopId: shop.id },
@@ -74,14 +78,14 @@ export async function overview(req, res, next) {
         type: true,
         credits: true,
         createdAt: true,
-        meta: true
-      }
+        meta: true,
+      },
     });
-    
-    console.log('📊 Real data - SMS:', { sent, delivered, failed, deliveryRate });
-    console.log('📊 Real data - Contacts:', { total, optedIn, optedOut });
-    console.log('📊 Real data - Wallet:', wallet);
-    
+
+    logger.info('📊 Real data - SMS:', { sent, delivered, failed, deliveryRate });
+    logger.info('📊 Real data - Contacts:', { total, optedIn, optedOut });
+    logger.info('📊 Real data - Wallet:', wallet);
+
     return res.json({
       success: true,
       data: {
@@ -99,32 +103,35 @@ export async function overview(req, res, next) {
 }
 export async function quickStats(req, res, next) {
   try {
-    const shopDomain = req.shop;
-    console.log('📊 QuickStats - Shop domain:', shopDomain);
-    
-    const shop = await prisma.shop.findUnique({ where: { shopDomain } });
-    
+    const storeId = getStoreId(req);
+    logger.info('📊 QuickStats - Store ID:', storeId);
+
+    const shop = await prisma.shop.findUnique({
+      where: { id: storeId },
+      select: { id: true, credits: true },
+    });
+
     if (!shop) {
-      console.log('❌ Shop not found:', shopDomain);
+      logger.info('❌ Shop not found:', storeId);
       return res.json({ success: true, data: { smsSent: 0, walletBalance: 0 } });
     }
-    
-    console.log('✅ Shop found:', shop.id);
-    
-    // Get real data from database
-    const wallet = await getBalance(shopDomain);
+
+    logger.info('✅ Shop found:', shop.id);
+
+    // Get wallet data
+    const wallet = { balance: shop.credits || 0 };
     const smsSent = await prisma.messageLog.count({
-      where: { shopId: shop.id, direction: 'outbound' }
+      where: { shopId: shop.id, direction: 'outbound' },
     });
-    
-    console.log('📊 Real data - SMS sent:', smsSent, 'Wallet balance:', wallet.balance);
-    
-    return res.json({ 
-      success: true, 
-      data: { 
-        smsSent, 
-        walletBalance: wallet.balance 
-      } 
+
+    logger.info('📊 Real data - SMS sent:', smsSent, 'Wallet balance:', wallet.balance);
+
+    return res.json({
+      success: true,
+      data: {
+        smsSent,
+        walletBalance: wallet.balance,
+      },
     });
   } catch (e) {
     console.error('❌ QuickStats error:', e);

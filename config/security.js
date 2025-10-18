@@ -1,6 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import hpp from 'hpp';
+// hpp is used in app.js
 
 // Rate limiting configurations
 export const rateLimitConfig = {
@@ -88,12 +88,12 @@ export const corsConfig = {
   origin: (origin, callback) => {
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
       'https://sendly-marketing-backend.onrender.com',
-      'https://sendly-marketing-frontend.onrender.com'
+      'https://sendly-marketing-frontend.onrender.com',
     ];
-    
+
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -125,21 +125,21 @@ export const inputValidation = {
       dangerousProps.forEach(prop => {
         delete req.body[prop];
       });
-      
+
       // Limit object depth
       const limitDepth = (obj, depth = 0, maxDepth = 10) => {
         if (depth > maxDepth) return '[Object too deep]';
         if (typeof obj !== 'object' || obj === null) return obj;
-        
+
         const result = {};
         for (const key in obj) {
-          if (obj.hasOwnProperty(key)) {
+          if (Object.prototype.hasOwnProperty.call(obj, key)) {
             result[key] = limitDepth(obj[key], depth + 1, maxDepth);
           }
         }
         return result;
       };
-      
+
       req.body = limitDepth(req.body);
     }
     next();
@@ -175,19 +175,19 @@ export const inputValidation = {
 export const securityHeaders = (req, res, next) => {
   // Remove X-Powered-By header
   res.removeHeader('X-Powered-By');
-  
+
   // Add security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  
+
   // Add request ID for tracking
   if (!res.getHeader('X-Request-ID')) {
     res.setHeader('X-Request-ID', req.id || 'unknown');
   }
-  
+
   next();
 };
 
@@ -195,17 +195,17 @@ export const securityHeaders = (req, res, next) => {
 export const validateApiKey = (req, res, next) => {
   const apiKey = req.get('X-API-Key');
   const validApiKey = process.env.API_KEY;
-  
+
   if (!validApiKey) {
     return next(); // Skip validation if no API key is configured
   }
-  
+
   if (!apiKey || apiKey !== validApiKey) {
     return res.status(401).json({
       error: 'Invalid or missing API key.',
     });
   }
-  
+
   next();
 };
 
@@ -213,27 +213,27 @@ export const validateApiKey = (req, res, next) => {
 export const validateShopifyWebhook = (req, res, next) => {
   const hmac = req.get('X-Shopify-Hmac-Sha256');
   const shop = req.get('X-Shopify-Shop-Domain');
-  
+
   if (!hmac || !shop) {
     return res.status(401).json({
       error: 'Missing Shopify webhook headers.',
     });
   }
-  
+
   // TODO: Implement HMAC validation
   // const crypto = require('crypto');
   // const calculatedHmac = crypto
   //   .createHmac('sha256', process.env.SHOPIFY_WEBHOOK_SECRET)
   //   .update(req.rawBody)
   //   .digest('base64');
-  
+
   next();
 };
 
 // Request logging for security monitoring
 export const securityLogger = (req, res, next) => {
   const startTime = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - startTime;
     const logData = {
@@ -246,18 +246,18 @@ export const securityLogger = (req, res, next) => {
       referer: req.get('Referer'),
       requestId: req.id,
     };
-    
+
     // Log suspicious activity
     if (res.statusCode >= 400) {
       console.warn('Security event:', logData);
     }
-    
+
     // Log potential attacks
     if (req.url.includes('..') || req.url.includes('<script>') || req.url.includes('javascript:')) {
       console.error('Potential attack detected:', logData);
     }
   });
-  
+
   next();
 };
 
@@ -267,15 +267,15 @@ export const ipWhitelist = (allowedIPs = []) => {
     if (allowedIPs.length === 0) {
       return next(); // Skip if no whitelist configured
     }
-    
+
     const clientIP = req.ip || req.connection.remoteAddress;
-    
+
     if (!allowedIPs.includes(clientIP)) {
       return res.status(403).json({
         error: 'Access denied from this IP address.',
       });
     }
-    
+
     next();
   };
 };

@@ -101,7 +101,7 @@ export const asyncHandler = (fn) => {
 };
 
 // Global error handler
-export const globalErrorHandler = (error, req, res, next) => {
+export const globalErrorHandler = (error, req, res, _next) => {
   let err = error;
 
   // Convert non-AppError instances to AppError

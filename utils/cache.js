@@ -1,5 +1,4 @@
 import IORedis from 'ioredis';
-import { fallbackCache } from './fallback-cache.js';
 
 class CacheManager {
   constructor() {

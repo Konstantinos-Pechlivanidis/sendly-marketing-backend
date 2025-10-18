@@ -72,7 +72,7 @@ export const sanitizeRequest = (req, res, next) => {
   if (req.body && typeof req.body === 'object') {
     const sanitizeObject = (obj) => {
       for (const key in obj) {
-        if (obj.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
           if (typeof obj[key] === 'string') {
             obj[key] = sanitizeString(obj[key]);
           } else if (typeof obj[key] === 'object' && obj[key] !== null) {

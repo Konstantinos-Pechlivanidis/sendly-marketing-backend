@@ -1,0 +1,1568 @@
+{
+  "info": {
+    "name": "Sendly Marketing Backend API",
+    "description": "Complete API collection for Sendly Marketing Backend with multi-store support, SMS campaigns, automations, templates, and analytics.",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://sendly-marketing-backend.onrender.com",
+      "type": "string"
+    },
+    {
+      "key": "local_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "storeId",
+      "value": "{{$randomUUID}}",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    },
+    {
+      "key": "contactId",
+      "value": "cnt_01HRTD...",
+      "type": "string"
+    },
+    {
+      "key": "campaignId",
+      "value": "cmp_01HRTD...",
+      "type": "string"
+    },
+    {
+      "key": "automationId",
+      "value": "auto_01HRTD...",
+      "type": "string"
+    },
+    {
+      "key": "templateId",
+      "value": "tpl_01HRTD...",
+      "type": "string"
+    },
+    {
+      "key": "messageId",
+      "value": "msg_01HRTD...",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "🏥 Health & Core",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": [
+            {
+              "name": "Health Check Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/health",
+                  "host": ["{{base_url}}"],
+                  "path": ["health"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"ok\": true,\n  \"t\": 1704067200000\n}"
+            }
+          ]
+        },
+        {
+          "name": "Full Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health/full",
+              "host": ["{{base_url}}"],
+              "path": ["health", "full"]
+            }
+          }
+        },
+        {
+          "name": "Who Am I",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/whoami",
+              "host": ["{{base_url}}"],
+              "path": ["whoami"]
+            }
+          }
+        },
+        {
+          "name": "Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["metrics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Dashboard",
+      "item": [
+        {
+          "name": "Dashboard Overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/dashboard/overview",
+              "host": ["{{base_url}}"],
+              "path": ["api", "dashboard", "overview"]
+            }
+          },
+          "response": [
+            {
+              "name": "Dashboard Overview Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/dashboard/overview",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "dashboard", "overview"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"totalContacts\": 1250,\n    \"totalCampaigns\": 45,\n    \"totalAutomations\": 4,\n    \"creditsRemaining\": 8500,\n    \"messagesSent\": 3200,\n    \"deliveryRate\": 96.5,\n    \"recentActivity\": [\n      {\n        \"type\": \"campaign\",\n        \"message\": \"Back to School campaign sent to 500 contacts\",\n        \"timestamp\": \"2024-01-15T10:30:00Z\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Quick Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/dashboard/quick-stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "dashboard", "quick-stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 Contacts",
+      "item": [
+        {
+          "name": "List Contacts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts?page=1&pageSize=20&filter=all&q=&sortBy=createdAt&sortOrder=desc",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contacts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "filter",
+                  "value": "all",
+                  "description": "all, male, female, consented, nonconsented"
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Search term"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Contacts List Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/contacts?page=1&pageSize=20&filter=all&q=&sortBy=createdAt&sortOrder=desc",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "contacts"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20"
+                    },
+                    {
+                      "key": "filter",
+                      "value": "all"
+                    },
+                    {
+                      "key": "q",
+                      "value": ""
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "createdAt"
+                    },
+                    {
+                      "key": "sortOrder",
+                      "value": "desc"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": \"cnt_01HRTD...\",\n      \"firstName\": \"Maria\",\n      \"lastName\": \"Papadopoulos\",\n      \"phone\": \"+306977123456\",\n      \"email\": \"maria@example.com\",\n      \"gender\": \"female\",\n      \"birthDate\": \"1990-06-15T00:00:00Z\",\n      \"smsConsent\": true,\n      \"createdAt\": \"2024-01-01T00:00:00Z\",\n      \"updatedAt\": \"2024-01-01T00:00:00Z\"\n    }\n  ],\n  \"pagination\": {\n    \"page\": 1,\n    \"pageSize\": 20,\n    \"total\": 1250,\n    \"totalPages\": 63\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Contact by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/{{contactId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contacts", "{{contactId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Contact",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+306977123456\",\n  \"email\": \"john@example.com\",\n  \"gender\": \"male\",\n  \"birthDate\": \"1985-03-15T00:00:00Z\",\n  \"smsConsent\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/contacts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contacts"]
+            }
+          }
+        },
+        {
+          "name": "Update Contact",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John Updated\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.updated@example.com\",\n  \"gender\": \"male\",\n  \"birthDate\": \"1985-03-15T00:00:00Z\",\n  \"smsConsent\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/contacts/{{contactId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contacts", "{{contactId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Contact",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/{{contactId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contacts", "{{contactId}}"]
+            }
+          }
+        },
+        {
+          "name": "Contact Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contacts", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Birthday Contacts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/birthdays",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contacts", "birthdays"]
+            }
+          }
+        },
+        {
+          "name": "Import Contacts CSV",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "contacts.csv"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/contacts/import",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contacts", "import"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📢 Campaigns",
+      "item": [
+        {
+          "name": "List Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns?page=1&pageSize=20&status=all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "all",
+                  "description": "all, draft, scheduled, sending, sent, failed"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Campaign by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/{{campaignId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "{{campaignId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Back to School Campaign\",\n  \"message\": \"Get 20% off on all school supplies! Use code SCHOOL20. Valid until end of month.\",\n  \"audienceId\": \"aud_all_consented\",\n  \"discountId\": \"disc_123\",\n  \"scheduleType\": \"immediate\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campaigns",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns"]
+            }
+          }
+        },
+        {
+          "name": "Update Campaign",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Back to School Campaign\",\n  \"message\": \"Get 25% off on all school supplies! Use code SCHOOL25. Valid until end of month.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/{{campaignId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "{{campaignId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Campaign",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/{{campaignId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "{{campaignId}}"]
+            }
+          }
+        },
+        {
+          "name": "Prepare Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/{{campaignId}}/prepare",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "prepare"]
+            }
+          }
+        },
+        {
+          "name": "Send Campaign Now",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/{{campaignId}}/send",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "send"]
+            }
+          }
+        },
+        {
+          "name": "Schedule Campaign",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scheduleType\": \"scheduled\",\n  \"scheduleAt\": \"2024-02-01T10:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/{{campaignId}}/schedule",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "schedule"]
+            }
+          }
+        },
+        {
+          "name": "Campaign Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/{{campaignId}}/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "metrics"]
+            }
+          }
+        },
+        {
+          "name": "Campaign Stats Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/stats/summary",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "stats", "summary"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤖 Automations",
+      "item": [
+        {
+          "name": "Get User Automations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/automations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "automations"]
+            }
+          },
+          "response": [
+            {
+              "name": "User Automations Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/automations",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "automations"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": \"user_auto_01HRTD...\",\n      \"automationId\": \"system_auto_01HRTD...\",\n      \"title\": \"Abandoned Cart Reminder\",\n      \"description\": \"Reminds customers about items left in their cart\",\n      \"triggerEvent\": \"cart_abandoned\",\n      \"defaultMessage\": \"Το καλάθι σου σε περιμένει! Ολοκλήρωσε την αγορά σου πριν εξαντληθεί.\",\n      \"userMessage\": null,\n      \"isActive\": true,\n      \"isSystemDefault\": true,\n      \"createdAt\": \"2024-01-01T00:00:00Z\",\n      \"updatedAt\": \"2024-01-01T00:00:00Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update User Automation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"Your cart is waiting! Complete your purchase before items run out. Use code CART10 for 10% off!\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/automations/{{automationId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "automations", "{{automationId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Automation Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/automations/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "automations", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get System Defaults (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/automations/defaults",
+              "host": ["{{base_url}}"],
+              "path": ["api", "automations", "defaults"]
+            }
+          }
+        },
+        {
+          "name": "Sync System Defaults (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/automations/sync",
+              "host": ["{{base_url}}"],
+              "path": ["api", "automations", "sync"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Templates",
+      "item": [
+        {
+          "name": "Get All Templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/templates?category=all&page=1&pageSize=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "templates"],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "all",
+                  "description": "all, promotional, abandoned_cart, holiday_offers, customer_service"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Templates List Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/templates?category=all&page=1&pageSize=20",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "templates"],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "all"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": \"tpl_01HRTD...\",\n      \"title\": \"Back to School Sale\",\n      \"category\": \"promotional\",\n      \"content\": \"Get 20% off on all school supplies! Use code SCHOOL20. Valid until end of month.\",\n      \"previewImage\": \"https://example.com/preview.jpg\",\n      \"tags\": [\"education\", \"sale\", \"back-to-school\"],\n      \"isPublic\": true,\n      \"createdAt\": \"2024-01-01T00:00:00Z\"\n    }\n  ],\n  \"pagination\": {\n    \"page\": 1,\n    \"pageSize\": 20,\n    \"total\": 50,\n    \"totalPages\": 3\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Template by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/templates/{{templateId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "templates", "{{templateId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Template Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/templates/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "templates", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Track Template Usage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/templates/{{templateId}}/track",
+              "host": ["{{base_url}}"],
+              "path": ["api", "templates", "{{templateId}}", "track"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📈 Reports",
+      "item": [
+        {
+          "name": "Reports Overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reports/overview",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", "overview"]
+            }
+          }
+        },
+        {
+          "name": "KPIs Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reports/kpis",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", "kpis"]
+            }
+          }
+        },
+        {
+          "name": "Campaign Performance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reports/campaigns?from=2024-01-01&to=2024-01-31&type=all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", "campaigns"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2024-01-01",
+                  "description": "Start date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "to",
+                  "value": "2024-01-31",
+                  "description": "End date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "type",
+                  "value": "all",
+                  "description": "all, manual, automation"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Campaign by ID Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reports/campaigns/{{campaignId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", "campaigns", "{{campaignId}}"]
+            }
+          }
+        },
+        {
+          "name": "Automation Insights",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reports/automations?from=2024-01-01&to=2024-01-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", "automations"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2024-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Credit Usage Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reports/credits?from=2024-01-01&to=2024-01-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", "credits"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2024-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Contact Insights",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reports/contacts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", "contacts"]
+            }
+          }
+        },
+        {
+          "name": "Export Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reports/export?type=campaigns&format=csv&from=2024-01-01&to=2024-01-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", "export"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "campaigns",
+                  "description": "campaigns, automations, credits, contacts"
+                },
+                {
+                  "key": "format",
+                  "value": "csv",
+                  "description": "csv, pdf"
+                },
+                {
+                  "key": "from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2024-01-31"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Billing & Settings",
+      "item": [
+        {
+          "name": "Get Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/settings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "settings"]
+            }
+          },
+          "response": [
+            {
+              "name": "Settings Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/settings",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "settings"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"senderNumber\": \"+306977123456\",\n    \"credits\": 8500,\n    \"accountInfo\": {\n      \"storeDomain\": \"example-shop.myshopify.com\",\n      \"plan\": \"premium\",\n      \"createdAt\": \"2024-01-01T00:00:00Z\"\n    },\n    \"usageGuide\": {\n      \"title\": \"How to Use Sendly Marketing\",\n      \"content\": \"Sendly helps you engage customers through SMS marketing...\",\n      \"supportUrl\": \"https://sendly.com/support\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Account Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/settings/account",
+              "host": ["{{base_url}}"],
+              "path": ["api", "settings", "account"]
+            }
+          }
+        },
+        {
+          "name": "Update Sender Number",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"senderNumber\": \"+306977123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/settings/sender",
+              "host": ["{{base_url}}"],
+              "path": ["api", "settings", "sender"]
+            }
+          }
+        },
+        {
+          "name": "Get Credit Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/billing/balance",
+              "host": ["{{base_url}}"],
+              "path": ["api", "billing", "balance"]
+            }
+          }
+        },
+        {
+          "name": "Get Credit Packages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/billing/packages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "billing", "packages"]
+            }
+          }
+        },
+        {
+          "name": "Get Billing History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/billing/history?page=1&pageSize=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "billing", "history"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Purchase Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"packageType\": \"1000_sms\",\n  \"successUrl\": \"https://your-app.com/success\",\n  \"cancelUrl\": \"https://your-app.com/cancel\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/billing/purchase",
+              "host": ["{{base_url}}"],
+              "path": ["api", "billing", "purchase"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔗 Webhooks",
+      "item": [
+        {
+          "name": "Stripe Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Stripe-Signature",
+                "value": "t=1234567890,v1=signature_hash"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_1234567890\",\n  \"object\": \"event\",\n  \"type\": \"checkout.session.completed\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"cs_1234567890\",\n      \"payment_status\": \"paid\",\n      \"metadata\": {\n        \"storeId\": \"{{storeId}}\",\n        \"packageType\": \"1000_sms\"\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/webhooks/stripe",
+              "host": ["{{base_url}}"],
+              "path": ["webhooks", "stripe"]
+            }
+          }
+        },
+        {
+          "name": "Automation Webhook - Cart Abandoned",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"cart_abandoned\",\n  \"storeId\": \"{{storeId}}\",\n  \"contactId\": \"{{contactId}}\",\n  \"cartData\": {\n    \"items\": [\n      {\n        \"productId\": \"prod_123\",\n        \"title\": \"Sample Product\",\n        \"price\": 29.99,\n        \"quantity\": 2\n      }\n    ],\n    \"total\": 59.98,\n    \"abandonedAt\": \"2024-01-15T10:30:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/automation-webhooks/cart-abandoned",
+              "host": ["{{base_url}}"],
+              "path": ["api", "automation-webhooks", "cart-abandoned"]
+            }
+          }
+        },
+        {
+          "name": "Automation Webhook - Order Placed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"order_placed\",\n  \"storeId\": \"{{storeId}}\",\n  \"contactId\": \"{{contactId}}\",\n  \"orderData\": {\n    \"orderId\": \"order_123\",\n    \"total\": 99.99,\n    \"currency\": \"EUR\",\n    \"items\": [\n      {\n        \"productId\": \"prod_123\",\n        \"title\": \"Sample Product\",\n        \"price\": 99.99,\n        \"quantity\": 1\n      }\n    ],\n    \"placedAt\": \"2024-01-15T10:30:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/automation-webhooks/order-placed",
+              "host": ["{{base_url}}"],
+              "path": ["api", "automation-webhooks", "order-placed"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Tracking",
+      "item": [
+        {
+          "name": "Get Mitto Message Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tracking/mitto/{{messageId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tracking", "mitto", "{{messageId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Campaign Delivery Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tracking/campaign/{{campaignId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tracking", "campaign", "{{campaignId}}"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Update Delivery Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"updates\": [\n    {\n      \"messageId\": \"msg_123\",\n      \"status\": \"Delivered\",\n      \"deliveredAt\": \"2024-01-15T10:35:00Z\"\n    },\n    {\n      \"messageId\": \"msg_124\",\n      \"status\": \"Failed\",\n      \"failedAt\": \"2024-01-15T10:35:00Z\",\n      \"failureReason\": \"Invalid phone number\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tracking/bulk-update",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tracking", "bulk-update"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛍️ Shopify Integration",
+      "item": [
+        {
+          "name": "Get Shopify Discounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/shopify/discounts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shopify", "discounts"]
+            }
+          }
+        },
+        {
+          "name": "Get Shopify Discount by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/shopify/discounts/disc_123",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shopify", "discounts", "disc_123"]
+            }
+          }
+        },
+        {
+          "name": "Validate Discount Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discountId\": \"disc_123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/shopify/discounts/validate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shopify", "discounts", "validate"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-generate UUIDs for testing",
+          "if (!pm.variables.get('storeId') || pm.variables.get('storeId') === '{{$randomUUID}}') {",
+          "    pm.variables.set('storeId', pm.variables.replaceIn('{{$randomUUID}}'));",
+          "}",
+          "",
+          "if (!pm.variables.get('contactId') || pm.variables.get('contactId') === 'cnt_01HRTD...') {",
+          "    pm.variables.set('contactId', 'cnt_' + pm.variables.replaceIn('{{$randomUUID}}').substring(0, 8));",
+          "}",
+          "",
+          "if (!pm.variables.get('campaignId') || pm.variables.get('campaignId') === 'cmp_01HRTD...') {",
+          "    pm.variables.set('campaignId', 'cmp_' + pm.variables.replaceIn('{{$randomUUID}}').substring(0, 8));",
+          "}",
+          "",
+          "if (!pm.variables.get('automationId') || pm.variables.get('automationId') === 'auto_01HRTD...') {",
+          "    pm.variables.set('automationId', 'auto_' + pm.variables.replaceIn('{{$randomUUID}}').substring(0, 8));",
+          "}",
+          "",
+          "if (!pm.variables.get('templateId') || pm.variables.get('templateId') === 'tpl_01HRTD...') {",
+          "    pm.variables.set('templateId', 'tpl_' + pm.variables.replaceIn('{{$randomUUID}}').substring(0, 8));",
+          "}",
+          "",
+          "if (!pm.variables.get('messageId') || pm.variables.get('messageId') === 'msg_01HRTD...') {",
+          "    pm.variables.set('messageId', 'msg_' + pm.variables.replaceIn('{{$randomUUID}}').substring(0, 8));",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test for all requests",
+          "pm.test('Response time is less than 5000ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "pm.test('Response has valid JSON', function () {",
+          "    if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('application/json')) {",
+          "        pm.response.to.have.jsonBody();",
+          "    }",
+          "});",
+          "",
+          "// Store scoping validation",
+          "if (pm.response.json() && pm.response.json().data && Array.isArray(pm.response.json().data)) {",
+          "    pm.test('All data belongs to current store', function () {",
+          "        const data = pm.response.json().data;",
+          "        const currentStoreId = pm.variables.get('storeId');",
+          "        ",
+          "        data.forEach(item => {",
+          "            if (item.storeId) {",
+          "                pm.expect(item.storeId).to.eql(currentStoreId);",
+          "            }",
+          "        });",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ]
+}

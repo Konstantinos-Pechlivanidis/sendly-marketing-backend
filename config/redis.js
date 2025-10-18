@@ -7,31 +7,29 @@ export const redisConfig = {
   port: process.env.REDIS_PORT || 6379,
   password: process.env.REDIS_PASSWORD,
   db: process.env.REDIS_DB || 0,
-  
+
   // Connection pool settings
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: null,
   retryDelayOnFailover: 100,
   enableReadyCheck: false,
   lazyConnect: true,
-  
+
   // Timeout settings
   connectTimeout: 10000,
   commandTimeout: 5000,
-  
+
   // Retry settings
   retryDelayOnClusterDown: 300,
-  retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 3,
-  
+
   // Keep alive settings
   keepAlive: 30000,
-  
+
   // Cluster settings (if using Redis Cluster)
   enableOfflineQueue: false,
-  
+
   // Memory optimization
   maxMemoryPolicy: 'allkeys-lru',
-  
+
   // Logging
   enableAutoPipelining: true,
 };
@@ -39,7 +37,7 @@ export const redisConfig = {
 // Create Redis connection
 export const createRedisConnection = (config = {}) => {
   const finalConfig = { ...redisConfig, ...config };
-  
+
   // Handle Redis URL format
   if (process.env.REDIS_URL) {
     return new IORedis(process.env.REDIS_URL, {
@@ -49,11 +47,10 @@ export const createRedisConnection = (config = {}) => {
       connectTimeout: 10000,
       commandTimeout: 5000,
       retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
       enableOfflineQueue: false,
     });
   }
-  
+
   return new IORedis(finalConfig);
 };
 
@@ -91,7 +88,7 @@ export const checkRedisHealth = async (redis) => {
     const start = Date.now();
     await redis.ping();
     const latency = Date.now() - start;
-    
+
     return {
       status: 'healthy',
       latency: `${latency}ms`,
@@ -125,19 +122,19 @@ const handleRedisError = (redis, name) => {
   redis.on('error', (error) => {
     console.error(`Redis ${name} error:`, error);
   });
-  
+
   redis.on('connect', () => {
     console.log(`Redis ${name} connected`);
   });
-  
+
   redis.on('ready', () => {
     console.log(`Redis ${name} ready`);
   });
-  
+
   redis.on('close', () => {
     console.log(`Redis ${name} connection closed`);
   });
-  
+
   redis.on('reconnecting', () => {
     console.log(`Redis ${name} reconnecting`);
   });

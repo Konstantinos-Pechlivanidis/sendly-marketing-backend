@@ -2,7 +2,7 @@ export const productionConfig = {
   // Server Configuration
   port: process.env.PORT || 3000,
   host: process.env.HOST || 'https://sendly-marketing-backend.onrender.com',
-  
+
   // Database Configuration
   database: {
     url: process.env.DATABASE_URL,
@@ -10,22 +10,21 @@ export const productionConfig = {
     connectionTimeout: 30000,
     queryTimeout: 30000,
   },
-  
+
   // Redis Configuration
   redis: {
     url: process.env.REDIS_URL,
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: null,
     retryDelayOnFailover: 100,
     enableReadyCheck: false,
-    maxRetriesPerRequest: null,
   },
-  
+
   // Security Configuration
   security: {
     cors: {
       origin: process.env.ALLOWED_ORIGINS?.split(',') || [
         'https://sendly-marketing-backend.onrender.com',
-        'https://sendly-marketing-frontend.onrender.com'
+        'https://sendly-marketing-frontend.onrender.com',
       ],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -48,7 +47,7 @@ export const productionConfig = {
       crossOriginEmbedderPolicy: false,
     },
   },
-  
+
   // Shopify Configuration
   shopify: {
     apiKey: process.env.SHOPIFY_API_KEY,
@@ -65,23 +64,24 @@ export const productionConfig = {
       'read_products',
     ],
   },
-  
+
   // Mitto SMS Configuration
   mitto: {
-    apiBase: process.env.MITTO_API_BASE || 'https://api.mitto.ch',
+    apiBase: process.env.MITTO_API_BASE || 'http://messaging.mittoapi.com',
     apiKey: process.env.MITTO_API_KEY,
+    trafficAccountId: process.env.MITTO_TRAFFIC_ACCOUNT_ID,
     senderName: process.env.MITTO_SENDER_NAME || 'Sendly',
     webhookSecret: process.env.MITTO_WEBHOOK_SECRET,
-    timeout: 15000,
+    timeout: 30000,
   },
-  
+
   // Application Configuration
   app: {
     defaultCurrency: process.env.APP_DEFAULT_CURRENCY || 'EUR',
     timezone: 'UTC',
     maxFileSize: 5 * 1024 * 1024, // 5MB
   },
-  
+
   // Logging Configuration
   logging: {
     level: process.env.LOG_LEVEL || 'info',
@@ -89,14 +89,14 @@ export const productionConfig = {
     enableConsole: true,
     enableFile: false, // Disabled for cloud deployment
   },
-  
+
   // Monitoring Configuration
   monitoring: {
     enableMetrics: true,
     enableHealthChecks: true,
     healthCheckInterval: 30000, // 30 seconds
   },
-  
+
   // Queue Configuration
   queue: {
     concurrency: 20,

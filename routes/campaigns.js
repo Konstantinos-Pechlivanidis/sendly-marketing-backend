@@ -10,14 +10,14 @@ r.post(
   body('name').isString().isLength({ min: 1 }),
   body('message').isString().isLength({ min: 1 }),
   handleValidation,
-  ctrl.create
+  ctrl.create,
 );
 r.put(
   '/:id',
   body('name').optional().isString().isLength({ min: 1 }),
   body('message').optional().isString().isLength({ min: 1 }),
   handleValidation,
-  ctrl.update
+  ctrl.update,
 );
 r.delete('/:id', ctrl.remove);
 r.post('/:id/prepare', ctrl.prepare);
@@ -27,7 +27,7 @@ r.put(
   body('scheduleType').optional().isIn(['scheduled', 'recurring']),
   body('scheduleAt').optional().isISO8601(),
   handleValidation,
-  ctrl.schedule
+  ctrl.schedule,
 );
 r.get('/:id/metrics', ctrl.metrics);
 r.get('/stats/summary', ctrl.stats);

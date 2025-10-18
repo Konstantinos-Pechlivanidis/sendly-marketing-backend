@@ -20,17 +20,24 @@ import {
 import { metricsMiddleware } from './utils/metrics.js';
 import coreRoutes from './routes/core.js';
 import dashboardRoutes from './routes/dashboard.js';
-import contactsRoutes from './routes/contacts.js';
+import contactsRoutes from './routes/contacts-enhanced.js';
 import campaignsRoutes from './routes/campaigns.js';
 import templatesRoutes from './routes/templates.js';
+import adminTemplatesRoutes from './routes/admin-templates.js';
 import automationsRoutes from './routes/automations.js';
+import automationWebhookRoutes from './routes/automation-webhooks.js';
 import reportsRoutes from './routes/reports.js';
 import discountsRoutes from './routes/discounts.js';
 import billingRoutes from './routes/billing.js';
 import mittoRoutes from './routes/mitto.js';
+import trackingRoutes from './routes/tracking.js';
+import settingsRoutes from './routes/settings.js';
+import stripeWebhookRoutes from './routes/stripe-webhooks.js';
+import audiencesRoutes from './routes/audiences.js';
+import shopifyRoutes from './routes/shopify.js';
 import docsRoutes from './routes/docs.js';
-import { notFound, errorHandler } from './middlewares/error.js';
-import { setDevShop } from './middlewares/dev-shop.js';
+// import { setDevShop } from './middlewares/dev-shop.js'; // Not used in current implementation
+import { resolveStore, requireStore } from './middlewares/store-resolution.js';
 
 initShopifyContext();
 
@@ -51,7 +58,7 @@ app.use(
       },
     },
     crossOriginEmbedderPolicy: false,
-  })
+  }),
 );
 
 app.use(hpp());
@@ -78,7 +85,7 @@ app.use(
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID', 'API-Version'],
-  })
+  }),
 );
 
 // Body parsing
@@ -89,7 +96,7 @@ app.use(
       // Store raw body for webhook verification
       req.rawBody = buf;
     },
-  })
+  }),
 );
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
@@ -99,21 +106,33 @@ app.use(
     stream: {
       write: (message) => logger.info(message.trim()),
     },
-  })
+  }),
 );
 
 // mount
 app.use('/', mittoRoutes); // Mitto webhooks (no auth)
 app.use('/', coreRoutes); // health, webhooks, auth helpers
 if (process.env.NODE_ENV !== 'production') app.use('/', docsRoutes); // Swagger UI (dev only)
-app.use('/dashboard', setDevShop, dashboardRoutes);
-app.use('/contacts', setDevShop, contactsRoutes);
-app.use('/campaigns', setDevShop, campaignsRoutes);
-app.use('/templates', setDevShop, templatesRoutes);
-app.use('/automations', setDevShop, automationsRoutes);
-app.use('/reports', setDevShop, reportsRoutes);
-app.use('/discounts', setDevShop, discountsRoutes);
-app.use('/billing', setDevShop, billingRoutes);
+// Store-scoped routes (require store context)
+app.use('/dashboard', resolveStore, requireStore, dashboardRoutes);
+app.use('/contacts', resolveStore, requireStore, contactsRoutes);
+app.use('/campaigns', resolveStore, requireStore, campaignsRoutes);
+app.use('/automations', resolveStore, requireStore, automationsRoutes);
+app.use('/reports', resolveStore, requireStore, reportsRoutes);
+app.use('/discounts', resolveStore, requireStore, discountsRoutes);
+app.use('/billing', resolveStore, requireStore, billingRoutes);
+app.use('/settings', resolveStore, requireStore, settingsRoutes);
+app.use('/audiences', resolveStore, requireStore, audiencesRoutes);
+app.use('/shopify', resolveStore, requireStore, shopifyRoutes);
+
+// Public routes (no store context required)
+app.use('/templates', templatesRoutes); // Public templates
+app.use('/tracking', trackingRoutes); // Tracking endpoints
+app.use('/automation-webhooks', automationWebhookRoutes); // Automation webhooks
+app.use('/webhooks/stripe', stripeWebhookRoutes); // Stripe webhooks
+
+// Admin routes (special handling)
+app.use('/admin/templates', resolveStore, requireStore, adminTemplatesRoutes);
 
 // Error handling
 app.use(notFoundHandler);
