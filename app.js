@@ -84,7 +84,7 @@ app.use(
     origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID', 'API-Version'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID', 'API-Version', 'X-Shopify-Shop-Domain', 'X-Shopify-Shop', 'X-Shopify-Shop-Name', 'X-Store-ID'],
   }),
 );
 

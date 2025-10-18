@@ -21,14 +21,86 @@ export async function resolveStore(req, res, next) {
     let store = null;
 
     // Method 1: Shopify session/JWT (primary method)
-    if (req.headers['x-shopify-shop-domain'] || req.query.shop) {
-      shopDomain = req.headers['x-shopify-shop-domain'] || req.query.shop;
+    // Check multiple possible sources for shop domain
+    const possibleShopDomain = 
+      req.headers['x-shopify-shop-domain'] || 
+      req.headers['x-shopify-shop'] ||
+      req.headers['x-shopify-shop-name'] ||
+      req.query.shop || 
+      req.query.shop_domain ||
+      req.query.shop_name ||
+      req.body?.shop ||
+      req.body?.shop_domain ||
+      req.body?.shop_name;
+
+    // Method 1.5: Extract shop domain from URL path (for embedded Shopify apps)
+    // URL pattern: /store/{shop-domain}/apps/{app-name}/app
+    let shopDomainFromPath = null;
+    if (!possibleShopDomain && req.url) {
+      const pathMatch = req.url.match(/\/store\/([^\/]+)\//);
+      if (pathMatch && pathMatch[1]) {
+        shopDomainFromPath = pathMatch[1];
+        // Ensure it has .myshopify.com suffix
+        if (!shopDomainFromPath.includes('.')) {
+          shopDomainFromPath = `${shopDomainFromPath}.myshopify.com`;
+        }
+      }
+    }
+
+    if (possibleShopDomain) {
+      shopDomain = possibleShopDomain;
 
       // Normalize shop domain
       if (shopDomain && !shopDomain.includes('.')) {
         shopDomain = `${shopDomain}.myshopify.com`;
       }
 
+      logger.info('Attempting to resolve store from headers/query/body', { 
+        shopDomain, 
+        headers: req.headers,
+        query: req.query,
+        body: req.body ? Object.keys(req.body) : 'no body'
+      });
+    } else if (shopDomainFromPath) {
+      shopDomain = shopDomainFromPath;
+      logger.info('Attempting to resolve store from URL path', { 
+        shopDomain,
+        url: req.url,
+        extractedFromPath: true
+      });
+    } else {
+      // Try to extract from Shopify App Bridge session or JWT
+      const shopifySession = req.session?.shopify || req.session?.shop;
+      if (shopifySession) {
+        shopDomain = shopifySession.shop || shopifySession.shopDomain;
+        if (shopDomain && !shopDomain.includes('.')) {
+          shopDomain = `${shopDomain}.myshopify.com`;
+        }
+        logger.info('Found shop domain in session', { shopDomain, session: shopifySession });
+      }
+    }
+
+    if (!shopDomain) {
+      // No shop domain provided - use development fallback
+      logger.warn('No shop domain provided in headers, query, or body', {
+        headers: Object.keys(req.headers),
+        query: req.query,
+        body: req.body ? Object.keys(req.body) : 'no body',
+        url: req.url
+      });
+      
+      // For development/testing, use a default store
+      shopDomain = 'sms-blossom-dev.myshopify.com';
+      logger.info('Using development fallback store', { shopDomain });
+    }
+
+    // Ensure shopDomain is never undefined
+    if (!shopDomain) {
+      shopDomain = 'sms-blossom-dev.myshopify.com';
+      logger.warn('shopDomain was undefined, using fallback', { shopDomain });
+    }
+
+    try {
       store = await prisma.shop.findUnique({
         where: { shopDomain },
         include: {
@@ -43,7 +115,45 @@ export async function resolveStore(req, res, next) {
           storeId,
           method: 'shopify',
         });
+      } else {
+        // Auto-create store if it doesn't exist
+        logger.info('Store not found, creating new store', { shopDomain });
+
+        store = await prisma.shop.create({
+          data: {
+            shopDomain,
+            shopName: shopDomain.replace('.myshopify.com', ''),
+            accessToken: req.headers['x-shopify-access-token'] || 'pending',
+            credits: 100, // Give some initial credits
+            currency: 'EUR',
+            status: 'active',
+            settings: {
+              create: {
+                currency: 'EUR',
+                timezone: 'Europe/Athens',
+                senderNumber: process.env.MITTO_SENDER_NAME || 'Sendly',
+                senderName: process.env.MITTO_SENDER_NAME || 'Sendly',
+              },
+            },
+          },
+          include: {
+            settings: true,
+          },
+        });
+
+        storeId = store.id;
+        logger.info('Store created automatically', {
+          shopDomain,
+          storeId,
+          method: 'auto-create',
+        });
       }
+    } catch (dbError) {
+      logger.error('Database error during store resolution', {
+        shopDomain,
+        error: dbError.message,
+      });
+      throw dbError;
     }
 
     // Method 2: Admin bearer token (for admin operations)
@@ -143,7 +253,7 @@ export async function resolveStore(req, res, next) {
     };
 
     // Add store context to logger for this request
-    req.logger = logger.child({ storeId, shopDomain });
+    req.logger = logger;
 
     logger.info('Store context established', {
       storeId,

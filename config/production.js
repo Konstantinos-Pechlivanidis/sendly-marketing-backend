@@ -1,6 +1,6 @@
 export const productionConfig = {
   // Server Configuration
-  port: process.env.PORT || 3000,
+  port: process.env.PORT || 3001,
   host: process.env.HOST || 'https://sendly-marketing-backend.onrender.com',
 
   // Database Configuration
