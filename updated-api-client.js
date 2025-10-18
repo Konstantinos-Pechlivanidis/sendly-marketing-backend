@@ -21,8 +21,16 @@ const DEFAULT_HEADERS = {
 function getShopDomain() {
   if (typeof window === 'undefined') return null;
   
+  console.log('🔍 Detecting shop domain...', {
+    hostname: window.location.hostname,
+    href: window.location.href,
+    hasShopify: !!window.shopify,
+    hasEnv: !!window.ENV,
+  });
+  
   // Method 1: Try to get from window.shopify (App Bridge)
   if (window.shopify?.config?.shop?.myshopifyDomain) {
+    console.log('✅ Shop domain from App Bridge:', window.shopify.config.shop.myshopifyDomain);
     return window.shopify.config.shop.myshopifyDomain;
   }
   
@@ -47,7 +55,7 @@ function getShopDomain() {
   }
   
   // Method 3.5: Development fallback
-  if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
+  if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
     console.log('Using development fallback shop domain');
     return 'sms-blossom-dev.myshopify.com';
   }
@@ -69,10 +77,11 @@ function getShopDomain() {
     if (!shopDomain.includes('.')) {
       shopDomain = `${shopDomain}.myshopify.com`;
     }
+    console.log('✅ Shop domain from URL params:', shopDomain);
     return shopDomain;
   }
   
-  console.warn('No shop domain found in any method');
+  console.warn('❌ No shop domain found in any method');
   return null;
 }
 
