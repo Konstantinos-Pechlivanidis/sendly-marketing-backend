@@ -20,6 +20,14 @@ export async function resolveStore(req, res, next) {
     let shopDomain = null;
     let store = null;
 
+    // Log all headers for debugging
+    logger.info('🔍 Store Resolution - Incoming Request', {
+      url: req.url,
+      method: req.method,
+      headers: req.headers,
+      query: req.query,
+    });
+
     // Method 1: Shopify session/JWT (primary method)
     // Check multiple possible sources for shop domain
     const possibleShopDomain = 
@@ -32,6 +40,8 @@ export async function resolveStore(req, res, next) {
       req.body?.shop ||
       req.body?.shop_domain ||
       req.body?.shop_name;
+
+    logger.info('🔍 Possible shop domain found:', possibleShopDomain);
 
     // Method 1.5: Extract shop domain from URL path (for embedded Shopify apps)
     // URL pattern: /store/{shop-domain}/apps/{app-name}/app
