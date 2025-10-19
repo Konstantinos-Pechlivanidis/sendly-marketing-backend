@@ -18,6 +18,11 @@ import {
   birthdayContactsQuerySchema,
 } from '../schemas/contacts.schema.js';
 import { contactsRateLimit, importRateLimit } from '../middlewares/rateLimits.js';
+import {
+  contactsListCache,
+  contactsStatsCache,
+  invalidateContactsCache,
+} from '../middlewares/cache.js';
 
 const router = express.Router();
 
@@ -25,17 +30,17 @@ const router = express.Router();
  * Enhanced Contacts Routes with Multi-Store Support
  *
  * All routes are automatically scoped to the current store via middleware
- * All routes include input validation and rate limiting
+ * All routes include input validation, rate limiting, and caching
  */
 
 // Apply rate limiting to all routes
 router.use(contactsRateLimit);
 
 // GET /api/contacts - List contacts with filtering, search, and pagination
-router.get('/', validateQuery(listContactsQuerySchema), list);
+router.get('/', validateQuery(listContactsQuerySchema), contactsListCache, list);
 
 // GET /api/contacts/stats - Get contact statistics
-router.get('/stats', stats);
+router.get('/stats', contactsStatsCache, stats);
 
 // GET /api/contacts/birthdays - Get contacts with birthdays
 router.get('/birthdays', validateQuery(birthdayContactsQuerySchema), getBirthdayContacts);
@@ -44,15 +49,15 @@ router.get('/birthdays', validateQuery(birthdayContactsQuerySchema), getBirthday
 router.get('/:id', getOne);
 
 // POST /api/contacts - Create new contact
-router.post('/', validateBody(createContactSchema), create);
+router.post('/', validateBody(createContactSchema), invalidateContactsCache, create);
 
 // POST /api/contacts/import - Import contacts from CSV (stricter rate limit)
-router.post('/import', importRateLimit, validateBody(importContactsSchema), importCsv);
+router.post('/import', importRateLimit, validateBody(importContactsSchema), invalidateContactsCache, importCsv);
 
 // PUT /api/contacts/:id - Update contact
-router.put('/:id', validateBody(updateContactSchema), update);
+router.put('/:id', validateBody(updateContactSchema), invalidateContactsCache, update);
 
 // DELETE /api/contacts/:id - Delete contact
-router.delete('/:id', remove);
+router.delete('/:id', invalidateContactsCache, remove);
 
 export default router;

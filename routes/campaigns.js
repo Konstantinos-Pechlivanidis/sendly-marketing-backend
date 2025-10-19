@@ -8,6 +8,11 @@ import {
   scheduleCampaignSchema,
 } from '../schemas/campaigns.schema.js';
 import { campaignsRateLimit, campaignSendRateLimit } from '../middlewares/rateLimits.js';
+import {
+  campaignsListCache,
+  campaignMetricsCache,
+  invalidateCampaignsCache,
+} from '../middlewares/cache.js';
 
 const r = Router();
 
@@ -15,33 +20,33 @@ const r = Router();
 r.use(campaignsRateLimit);
 
 // GET /campaigns - List campaigns with filtering
-r.get('/', validateQuery(listCampaignsQuerySchema), ctrl.list);
+r.get('/', validateQuery(listCampaignsQuerySchema), campaignsListCache, ctrl.list);
 
 // GET /campaigns/stats/summary - Get campaign statistics
-r.get('/stats/summary', ctrl.stats);
+r.get('/stats/summary', campaignsListCache, ctrl.stats);
 
 // GET /campaigns/:id - Get single campaign
 r.get('/:id', ctrl.getOne);
 
 // POST /campaigns - Create new campaign
-r.post('/', validateBody(createCampaignSchema), ctrl.create);
+r.post('/', validateBody(createCampaignSchema), invalidateCampaignsCache, ctrl.create);
 
 // PUT /campaigns/:id - Update campaign
-r.put('/:id', validateBody(updateCampaignSchema), ctrl.update);
+r.put('/:id', validateBody(updateCampaignSchema), invalidateCampaignsCache, ctrl.update);
 
 // DELETE /campaigns/:id - Delete campaign
-r.delete('/:id', ctrl.remove);
+r.delete('/:id', invalidateCampaignsCache, ctrl.remove);
 
 // POST /campaigns/:id/prepare - Prepare campaign for sending
 r.post('/:id/prepare', ctrl.prepare);
 
 // POST /campaigns/:id/send - Send campaign immediately (stricter rate limit)
-r.post('/:id/send', campaignSendRateLimit, ctrl.sendNow);
+r.post('/:id/send', campaignSendRateLimit, invalidateCampaignsCache, ctrl.sendNow);
 
 // PUT /campaigns/:id/schedule - Schedule campaign
-r.put('/:id/schedule', validateBody(scheduleCampaignSchema), ctrl.schedule);
+r.put('/:id/schedule', validateBody(scheduleCampaignSchema), invalidateCampaignsCache, ctrl.schedule);
 
 // GET /campaigns/:id/metrics - Get campaign metrics
-r.get('/:id/metrics', ctrl.metrics);
+r.get('/:id/metrics', campaignMetricsCache, ctrl.metrics);
 
 export default r;
