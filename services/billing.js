@@ -1,7 +1,7 @@
 import prisma from './prisma.js';
 import { logger } from '../utils/logger.js';
 import { ValidationError, NotFoundError } from '../utils/errors.js';
-import { createStripeCheckoutSession, verifyStripeWebhook } from './stripe.js';
+import { createStripeCheckoutSession, verifyWebhookSignature } from './stripe.js';
 
 /**
  * Billing Service

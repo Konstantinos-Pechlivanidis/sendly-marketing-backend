@@ -265,7 +265,6 @@ export async function createCustomer({ email, name, shopDomain }) {
     throw error;
   }
 }
-
 export default {
   createStripeCheckoutSession,
   getCheckoutSession,
@@ -275,3 +274,4 @@ export default {
   getCustomerByEmail,
   createCustomer,
 };
+
