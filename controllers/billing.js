@@ -1,127 +1,63 @@
-import prisma from '../services/prisma.js';
+import { getStoreId } from '../middlewares/store-resolution.js';
 import { logger } from '../utils/logger.js';
-import { createStripeCheckoutSession } from '../services/stripe.js';
+import billingService from '../services/billing.js';
+
+/**
+ * Billing Controller
+ * Uses service layer for all billing and credit management logic
+ */
 
 /**
  * Get current credit balance
+ * @route GET /billing/balance
  */
-export async function getBalance(req, res) {
+export async function getBalance(req, res, next) {
   try {
-    const { shopId } = req.shop || {};
+    const storeId = getStoreId(req);
 
-    if (!shopId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Shop ID required',
-        message: 'Shop context is required to fetch balance',
-      });
-    }
+    const balance = await billingService.getBalance(storeId);
 
-    const shop = await prisma.shop.findUnique({
-      where: { id: shopId },
-      select: { credits: true },
-    });
-
-    if (!shop) {
-      return res.status(404).json({
-        success: false,
-        error: 'Shop not found',
-        message: 'Shop not found in our system',
-      });
-    }
-
-    res.json({
+    return res.json({
       success: true,
-      data: {
-        credits: shop.credits,
-        balance: shop.credits, // Alias for consistency
-      },
+      data: balance,
     });
   } catch (error) {
-    logger.error('Failed to fetch balance', {
+    logger.error('Get balance error', {
       error: error.message,
-      shopId: req.shop?.id,
+      storeId: getStoreId(req),
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch balance',
-      message: error.message,
-    });
+    next(error);
   }
 }
 
 /**
  * Get available credit packages
+ * @route GET /billing/packages
  */
-export async function getPackages(req, res) {
+export async function getPackages(req, res, next) {
   try {
-    // Credit packages configuration
-    const packages = [
-      {
-        id: 'package_1000',
-        name: '1,000 SMS Credits',
-        credits: 1000,
-        price: 29.99,
-        currency: 'EUR',
-        stripePriceId: process.env.STRIPE_PRICE_ID_1000 || 'price_1000_credits',
-        description: 'Perfect for small businesses getting started',
-        popular: false,
-      },
-      {
-        id: 'package_5000',
-        name: '5,000 SMS Credits',
-        credits: 5000,
-        price: 129.99,
-        currency: 'EUR',
-        stripePriceId: process.env.STRIPE_PRICE_ID_5000 || 'price_5000_credits',
-        description: 'Great value for growing businesses',
-        popular: true,
-      },
-      {
-        id: 'package_10000',
-        name: '10,000 SMS Credits',
-        credits: 10000,
-        price: 229.99,
-        currency: 'EUR',
-        stripePriceId: process.env.STRIPE_PRICE_ID_10000 || 'price_10000_credits',
-        description: 'Best value for high-volume senders',
-        popular: false,
-      },
-    ];
+    const packages = billingService.getPackages();
 
-    res.json({
+    return res.json({
       success: true,
       data: packages,
     });
   } catch (error) {
-    logger.error('Failed to fetch packages', {
+    logger.error('Get packages error', {
       error: error.message,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch packages',
-      message: error.message,
-    });
+    next(error);
   }
 }
 
 /**
  * Create Stripe checkout session for credit purchase
+ * @route POST /billing/purchase
  */
-export async function createPurchaseSession(req, res) {
+export async function createPurchase(req, res, next) {
   try {
-    const { packageId } = req.body;
-    const { shopId } = req.shop || {};
-
-    if (!shopId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Shop ID required',
-        message: 'Shop context is required to create purchase session',
-      });
-    }
+    const storeId = getStoreId(req);
+    const { packageId, successUrl, cancelUrl } = req.body;
 
     if (!packageId) {
       return res.status(400).json({
@@ -131,182 +67,105 @@ export async function createPurchaseSession(req, res) {
       });
     }
 
-    // Get package details
-    const packages = [
-      {
-        id: 'package_1000',
-        name: '1,000 SMS Credits',
-        credits: 1000,
-        price: 29.99,
-        currency: 'EUR',
-        stripePriceId: process.env.STRIPE_PRICE_ID_1000 || 'price_1000_credits',
-      },
-      {
-        id: 'package_5000',
-        name: '5,000 SMS Credits',
-        credits: 5000,
-        price: 129.99,
-        currency: 'EUR',
-        stripePriceId: process.env.STRIPE_PRICE_ID_5000 || 'price_5000_credits',
-      },
-      {
-        id: 'package_10000',
-        name: '10,000 SMS Credits',
-        credits: 10000,
-        price: 229.99,
-        currency: 'EUR',
-        stripePriceId: process.env.STRIPE_PRICE_ID_10000 || 'price_10000_credits',
-      },
-    ];
-
-    const selectedPackage = packages.find(pkg => pkg.id === packageId);
-
-    if (!selectedPackage) {
+    if (!successUrl || !cancelUrl) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid package',
-        message: 'Selected package not found',
+        error: 'Return URLs required',
+        message: 'Success and cancel URLs are required',
       });
     }
 
-    // Get shop information
-    const shop = await prisma.shop.findUnique({
-      where: { id: shopId },
-      select: { shopDomain: true },
-    });
-
-    if (!shop) {
-      return res.status(404).json({
-        success: false,
-        error: 'Shop not found',
-        message: 'Shop not found in our system',
-      });
-    }
-
-    // Create Stripe checkout session
-    const session = await createStripeCheckoutSession({
+    const session = await billingService.createPurchaseSession(
+      storeId,
       packageId,
-      packageName: selectedPackage.name,
-      credits: selectedPackage.credits,
-      price: selectedPackage.price,
-      currency: selectedPackage.currency,
-      stripePriceId: selectedPackage.stripePriceId,
-      shopId,
-      shopDomain: shop.shopDomain,
-    });
+      { successUrl, cancelUrl }
+    );
 
-    // Create billing transaction record
-    const transaction = await prisma.billingTransaction.create({
-      data: {
-        shopId,
-        creditsAdded: selectedPackage.credits,
-        amount: Math.round(selectedPackage.price * 100), // Convert to cents
-        currency: selectedPackage.currency,
-        packageType: selectedPackage.id,
-        stripeSessionId: session.id,
-        status: 'pending',
-      },
-    });
-
-    logger.info('Purchase session created', {
-      shopId,
-      packageId,
-      transactionId: transaction.id,
-      sessionId: session.id,
-    });
-
-    res.json({
+    return res.json({
       success: true,
-      data: {
-        sessionId: session.id,
-        sessionUrl: session.url,
-        transactionId: transaction.id,
-        package: selectedPackage,
-      },
+      data: session,
       message: 'Checkout session created successfully',
     });
   } catch (error) {
-    logger.error('Failed to create purchase session', {
+    logger.error('Create purchase error', {
       error: error.message,
-      shopId: req.shop?.id,
-      packageId: req.body.packageId,
+      storeId: getStoreId(req),
+      body: req.body,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create purchase session',
-      message: error.message,
-    });
+    next(error);
   }
 }
 
 /**
- * Get billing history
+ * Get transaction history
+ * @route GET /billing/history
  */
-export async function getBillingHistory(req, res) {
+export async function getHistory(req, res, next) {
   try {
-    const { shopId } = req.shop || {};
-    const { limit = 20, offset = 0 } = req.query;
+    const storeId = getStoreId(req);
+    const filters = {
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+      type: req.query.type,
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+    };
 
-    if (!shopId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Shop ID required',
-        message: 'Shop context is required to fetch billing history',
-      });
-    }
+    const result = await billingService.getTransactionHistory(storeId, filters);
 
-    const [transactions, total] = await Promise.all([
-      prisma.billingTransaction.findMany({
-        where: { shopId },
-        orderBy: { createdAt: 'desc' },
-        take: parseInt(limit),
-        skip: parseInt(offset),
-        select: {
-          id: true,
-          creditsAdded: true,
-          amount: true,
-          currency: true,
-          packageType: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      }),
-      prisma.billingTransaction.count({
-        where: { shopId },
-      }),
-    ]);
-
-    res.json({
+    return res.json({
       success: true,
       data: {
-        transactions,
-        pagination: {
-          total,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          hasMore: parseInt(offset) + parseInt(limit) < total,
-        },
+        transactions: result.transactions,
+        pagination: result.pagination,
       },
     });
   } catch (error) {
-    logger.error('Failed to fetch billing history', {
+    logger.error('Get transaction history error', {
       error: error.message,
-      shopId: req.shop?.id,
+      storeId: getStoreId(req),
+      query: req.query,
     });
+    next(error);
+  }
+}
 
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch billing history',
-      message: error.message,
+/**
+ * Get billing history (Stripe transactions)
+ * @route GET /billing/billing-history
+ */
+export async function getBillingHistory(req, res, next) {
+  try {
+    const storeId = getStoreId(req);
+    const filters = {
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+      status: req.query.status,
+    };
+
+    const result = await billingService.getBillingHistory(storeId, filters);
+
+    return res.json({
+      success: true,
+      data: {
+        transactions: result.transactions,
+        pagination: result.pagination,
+      },
     });
+  } catch (error) {
+    logger.error('Get billing history error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      query: req.query,
+    });
+    next(error);
   }
 }
 
 export default {
   getBalance,
   getPackages,
-  createPurchaseSession,
+  createPurchase,
+  getHistory,
   getBillingHistory,
 };
