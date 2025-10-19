@@ -28,14 +28,29 @@ function getShopDomain() {
     hasEnv: !!window.ENV,
   });
   
-  // Method 1: Try to get from window.shopify (App Bridge)
+  // Method 1: Try to get from Session Storage (App Bridge config)
+  try {
+    const appBridgeConfig = sessionStorage.getItem('app-bridge-config');
+    if (appBridgeConfig) {
+      const config = JSON.parse(appBridgeConfig);
+      if (config.shop) {
+        console.log('✅ Shop domain from Session Storage (app-bridge-config):', config.shop);
+        return config.shop;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to read app-bridge-config from session storage:', e);
+  }
+  
+  // Method 2: Try to get from window.shopify (App Bridge)
   if (window.shopify?.config?.shop?.myshopifyDomain) {
     console.log('✅ Shop domain from App Bridge:', window.shopify.config.shop.myshopifyDomain);
     return window.shopify.config.shop.myshopifyDomain;
   }
   
-  // Method 2: Try to get from global ENV
+  // Method 3: Try to get from global ENV
   if (window.ENV?.SHOP_DOMAIN) {
+    console.log('✅ Shop domain from ENV:', window.ENV.SHOP_DOMAIN);
     return window.ENV.SHOP_DOMAIN;
   }
   
