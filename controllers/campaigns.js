@@ -1,203 +1,288 @@
-import prisma from '../services/prisma.js';
-import { ensureShopAndWallet, debitForMessages } from '../services/wallet.js';
-import { smsQueue } from '../queue/index.js';
+import { getStoreId } from '../middlewares/store-resolution.js';
+import { logger } from '../utils/logger.js';
+import campaignsService from '../services/campaigns.js';
 
-function normalizeAudienceQuery(audience) {
-  // supports 'all' | 'men' | 'women' | 'segment:<id>'
-  if (!audience || audience === 'all') return { smsConsent: 'opted_in' };
-  if (audience === 'men') return { smsConsent: 'opted_in', gender: 'male' };
-  if (audience === 'women') return { smsConsent: 'opted_in', gender: 'female' };
-  if (audience.startsWith('segment:')) return null; // handle separately
-  return { smsConsent: 'opted_in' };
-}
+/**
+ * Campaigns Controller
+ * Uses service layer for all campaign management logic
+ */
 
-async function resolveRecipients(shopId, audience) {
-  const base = normalizeAudienceQuery(audience);
-  if (base) {
-    const contacts = await prisma.contact.findMany({ where: { shopId, ...base } });
-    return contacts.map((c) => ({ contactId: c.id, phoneE164: c.phoneE164 }));
-  }
-  // segment:<id>
-  const segId = audience.split(':')[1];
-  const members = await prisma.segmentMembership.findMany({
-    where: { segmentId: segId },
-    include: { contact: true },
-  });
-  return members
-    .filter((m) => m.contact?.smsConsent === 'opted_in')
-    .map((m) => ({ contactId: m.contactId, phoneE164: m.contact.phoneE164 }));
-}
-
+/**
+ * List campaigns with optional filtering
+ * @route GET /campaigns
+ */
 export async function list(req, res, next) {
   try {
-    const shopDomain = req.shop;
-    const shop = await prisma.shop.findUnique({ where: { shopDomain } });
-    const rows = await prisma.campaign.findMany({
-      where: { shopId: shop?.id || '' },
-      orderBy: { createdAt: 'desc' },
+    const storeId = getStoreId(req);
+    const filters = {
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+      status: req.query.status,
+      sortBy: req.query.sortBy,
+      sortOrder: req.query.sortOrder,
+    };
+
+    const result = await campaignsService.listCampaigns(storeId, filters);
+
+    return res.json({
+      success: true,
+      data: {
+        campaigns: result.campaigns,
+        pagination: result.pagination,
+      },
     });
-    res.json({ success: true, data: { campaigns: rows, total: rows.length } });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    logger.error('List campaigns error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      query: req.query,
+    });
+    next(error);
   }
 }
 
+/**
+ * Get a single campaign by ID
+ * @route GET /campaigns/:id
+ */
 export async function getOne(req, res, next) {
   try {
-    const row = await prisma.campaign.findUnique({
-      where: { id: req.params.id },
-      include: { recipients: true, metrics: true },
+    const storeId = getStoreId(req);
+    const { id } = req.params;
+
+    const campaign = await campaignsService.getCampaignById(storeId, id);
+
+    return res.json({
+      success: true,
+      data: campaign,
     });
-    res.json({ success: true, data: row });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    logger.error('Get campaign error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      campaignId: req.params.id,
+    });
+    next(error);
   }
 }
 
+/**
+ * Create a new campaign
+ * @route POST /campaigns
+ */
 export async function create(req, res, next) {
   try {
-    const shopDomain = req.shop;
-    const shop =
-      (await prisma.shop.findUnique({ where: { shopDomain } })) ||
-      (await prisma.shop.create({ data: { shopDomain } }));
-    const payload = req.body || {};
-    const row = await prisma.campaign.create({
-      data: {
-        shopId: shop.id,
-        name: payload.name || 'Untitled',
-        message: payload.message || '',
-        audience: payload.audience || 'all',
-        discountId: payload.discountId || null,
-        scheduleType: payload.scheduleType || 'immediate',
-        scheduleAt: payload.scheduleAt ? new Date(payload.scheduleAt) : null,
-        recurringDays: payload.recurringDays || null,
-        status: 'draft',
-      },
+    const storeId = getStoreId(req);
+    const campaignData = req.body;
+
+    const campaign = await campaignsService.createCampaign(storeId, campaignData);
+
+    return res.status(201).json({
+      success: true,
+      data: campaign,
+      message: 'Campaign created successfully',
     });
-    await prisma.campaignMetrics.create({ data: { campaignId: row.id } });
-    res.json({ success: true, data: row });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    logger.error('Create campaign error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      body: req.body,
+    });
+    next(error);
   }
 }
 
+/**
+ * Update a campaign
+ * @route PUT /campaigns/:id
+ */
 export async function update(req, res, next) {
   try {
-    const payload = req.body || {};
-    const row = await prisma.campaign.update({
-      where: { id: req.params.id },
-      data: {
-        name: payload.name,
-        message: payload.message,
-        audience: payload.audience,
-        discountId: payload.discountId || null,
-        scheduleType: payload.scheduleType,
-        scheduleAt: payload.scheduleAt ? new Date(payload.scheduleAt) : null,
-        recurringDays: payload.recurringDays || null,
-      },
+    const storeId = getStoreId(req);
+    const { id } = req.params;
+    const campaignData = req.body;
+
+    const campaign = await campaignsService.updateCampaign(storeId, id, campaignData);
+
+    return res.json({
+      success: true,
+      data: campaign,
+      message: 'Campaign updated successfully',
     });
-    res.json({ success: true, data: row });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    logger.error('Update campaign error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      campaignId: req.params.id,
+    });
+    next(error);
   }
 }
 
+/**
+ * Delete a campaign
+ * @route DELETE /campaigns/:id
+ */
 export async function remove(req, res, next) {
   try {
-    await prisma.campaign.delete({ where: { id: req.params.id } });
-    res.json({ success: true });
-  } catch (e) {
-    next(e);
+    const storeId = getStoreId(req);
+    const { id } = req.params;
+
+    await campaignsService.deleteCampaign(storeId, id);
+
+    return res.json({
+      success: true,
+      message: 'Campaign deleted successfully',
+    });
+  } catch (error) {
+    logger.error('Delete campaign error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      campaignId: req.params.id,
+    });
+    next(error);
   }
 }
 
+/**
+ * Prepare campaign for sending (validate recipients and credits)
+ * @route POST /campaigns/:id/prepare
+ */
 export async function prepare(req, res, next) {
   try {
-    res.json({ success: true, data: { prepared: true } });
-  } catch (e) {
-    next(e);
+    const storeId = getStoreId(req);
+    const { id } = req.params;
+
+    const result = await campaignsService.prepareCampaign(storeId, id);
+
+    return res.json({
+      success: true,
+      data: result,
+      message: 'Campaign prepared successfully',
+    });
+  } catch (error) {
+    logger.error('Prepare campaign error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      campaignId: req.params.id,
+    });
+    next(error);
   }
 }
 
+/**
+ * Send campaign immediately
+ * @route POST /campaigns/:id/send
+ */
 export async function sendNow(req, res, next) {
   try {
-    const shopDomain = req.shop;
-    const campaignId = req.params.id;
-    const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
-    if (!campaign) throw new Error('campaign_not_found');
-    if (!campaign.message) throw new Error('missing_message');
+    const storeId = getStoreId(req);
+    const { id } = req.params;
 
-    const recipients = await resolveRecipients(campaign.shopId, campaign.audience);
-    if (recipients.length === 0) {
-      return res.json({ success: true, data: { queued: false, reason: 'no_contacts' } });
-    }
+    const result = await campaignsService.sendCampaign(storeId, id);
 
-    // debit credits once
-    await debitForMessages(shopDomain, recipients.length, campaignId);
-
-    // status -> sending
-    await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'sending' } });
-
-    const sender = process.env.MITTO_SENDER_NAME || 'Sendly';
-
-    // enqueue jobs
-    for (const r of recipients) {
-      await prisma.campaignRecipient.create({
-        data: {
-          campaignId,
-          contactId: r.contactId,
-          phoneE164: r.phoneE164,
-          status: 'queued',
-        },
-      });
-      await smsQueue.add('mittoSend', {
-        campaignId,
-        shopId: campaign.shopId,
-        phoneE164: r.phoneE164,
-        message: campaign.message,
-        sender,
-      });
-    }
-
-    res.json({ success: true, data: { queued: true, recipients: recipients.length } });
-  } catch (e) {
-    next(e);
+    return res.json({
+      success: true,
+      data: result,
+      message: 'Campaign queued for sending',
+    });
+  } catch (error) {
+    logger.error('Send campaign error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      campaignId: req.params.id,
+    });
+    next(error);
   }
 }
 
+/**
+ * Schedule campaign for later
+ * @route PUT /campaigns/:id/schedule
+ */
 export async function schedule(req, res, next) {
   try {
-    const payload = req.body || {};
-    const row = await prisma.campaign.update({
-      where: { id: req.params.id },
+    const storeId = getStoreId(req);
+    const { id } = req.params;
+    const scheduleData = req.body;
+
+    const campaign = await campaignsService.scheduleCampaign(storeId, id, scheduleData);
+
+    return res.json({
+      success: true,
       data: {
-        scheduleType: payload.scheduleType || 'scheduled',
-        scheduleAt: payload.scheduleAt ? new Date(payload.scheduleAt) : null,
-        status: 'scheduled',
+        scheduled: true,
+        campaign,
       },
+      message: 'Campaign scheduled successfully',
     });
-    res.json({ success: true, data: { scheduled: true, campaign: row } });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    logger.error('Schedule campaign error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      campaignId: req.params.id,
+    });
+    next(error);
   }
 }
 
+/**
+ * Get campaign metrics
+ * @route GET /campaigns/:id/metrics
+ */
 export async function metrics(req, res, next) {
   try {
-    const m = await prisma.campaignMetrics.findUnique({ where: { campaignId: req.params.id } });
-    res.json({ success: true, data: m || {} });
-  } catch (e) {
-    next(e);
+    const storeId = getStoreId(req);
+    const { id } = req.params;
+
+    const metrics = await campaignsService.getCampaignMetrics(storeId, id);
+
+    return res.json({
+      success: true,
+      data: metrics,
+    });
+  } catch (error) {
+    logger.error('Get campaign metrics error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      campaignId: req.params.id,
+    });
+    next(error);
   }
 }
 
+/**
+ * Get campaign statistics
+ * @route GET /campaigns/stats
+ */
 export async function stats(req, res, next) {
   try {
-    const shopDomain = req.shop;
-    const shop = await prisma.shop.findUnique({ where: { shopDomain } });
-    const count = await prisma.campaign.count({ where: { shopId: shop?.id || '' } });
-    res.json({ success: true, data: { count } });
-  } catch (e) {
-    next(e);
+    const storeId = getStoreId(req);
+
+    const stats = await campaignsService.getCampaignStats(storeId);
+
+    return res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    logger.error('Get campaign stats error', {
+      error: error.message,
+      storeId: getStoreId(req),
+    });
+    next(error);
   }
 }
+
+export default {
+  list,
+  getOne,
+  create,
+  update,
+  remove,
+  prepare,
+  sendNow,
+  schedule,
+  metrics,
+  stats,
+};

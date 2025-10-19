@@ -17,7 +17,7 @@ r.get('/health/config', (req, res) =>
     shopify: shopifyDiag(),
     redis: !!process.env.REDIS_URL,
     mitto: { base: process.env.MITTO_API_BASE || '', hasKey: !!process.env.MITTO_API_KEY },
-  })
+  }),
 );
 
 r.get('/health/full', async (req, res) => {
@@ -74,7 +74,7 @@ r.get('/health/full', async (req, res) => {
     const j = await smsQueue.add(
       'health',
       { t: Date.now() },
-      { removeOnComplete: true, removeOnFail: true }
+      { removeOnComplete: true, removeOnFail: true },
     );
     await j.remove();
     const queueDuration = Date.now() - queueStart;

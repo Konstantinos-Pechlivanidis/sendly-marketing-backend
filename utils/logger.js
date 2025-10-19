@@ -28,7 +28,7 @@ class Logger {
 
   writeToFile(filename, logEntry) {
     const filePath = path.join(this.logDir, filename);
-    fs.appendFileSync(filePath, logEntry + '\n');
+    fs.appendFileSync(filePath, `${logEntry}\n`);
   }
 
   info(message, meta = {}) {

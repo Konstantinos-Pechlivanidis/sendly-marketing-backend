@@ -1,5 +1,4 @@
 import IORedis from 'ioredis';
-import { fallbackCache } from './fallback-cache.js';
 
 class CacheManager {
   constructor() {
@@ -10,6 +9,13 @@ class CacheManager {
   }
 
   async initialize() {
+    // Skip Redis in development if not explicitly configured
+    if (process.env.NODE_ENV === 'development' && !process.env.REDIS_URL) {
+      console.log('Development mode: Using memory cache (Redis disabled)');
+      this.redis = null;
+      return;
+    }
+
     if (process.env.REDIS_URL) {
       try {
         this.redis = new IORedis(process.env.REDIS_URL, {
@@ -32,7 +38,7 @@ class CacheManager {
         this.redis = null;
       }
     } else {
-      console.log('No Redis URL provided, using fallback cache');
+      console.log('No Redis URL provided, using memory cache');
     }
   }
 

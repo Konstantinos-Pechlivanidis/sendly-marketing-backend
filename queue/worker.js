@@ -15,7 +15,7 @@ export const smsWorker = new Worker(
     concurrency: 20,
     removeOnComplete: 100,
     removeOnFail: 50,
-  }
+  },
 );
 
 // Campaign Worker
@@ -31,7 +31,7 @@ export const campaignWorker = new Worker(
     concurrency: 5,
     removeOnComplete: 50,
     removeOnFail: 25,
-  }
+  },
 );
 
 // Automation Worker
@@ -47,7 +47,7 @@ export const automationWorker = new Worker(
     concurrency: 10,
     removeOnComplete: 200,
     removeOnFail: 100,
-  }
+  },
 );
 
 // Event handlers for SMS Worker
@@ -84,13 +84,13 @@ automationWorker.on('failed', (job, err) => {
 // Graceful shutdown
 const gracefulShutdown = async () => {
   logger.info('Shutting down workers gracefully...');
-  
+
   await Promise.all([
     smsWorker.close(),
     campaignWorker.close(),
     automationWorker.close(),
   ]);
-  
+
   logger.info('All workers shut down');
   process.exit(0);
 };

@@ -1,85 +1,171 @@
-import prisma from '../services/prisma.js';
-import { getBalance, purchasePackage as walletPurchasePackage } from '../services/wallet.js';
+import { getStoreId } from '../middlewares/store-resolution.js';
+import { logger } from '../utils/logger.js';
+import billingService from '../services/billing.js';
 
-export async function listPackages(req, res, next) {
+/**
+ * Billing Controller
+ * Uses service layer for all billing and credit management logic
+ */
+
+/**
+ * Get current credit balance
+ * @route GET /billing/balance
+ */
+export async function getBalance(req, res, next) {
   try {
-    const rows = await prisma.smsPackage.findMany({
-      where: { active: true },
-      orderBy: { credits: 'asc' },
+    const storeId = getStoreId(req);
+
+    const balance = await billingService.getBalance(storeId);
+
+    return res.json({
+      success: true,
+      data: balance,
     });
-    res.json({ success: true, data: { packages: rows } });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    logger.error('Get balance error', {
+      error: error.message,
+      storeId: getStoreId(req),
+    });
+    next(error);
   }
 }
 
-export async function seedPackages(req, res, next) {
+/**
+ * Get available credit packages
+ * @route GET /billing/packages
+ */
+export async function getPackages(req, res, next) {
   try {
-    const seed = [
-      {
-        name: 'Starter 1k',
-        credits: 1000,
-        priceCents: 2900,
-        currency: process.env.APP_DEFAULT_CURRENCY || 'EUR',
-      },
-      {
-        name: 'Growth 5k',
-        credits: 5000,
-        priceCents: 12900,
-        currency: process.env.APP_DEFAULT_CURRENCY || 'EUR',
-      },
-      {
-        name: 'Scale 20k',
-        credits: 20000,
-        priceCents: 39900,
-        currency: process.env.APP_DEFAULT_CURRENCY || 'EUR',
-      },
-    ];
-    for (const p of seed) {
-      await prisma.smsPackage.upsert({
-        where: { name: p.name },
-        create: { ...p, active: true },
-        update: { ...p, active: true },
+    const packages = billingService.getPackages();
+
+    return res.json({
+      success: true,
+      data: packages,
+    });
+  } catch (error) {
+    logger.error('Get packages error', {
+      error: error.message,
+    });
+    next(error);
+  }
+}
+
+/**
+ * Create Stripe checkout session for credit purchase
+ * @route POST /billing/purchase
+ */
+export async function createPurchase(req, res, next) {
+  try {
+    const storeId = getStoreId(req);
+    const { packageId, successUrl, cancelUrl } = req.body;
+
+    if (!packageId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Package ID required',
+        message: 'Package ID is required to create purchase session',
       });
     }
-    res.json({ success: true, message: 'seeded' });
-  } catch (e) {
-    next(e);
-  }
-}
 
-export async function purchasePackage(req, res, next) {
-  try {
-    const shopDomain = req.shop;
-    const { packageId } = req.params;
-    const balance = await walletPurchasePackage(shopDomain, packageId);
-    res.json({ success: true, data: balance });
-  } catch (e) {
-    next(e);
-  }
-}
+    if (!successUrl || !cancelUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'Return URLs required',
+        message: 'Success and cancel URLs are required',
+      });
+    }
 
-export async function balance(req, res, next) {
-  try {
-    const out = await getBalance(req.shop);
-    res.json({ success: true, data: out });
-  } catch (e) {
-    next(e);
-  }
-}
+    const session = await billingService.createPurchaseSession(
+      storeId,
+      packageId,
+      { successUrl, cancelUrl }
+    );
 
-export async function transactions(req, res, next) {
-  try {
-    const shopDomain = req.shop;
-    const shop = await prisma.shop.findUnique({ where: { shopDomain } });
-    if (!shop) return res.json({ success: true, data: { transactions: [] } });
-    const rows = await prisma.walletTransaction.findMany({
-      where: { shopId: shop.id },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
+    return res.json({
+      success: true,
+      data: session,
+      message: 'Checkout session created successfully',
     });
-    res.json({ success: true, data: { transactions: rows } });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    logger.error('Create purchase error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      body: req.body,
+    });
+    next(error);
   }
 }
+
+/**
+ * Get transaction history
+ * @route GET /billing/history
+ */
+export async function getHistory(req, res, next) {
+  try {
+    const storeId = getStoreId(req);
+    const filters = {
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+      type: req.query.type,
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+    };
+
+    const result = await billingService.getTransactionHistory(storeId, filters);
+
+    return res.json({
+      success: true,
+      data: {
+        transactions: result.transactions,
+        pagination: result.pagination,
+      },
+    });
+  } catch (error) {
+    logger.error('Get transaction history error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      query: req.query,
+    });
+    next(error);
+  }
+}
+
+/**
+ * Get billing history (Stripe transactions)
+ * @route GET /billing/billing-history
+ */
+export async function getBillingHistory(req, res, next) {
+  try {
+    const storeId = getStoreId(req);
+    const filters = {
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+      status: req.query.status,
+    };
+
+    const result = await billingService.getBillingHistory(storeId, filters);
+
+    return res.json({
+      success: true,
+      data: {
+        transactions: result.transactions,
+        pagination: result.pagination,
+      },
+    });
+  } catch (error) {
+    logger.error('Get billing history error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      query: req.query,
+    });
+    next(error);
+  }
+}
+
+export default {
+  getBalance,
+  getPackages,
+  createPurchase,
+  getHistory,
+  getBillingHistory,
+};

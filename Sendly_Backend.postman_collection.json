@@ -1,0 +1,1515 @@
+{
+  "info": {
+    "name": "Sendly Backend API",
+    "description": "Complete API collection for Sendly Marketing Backend - SMS marketing platform for Shopify stores",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://sendly-marketing-backend.onrender.com",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "your_shopify_session_token_here",
+      "type": "string"
+    },
+    {
+      "key": "storeId",
+      "value": "your_store_id_here",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🏠 Dashboard",
+      "description": "Dashboard overview and quick stats",
+      "item": [
+        {
+          "name": "Get Dashboard Overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/dashboard/overview",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "overview"]
+            },
+            "description": "Get comprehensive dashboard data including stats, recent activity, and wallet balance"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/dashboard/overview",
+                  "host": ["{{base_url}}"],
+                  "path": ["dashboard", "overview"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "X-Cache",
+                  "value": "HIT"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"sms\": {\n      \"sent\": 1250,\n      \"delivered\": 1180,\n      \"failed\": 70,\n      \"deliveryRate\": 0.944\n    },\n    \"contacts\": {\n      \"total\": 2500,\n      \"optedIn\": 2100,\n      \"optedOut\": 400\n    },\n    \"wallet\": {\n      \"balance\": 500,\n      \"currency\": \"EUR\"\n    },\n    \"recentMessages\": [],\n    \"recentTransactions\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Quick Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/dashboard/quick-stats",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "quick-stats"]
+            },
+            "description": "Get quick statistics for dashboard widgets"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/dashboard/quick-stats",
+                  "host": ["{{base_url}}"],
+                  "path": ["dashboard", "quick-stats"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"smsSent\": 1250,\n    \"walletBalance\": 500\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "👥 Contacts",
+      "description": "Contact management operations",
+      "item": [
+        {
+          "name": "List Contacts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contacts?page=1&pageSize=20&filter=all&search=john",
+              "host": ["{{base_url}}"],
+              "path": ["contacts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                },
+                {
+                  "key": "filter",
+                  "value": "all",
+                  "description": "Filter by consent status (all, consented, nonconsented)"
+                },
+                {
+                  "key": "search",
+                  "value": "john",
+                  "description": "Search in name, email, phone"
+                },
+                {
+                  "key": "gender",
+                  "value": "male",
+                  "description": "Filter by gender (male, female, other)"
+                },
+                {
+                  "key": "smsConsent",
+                  "value": "opted_in",
+                  "description": "Filter by SMS consent (opted_in, opted_out, unknown)"
+                },
+                {
+                  "key": "hasBirthDate",
+                  "value": "true",
+                  "description": "Filter by birthday availability"
+                }
+              ]
+            },
+            "description": "Get paginated list of contacts with filtering and search"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/contacts?page=1&pageSize=20",
+                  "host": ["{{base_url}}"],
+                  "path": ["contacts"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "X-Cache",
+                  "value": "HIT"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"contacts\": [\n      {\n        \"id\": \"contact_123\",\n        \"firstName\": \"John\",\n        \"lastName\": \"Doe\",\n        \"phoneE164\": \"+1234567890\",\n        \"email\": \"john@example.com\",\n        \"gender\": \"male\",\n        \"birthDate\": \"1990-01-01\",\n        \"smsConsent\": \"opted_in\",\n        \"tags\": [\"vip\", \"newsletter\"],\n        \"createdAt\": \"2025-01-01T00:00:00Z\",\n        \"updatedAt\": \"2025-01-01T00:00:00Z\"\n      }\n    ],\n    \"pagination\": {\n      \"page\": 1,\n      \"pageSize\": 20,\n      \"total\": 100,\n      \"totalPages\": 5,\n      \"hasNextPage\": true,\n      \"hasPrevPage\": false\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Contact",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneE164\": \"+1234567890\",\n  \"email\": \"john@example.com\",\n  \"gender\": \"male\",\n  \"birthDate\": \"1990-01-01\",\n  \"smsConsent\": \"opted_in\",\n  \"tags\": [\"vip\", \"newsletter\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/contacts",
+              "host": ["{{base_url}}"],
+              "path": ["contacts"]
+            },
+            "description": "Create a new contact with validation"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneE164\": \"+1234567890\",\n  \"email\": \"john@example.com\",\n  \"smsConsent\": \"opted_in\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/contacts",
+                  "host": ["{{base_url}}"],
+                  "path": ["contacts"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": \"contact_123\",\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"phoneE164\": \"+1234567890\",\n    \"email\": \"john@example.com\",\n    \"gender\": \"male\",\n    \"birthDate\": \"1990-01-01T00:00:00Z\",\n    \"smsConsent\": \"opted_in\",\n    \"tags\": [\"vip\", \"newsletter\"],\n    \"createdAt\": \"2025-01-01T00:00:00Z\",\n    \"updatedAt\": \"2025-01-01T00:00:00Z\"\n  },\n  \"message\": \"Contact created successfully\"\n}"
+            },
+            {
+              "name": "Validation Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"John\",\n  \"phoneE164\": \"invalid_phone\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/contacts",
+                  "host": ["{{base_url}}"],
+                  "path": ["contacts"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"error\": \"ValidationError\",\n  \"message\": \"Validation failed\",\n  \"details\": [\n    {\n      \"field\": \"phoneE164\",\n      \"message\": \"Phone number must be in E.164 format (e.g., +1234567890)\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Contact by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contacts/contact_123",
+              "host": ["{{base_url}}"],
+              "path": ["contacts", "contact_123"]
+            },
+            "description": "Get a specific contact by ID"
+          }
+        },
+        {
+          "name": "Update Contact",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\",\n  \"email\": \"jane@example.com\",\n  \"smsConsent\": \"opted_out\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/contacts/contact_123",
+              "host": ["{{base_url}}"],
+              "path": ["contacts", "contact_123"]
+            },
+            "description": "Update an existing contact"
+          }
+        },
+        {
+          "name": "Delete Contact",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contacts/contact_123",
+              "host": ["{{base_url}}"],
+              "path": ["contacts", "contact_123"]
+            },
+            "description": "Delete a contact"
+          }
+        },
+        {
+          "name": "Get Contact Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contacts/stats",
+              "host": ["{{base_url}}"],
+              "path": ["contacts", "stats"]
+            },
+            "description": "Get contact statistics and analytics"
+          }
+        },
+        {
+          "name": "Get Birthday Contacts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contacts/birthdays?daysAhead=7",
+              "host": ["{{base_url}}"],
+              "path": ["contacts", "birthdays"],
+              "query": [
+                {
+                  "key": "daysAhead",
+                  "value": "7",
+                  "description": "Number of days to look ahead for birthdays"
+                }
+              ]
+            },
+            "description": "Get contacts with upcoming birthdays"
+          }
+        },
+        {
+          "name": "Import Contacts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contacts\": [\n    {\n      \"firstName\": \"John\",\n      \"lastName\": \"Doe\",\n      \"phoneE164\": \"+1234567890\",\n      \"email\": \"john@example.com\",\n      \"smsConsent\": \"opted_in\"\n    },\n    {\n      \"firstName\": \"Jane\",\n      \"lastName\": \"Smith\",\n      \"phoneE164\": \"+1234567891\",\n      \"email\": \"jane@example.com\",\n      \"smsConsent\": \"opted_in\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/contacts/import",
+              "host": ["{{base_url}}"],
+              "path": ["contacts", "import"]
+            },
+            "description": "Import multiple contacts from CSV data"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📢 Campaigns",
+      "description": "SMS campaign management",
+      "item": [
+        {
+          "name": "List Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns?page=1&pageSize=20&status=draft",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "status",
+                  "value": "draft",
+                  "description": "Filter by status (draft, scheduled, sending, sent, failed, cancelled)"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt",
+                  "description": "Sort field (createdAt, updatedAt, name, scheduleAt)"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc",
+                  "description": "Sort direction (asc, desc)"
+                }
+              ]
+            },
+            "description": "Get paginated list of campaigns with filtering"
+          }
+        },
+        {
+          "name": "Create Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Black Friday Sale\",\n  \"message\": \"Get 50% off everything! Use code BLACKFRIDAY\",\n  \"audience\": \"all\",\n  \"discountId\": \"discount_123\",\n  \"scheduleType\": \"immediate\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns"]
+            },
+            "description": "Create a new SMS campaign"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Black Friday Sale\",\n  \"message\": \"Get 50% off everything! Use code BLACKFRIDAY\",\n  \"audience\": \"all\",\n  \"scheduleType\": \"immediate\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/campaigns",
+                  "host": ["{{base_url}}"],
+                  "path": ["campaigns"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": \"campaign_123\",\n    \"name\": \"Black Friday Sale\",\n    \"message\": \"Get 50% off everything! Use code BLACKFRIDAY\",\n    \"audience\": \"all\",\n    \"scheduleType\": \"immediate\",\n    \"status\": \"draft\",\n    \"createdAt\": \"2025-01-01T00:00:00Z\"\n  },\n  \"message\": \"Campaign created successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Campaign by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/campaign_123",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "campaign_123"]
+            },
+            "description": "Get a specific campaign by ID"
+          }
+        },
+        {
+          "name": "Update Campaign",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Campaign Name\",\n  \"message\": \"Updated message content\",\n  \"audience\": \"male\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/campaign_123",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "campaign_123"]
+            },
+            "description": "Update an existing campaign"
+          }
+        },
+        {
+          "name": "Delete Campaign",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/campaign_123",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "campaign_123"]
+            },
+            "description": "Delete a campaign"
+          }
+        },
+        {
+          "name": "Prepare Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/campaign_123/prepare",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "campaign_123", "prepare"]
+            },
+            "description": "Validate campaign and calculate recipient count without sending"
+          }
+        },
+        {
+          "name": "Send Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/campaign_123/send",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "campaign_123", "send"]
+            },
+            "description": "Send campaign immediately. Validates credits and queues messages"
+          }
+        },
+        {
+          "name": "Schedule Campaign",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scheduleType\": \"scheduled\",\n  \"scheduleAt\": \"2025-12-01T10:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/campaign_123/schedule",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "campaign_123", "schedule"]
+            },
+            "description": "Schedule campaign for later sending"
+          }
+        },
+        {
+          "name": "Get Campaign Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/campaign_123/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "campaign_123", "metrics"]
+            },
+            "description": "Get campaign performance metrics"
+          }
+        },
+        {
+          "name": "Get Campaign Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/stats/summary",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "stats", "summary"]
+            },
+            "description": "Get overall campaign statistics"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤖 Automations",
+      "description": "Automated SMS triggers and workflows",
+      "item": [
+        {
+          "name": "List Automations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/automations",
+              "host": ["{{base_url}}"],
+              "path": ["automations"]
+            },
+            "description": "Get list of all automations"
+          }
+        },
+        {
+          "name": "Create Automation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Birthday Wishes\",\n  \"trigger\": \"birthday\",\n  \"message\": \"Happy Birthday! Here's a special gift for you!\",\n  \"isActive\": true,\n  \"settings\": {\n    \"daysBefore\": 0,\n    \"timeOfDay\": \"10:00\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/automations",
+              "host": ["{{base_url}}"],
+              "path": ["automations"]
+            },
+            "description": "Create a new automation workflow"
+          }
+        },
+        {
+          "name": "Get Automation by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/automations/automation_123",
+              "host": ["{{base_url}}"],
+              "path": ["automations", "automation_123"]
+            },
+            "description": "Get a specific automation by ID"
+          }
+        },
+        {
+          "name": "Update Automation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Birthday Wishes\",\n  \"message\": \"Happy Birthday! Here's an updated special gift for you!\",\n  \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/automations/automation_123",
+              "host": ["{{base_url}}"],
+              "path": ["automations", "automation_123"]
+            },
+            "description": "Update an existing automation"
+          }
+        },
+        {
+          "name": "Delete Automation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/automations/automation_123",
+              "host": ["{{base_url}}"],
+              "path": ["automations", "automation_123"]
+            },
+            "description": "Delete an automation"
+          }
+        },
+        {
+          "name": "Toggle Automation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/automations/automation_123/toggle",
+              "host": ["{{base_url}}"],
+              "path": ["automations", "automation_123", "toggle"]
+            },
+            "description": "Toggle automation active/inactive status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📄 Templates",
+      "description": "SMS template management",
+      "item": [
+        {
+          "name": "List Templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/templates?category=marketing&search=sale&page=1&pageSize=20",
+              "host": ["{{base_url}}"],
+              "path": ["templates"],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "marketing",
+                  "description": "Filter by template category"
+                },
+                {
+                  "key": "search",
+                  "value": "sale",
+                  "description": "Search in title and content"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Items per page"
+                }
+              ]
+            },
+            "description": "Get list of public templates with filtering"
+          }
+        },
+        {
+          "name": "Get Template by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/templates/template_123",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "template_123"]
+            },
+            "description": "Get a specific template by ID"
+          }
+        },
+        {
+          "name": "Track Template Usage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/templates/template_123/use",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "template_123", "use"]
+            },
+            "description": "Track template usage for analytics"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Reports",
+      "description": "Analytics and reporting",
+      "item": [
+        {
+          "name": "Get Campaign Reports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/campaigns?startDate=2025-01-01&endDate=2025-01-31",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "campaigns"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2025-01-01",
+                  "description": "Start date for report (YYYY-MM-DD)"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-01-31",
+                  "description": "End date for report (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Get campaign performance reports"
+          }
+        },
+        {
+          "name": "Get Delivery Reports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/delivery?startDate=2025-01-01&endDate=2025-01-31",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "delivery"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2025-01-01",
+                  "description": "Start date for report"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-01-31",
+                  "description": "End date for report"
+                }
+              ]
+            },
+            "description": "Get SMS delivery statistics"
+          }
+        },
+        {
+          "name": "Get Revenue Reports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/revenue?startDate=2025-01-01&endDate=2025-01-31",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "revenue"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2025-01-01",
+                  "description": "Start date for report"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-01-31",
+                  "description": "End date for report"
+                }
+              ]
+            },
+            "description": "Get revenue and ROI reports"
+          }
+        },
+        {
+          "name": "Export Reports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/export?type=campaigns&format=csv&startDate=2025-01-01&endDate=2025-01-31",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "export"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "campaigns",
+                  "description": "Report type (campaigns, delivery, revenue)"
+                },
+                {
+                  "key": "format",
+                  "value": "csv",
+                  "description": "Export format (csv, json, xlsx)"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2025-01-01",
+                  "description": "Start date for export"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-01-31",
+                  "description": "End date for export"
+                }
+              ]
+            },
+            "description": "Export reports in various formats"
+          }
+        }
+      ]
+    },
+    {
+      "name": "💳 Billing & Settings",
+      "description": "Billing, credits, and settings management",
+      "item": [
+        {
+          "name": "Get Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/billing/balance",
+              "host": ["{{base_url}}"],
+              "path": ["billing", "balance"]
+            },
+            "description": "Get current credit balance"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/billing/balance",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "balance"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "X-Cache",
+                  "value": "HIT"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"credits\": 500,\n    \"balance\": 500,\n    \"currency\": \"EUR\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Packages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/billing/packages",
+              "host": ["{{base_url}}"],
+              "path": ["billing", "packages"]
+            },
+            "description": "Get available credit packages"
+          }
+        },
+        {
+          "name": "Create Purchase Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"packageId\": \"package_1000\",\n  \"successUrl\": \"https://yourapp.com/success\",\n  \"cancelUrl\": \"https://yourapp.com/cancel\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/billing/purchase",
+              "host": ["{{base_url}}"],
+              "path": ["billing", "purchase"]
+            },
+            "description": "Create Stripe checkout session for credit purchase"
+          }
+        },
+        {
+          "name": "Get Transaction History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/billing/history?page=1&pageSize=20&type=purchase",
+              "host": ["{{base_url}}"],
+              "path": ["billing", "history"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "type",
+                  "value": "purchase",
+                  "description": "Filter by transaction type (purchase, debit, credit, refund, adjustment)"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2025-01-01",
+                  "description": "Start date filter"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-01-31",
+                  "description": "End date filter"
+                }
+              ]
+            },
+            "description": "Get transaction history"
+          }
+        },
+        {
+          "name": "Get Billing History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/billing/billing-history?page=1&pageSize=20&status=completed",
+              "host": ["{{base_url}}"],
+              "path": ["billing", "billing-history"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "status",
+                  "value": "completed",
+                  "description": "Filter by status (pending, completed, failed)"
+                }
+              ]
+            },
+            "description": "Get billing history (Stripe transactions)"
+          }
+        },
+        {
+          "name": "Get Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/settings",
+              "host": ["{{base_url}}"],
+              "path": ["settings"]
+            },
+            "description": "Get shop settings and configuration"
+          }
+        },
+        {
+          "name": "Update Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"senderNumber\": \"+1234567890\",\n  \"senderName\": \"YourStore\",\n  \"timezone\": \"America/New_York\",\n  \"defaultLanguage\": \"en\",\n  \"emailNotifications\": true,\n  \"smsNotifications\": false,\n  \"webhookUrl\": \"https://yourapp.com/webhooks\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/settings",
+              "host": ["{{base_url}}"],
+              "path": ["settings"]
+            },
+            "description": "Update shop settings"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔍 Tracking & Webhooks",
+      "description": "Message tracking and webhook endpoints",
+      "item": [
+        {
+          "name": "Get Message Tracking",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tracking/messages/message_123",
+              "host": ["{{base_url}}"],
+              "path": ["tracking", "messages", "message_123"]
+            },
+            "description": "Get tracking details for a specific message"
+          }
+        },
+        {
+          "name": "Get Delivery Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tracking/stats?startDate=2025-01-01&endDate=2025-01-31",
+              "host": ["{{base_url}}"],
+              "path": ["tracking", "stats"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2025-01-01",
+                  "description": "Start date for statistics"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-01-31",
+                  "description": "End date for statistics"
+                }
+              ]
+            },
+            "description": "Get delivery statistics for store"
+          }
+        },
+        {
+          "name": "Get Recent Activity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tracking/activity?limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["tracking", "activity"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Number of recent activities to return"
+                }
+              ]
+            },
+            "description": "Get recent message activity"
+          }
+        },
+        {
+          "name": "Get Failed Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "your-store.myshopify.com",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tracking/failed?page=1&pageSize=20",
+              "host": ["{{base_url}}"],
+              "path": ["tracking", "failed"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2025-01-01",
+                  "description": "Start date filter"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-01-31",
+                  "description": "End date filter"
+                }
+              ]
+            },
+            "description": "Get failed messages with pagination"
+          }
+        },
+        {
+          "name": "Process Delivery Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageId\": \"message_123\",\n  \"status\": \"delivered\",\n  \"timestamp\": \"2025-01-01T10:00:00Z\",\n  \"errorCode\": null,\n  \"errorMessage\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/tracking/webhook",
+              "host": ["{{base_url}}"],
+              "path": ["tracking", "webhook"]
+            },
+            "description": "Webhook endpoint for Mitto delivery status updates"
+          }
+        }
+      ]
+    }
+  ]
+}

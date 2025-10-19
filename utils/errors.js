@@ -101,7 +101,10 @@ export const asyncHandler = (fn) => {
 };
 
 // Global error handler
-export const globalErrorHandler = (error, req, res, next) => {
+export const globalErrorHandler = (error, req, res, _next) => {
+  // Import logger dynamically to avoid circular dependencies
+  const { logger } = require('./logger.js');
+  
   let err = error;
 
   // Convert non-AppError instances to AppError
@@ -122,8 +125,8 @@ export const globalErrorHandler = (error, req, res, next) => {
     }
   }
 
-  // Log error
-  console.error('Error:', {
+  // Log error using logger
+  logger.error('Global error handler', {
     message: err.message,
     code: err.code,
     statusCode: err.statusCode,

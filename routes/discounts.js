@@ -1,10 +1,7 @@
 import { Router } from 'express';
 import * as ctrl from '../controllers/discounts.js';
 const r = Router();
-r.get('/',  ctrl.list);
-r.get('/validate/:code',  ctrl.validate);
-r.get('/campaign/:code',  ctrl.campaign);
-r.get('/apply-url',  ctrl.applyUrl);
-r.get('/search',  ctrl.search);
-r.get('/conflicts',  ctrl.conflicts);
+r.get('/', ctrl.getShopifyDiscounts);
+r.get('/:id', ctrl.getShopifyDiscount);
+r.get('/validate/:code', ctrl.validateDiscount);
 export default r;

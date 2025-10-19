@@ -27,7 +27,7 @@ export async function deliveryReport(req, res, next) {
       if (log.campaignId) {
         await prisma.campaignRecipient.updateMany({
           where: { campaignId: log.campaignId, phoneE164: to },
-          data: { status: status, deliveredAt: status === 'delivered' ? new Date() : null },
+          data: { status, deliveredAt: status === 'delivered' ? new Date() : null },
         });
         if (status === 'delivered') {
           await prisma.campaignMetrics.updateMany({
