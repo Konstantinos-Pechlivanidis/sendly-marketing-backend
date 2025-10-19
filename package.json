@@ -36,7 +36,8 @@
     "stripe": "^19.1.0",
     "swagger-ui-express": "^5.0.0",
     "winston": "^3.11.0",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.1",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "eslint": "^8.55.0",
