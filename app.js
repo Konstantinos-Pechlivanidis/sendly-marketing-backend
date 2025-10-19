@@ -81,10 +81,26 @@ app.use(versionedResponse);
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true,
+    origin: [
+      'https://admin.shopify.com',
+      'https://*.myshopify.com',
+      ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID', 'API-Version', 'X-Shopify-Shop-Domain', 'X-Shopify-Shop', 'X-Shopify-Shop-Name', 'X-Store-ID'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'X-API-Key', 
+      'X-Request-ID', 
+      'API-Version', 
+      'X-Shopify-Shop-Domain', 
+      'X-Shopify-Shop', 
+      'X-Shopify-Shop-Name', 
+      'X-Store-ID',
+      'X-Client-Version',
+      'X-Client-Platform'
+    ],
   }),
 );
 
