@@ -253,9 +253,9 @@
             {
               "name": "Success Response",
               "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
+            "method": "POST",
+            "header": [
+              {
                     "key": "Content-Type",
                     "value": "application/json"
                   }
@@ -282,18 +282,18 @@
               "originalRequest": {
                 "method": "POST",
                 "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
                   "raw": "{\n  \"firstName\": \"John\",\n  \"phoneE164\": \"invalid_phone\"\n}"
-                },
-                "url": {
+            },
+            "url": {
                   "raw": "{{base_url}}/contacts",
-                  "host": ["{{base_url}}"],
+              "host": ["{{base_url}}"],
                   "path": ["contacts"]
                 }
               },
@@ -543,20 +543,20 @@
             {
               "name": "Success Response",
               "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
                   "raw": "{\n  \"name\": \"Black Friday Sale\",\n  \"message\": \"Get 50% off everything! Use code BLACKFRIDAY\",\n  \"audience\": \"all\",\n  \"scheduleType\": \"immediate\"\n}"
-                },
-                "url": {
+            },
+            "url": {
                   "raw": "{{base_url}}/campaigns",
-                  "host": ["{{base_url}}"],
+              "host": ["{{base_url}}"],
                   "path": ["campaigns"]
                 }
               },
@@ -778,8 +778,8 @@
           "name": "Create Automation",
           "request": {
             "method": "POST",
-            "header": [
-              {
+                "header": [
+                  {
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
@@ -799,9 +799,9 @@
                 }
               }
             },
-            "url": {
+                "url": {
               "raw": "{{base_url}}/automations",
-              "host": ["{{base_url}}"],
+                  "host": ["{{base_url}}"],
               "path": ["automations"]
             },
             "description": "Create a new automation workflow"
@@ -811,8 +811,8 @@
           "name": "Get Automation by ID",
           "request": {
             "method": "GET",
-            "header": [
-              {
+              "header": [
+                {
                 "key": "X-Shopify-Shop-Domain",
                 "value": "your-store.myshopify.com",
                 "type": "text"
@@ -914,13 +914,13 @@
                 "type": "text"
               }
             ],
-            "url": {
+                "url": {
               "raw": "{{base_url}}/templates?category=marketing&search=sale&page=1&pageSize=20",
-              "host": ["{{base_url}}"],
+                  "host": ["{{base_url}}"],
               "path": ["templates"],
-              "query": [
-                {
-                  "key": "category",
+                  "query": [
+                    {
+                      "key": "category",
                   "value": "marketing",
                   "description": "Filter by template category"
                 },
@@ -928,14 +928,14 @@
                   "key": "search",
                   "value": "sale",
                   "description": "Search in title and content"
-                },
-                {
-                  "key": "page",
+                    },
+                    {
+                      "key": "page",
                   "value": "1",
                   "description": "Page number"
-                },
-                {
-                  "key": "pageSize",
+                    },
+                    {
+                      "key": "pageSize",
                   "value": "20",
                   "description": "Items per page"
                 }
@@ -1323,9 +1323,9 @@
               "path": ["settings"]
             },
             "description": "Get shop settings and configuration"
-          }
-        },
-        {
+            }
+    },
+    {
           "name": "Update Settings",
           "request": {
             "method": "PUT",
