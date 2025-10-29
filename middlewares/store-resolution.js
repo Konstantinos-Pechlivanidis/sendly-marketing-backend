@@ -30,11 +30,11 @@ export async function resolveStore(req, res, next) {
 
     // Method 1: Shopify session/JWT (primary method)
     // Check multiple possible sources for shop domain
-    const possibleShopDomain = 
-      req.headers['x-shopify-shop-domain'] || 
+    const possibleShopDomain =
+      req.headers['x-shopify-shop-domain'] ||
       req.headers['x-shopify-shop'] ||
       req.headers['x-shopify-shop-name'] ||
-      req.query.shop || 
+      req.query.shop ||
       req.query.shop_domain ||
       req.query.shop_name ||
       req.body?.shop ||
@@ -47,7 +47,7 @@ export async function resolveStore(req, res, next) {
     // URL pattern: /store/{shop-domain}/apps/{app-name}/app
     let shopDomainFromPath = null;
     if (!possibleShopDomain && req.url) {
-      const pathMatch = req.url.match(/\/store\/([^\/]+)\//);
+      const pathMatch = req.url.match(/\/store\/([^\\/]+)\//);
       if (pathMatch && pathMatch[1]) {
         shopDomainFromPath = pathMatch[1];
         // Ensure it has .myshopify.com suffix
@@ -65,18 +65,18 @@ export async function resolveStore(req, res, next) {
         shopDomain = `${shopDomain}.myshopify.com`;
       }
 
-      logger.info('Attempting to resolve store from headers/query/body', { 
-        shopDomain, 
+      logger.info('Attempting to resolve store from headers/query/body', {
+        shopDomain,
         headers: req.headers,
         query: req.query,
-        body: req.body ? Object.keys(req.body) : 'no body'
+        body: req.body ? Object.keys(req.body) : 'no body',
       });
     } else if (shopDomainFromPath) {
       shopDomain = shopDomainFromPath;
-      logger.info('Attempting to resolve store from URL path', { 
+      logger.info('Attempting to resolve store from URL path', {
         shopDomain,
         url: req.url,
-        extractedFromPath: true
+        extractedFromPath: true,
       });
     } else {
       // Try to extract from Shopify App Bridge session or JWT
@@ -96,9 +96,9 @@ export async function resolveStore(req, res, next) {
         headers: Object.keys(req.headers),
         query: req.query,
         body: req.body ? Object.keys(req.body) : 'no body',
-        url: req.url
+        url: req.url,
       });
-      
+
       // For development/testing, use a default store
       shopDomain = 'sms-blossom-dev.myshopify.com';
       logger.info('Using development fallback store', { shopDomain });
