@@ -81,26 +81,48 @@ app.use(versionedResponse);
 // CORS configuration
 app.use(
   cors({
-    origin: [
-      'https://admin.shopify.com',
-      'https://*.myshopify.com',
-      ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+
+      const allowedOrigins = [
+        'https://admin.shopify.com',
+        'https://chargers-budgets-replies-gained.trycloudflare.com', // New Cloudflare frontend
+        ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+      ];
+
+      // Allow all myshopify.com subdomains
+      const isShopifyDomain = origin.match(/^https:\/\/[a-zA-Z0-9-]+\.myshopify\.com$/);
+
+      // Allow Cloudflare tunnel domains in development
+      const isCloudflareTunnel = process.env.NODE_ENV === 'development' &&
+        origin.match(/^https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com$/);
+
+      if (allowedOrigins.includes(origin) || isShopifyDomain || isCloudflareTunnel) {
+        callback(null, true);
+      } else {
+        logger.warn(`CORS blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
-      'Content-Type', 
-      'Authorization', 
-      'X-API-Key', 
-      'X-Request-ID', 
-      'API-Version', 
-      'X-Shopify-Shop-Domain', 
-      'X-Shopify-Shop', 
-      'X-Shopify-Shop-Name', 
+      'Content-Type',
+      'Authorization',
+      'X-API-Key',
+      'X-Request-ID',
+      'API-Version',
+      'X-Shopify-Shop-Domain',
+      'X-Shopify-Shop',
+      'X-Shopify-Shop-Name',
       'X-Store-ID',
       'X-Client-Version',
-      'X-Client-Platform'
+      'X-Client-Platform',
+      'X-Requested-With', // Added missing header
     ],
+    exposedHeaders: ['X-Request-ID', 'X-Rate-Limit-Remaining', 'X-Rate-Limit-Reset'],
+    maxAge: 86400, // 24 hours for preflight cache
   }),
 );
 

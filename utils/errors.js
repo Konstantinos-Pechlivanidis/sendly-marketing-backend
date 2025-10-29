@@ -101,10 +101,7 @@ export const asyncHandler = (fn) => {
 };
 
 // Global error handler
-export const globalErrorHandler = (error, req, res, _next) => {
-  // Import logger dynamically to avoid circular dependencies
-  const { logger } = require('./logger.js');
-  
+export const globalErrorHandler = async (error, req, res, _next) => {
   let err = error;
 
   // Convert non-AppError instances to AppError
@@ -125,18 +122,37 @@ export const globalErrorHandler = (error, req, res, _next) => {
     }
   }
 
-  // Log error using logger
-  logger.error('Global error handler', {
-    message: err.message,
-    code: err.code,
-    statusCode: err.statusCode,
-    stack: err.stack,
-    requestId: req.id,
-    path: req.originalUrl,
-    method: req.method,
-    userAgent: req.get('User-Agent'),
-    ip: req.ip,
-  });
+  try {
+    // Import logger dynamically to avoid circular dependencies
+    const { logger } = await import('./logger.js');
+    
+    // Log error using logger
+    logger.error('Global error handler', {
+      message: err.message,
+      code: err.code,
+      statusCode: err.statusCode,
+      stack: err.stack,
+      requestId: req.id,
+      path: req.originalUrl,
+      method: req.method,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip,
+    });
+  } catch (loggerError) {
+    // Fallback to console if logger import fails
+    console.error('Error in global error handler:', {
+      message: err.message,
+      code: err.code,
+      statusCode: err.statusCode,
+      stack: err.stack,
+      requestId: req.id,
+      path: req.originalUrl,
+      method: req.method,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip,
+      loggerError: loggerError.message,
+    });
+  }
 
   // Send error response
   const statusCode = err.statusCode || 500;
