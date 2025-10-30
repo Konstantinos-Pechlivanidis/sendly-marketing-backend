@@ -132,7 +132,7 @@ Created `CORS_Test_Postman_Collection.json` with:
 #### Test OPTIONS Preflight
 ```bash
 curl -X OPTIONS \
-  -H "Origin: https://chargers-budgets-replies-gained.trycloudflare.com" \
+  -H "Origin: https://investments-brand-numerous-voters.trycloudflare.com" \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: Content-Type,X-Shopify-Shop-Domain,X-Requested-With,X-Client-Version,X-Client-Platform" \
   -v \
@@ -142,7 +142,7 @@ curl -X OPTIONS \
 #### Test POST Request
 ```bash
 curl -X POST \
-  -H "Origin: https://chargers-budgets-replies-gained.trycloudflare.com" \
+  -H "Origin: https://investments-brand-numerous-voters.trycloudflare.com" \
   -H "Content-Type: application/json" \
   -H "X-Shopify-Shop-Domain: test-shop.myshopify.com" \
   -H "X-Requested-With: XMLHttpRequest" \

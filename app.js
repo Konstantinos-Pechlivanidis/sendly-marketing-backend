@@ -87,7 +87,7 @@ app.use(
 
       const allowedOrigins = [
         'https://admin.shopify.com',
-        'https://chargers-budgets-replies-gained.trycloudflare.com', // New Cloudflare frontend
+        'https://investments-brand-numerous-voters.trycloudflare.com', // New Cloudflare frontend
         ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
       ];
 

@@ -8,7 +8,7 @@ import fetch from 'node-fetch';
 import { logger } from './utils/logger.js';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
-const FRONTEND_ORIGIN = 'https://chargers-budgets-replies-gained.trycloudflare.com';
+const FRONTEND_ORIGIN = 'https://investments-brand-numerous-voters.trycloudflare.com';
 
 async function testCORSHeaders() {
   console.log('🧪 Testing CORS Headers Configuration...\n');
