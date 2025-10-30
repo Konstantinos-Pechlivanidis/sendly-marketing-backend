@@ -10,6 +10,9 @@ import { cacheManager } from '../utils/cache.js';
 const r = Router();
 
 // health
+r.get('/', (req, res) => {
+  res.json({ ok: true, message: 'Sendly API', time: Date.now() });
+});
 r.get('/health', (req, res) => res.json({ ok: true, t: Date.now() }));
 r.get('/health/config', (req, res) =>
   res.json({
