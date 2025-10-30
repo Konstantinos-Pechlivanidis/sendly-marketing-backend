@@ -19,10 +19,10 @@ export function validateBody(schema) {
       next();
     } catch (error) {
       if (error.name === 'ZodError') {
-        const errors = error.errors.map(err => ({
+        const errors = Array.isArray(error.errors) ? error.errors.map(err => ({
           field: err.path.join('.'),
           message: err.message,
-        }));
+        })) : [{ field: null, message: error.message || 'Unknown validation error' }];
 
         logger.warn('Validation error', {
           path: req.path,
@@ -50,10 +50,10 @@ export function validateQuery(schema) {
       next();
     } catch (error) {
       if (error.name === 'ZodError') {
-        const errors = error.errors.map(err => ({
+        const errors = Array.isArray(error.errors) ? error.errors.map(err => ({
           field: err.path.join('.'),
           message: err.message,
-        }));
+        })) : [{ field: null, message: error.message || 'Unknown validation error' }];
 
         logger.warn('Query validation error', {
           path: req.path,
@@ -81,10 +81,10 @@ export function validateParams(schema) {
       next();
     } catch (error) {
       if (error.name === 'ZodError') {
-        const errors = error.errors.map(err => ({
+        const errors = Array.isArray(error.errors) ? error.errors.map(err => ({
           field: err.path.join('.'),
           message: err.message,
-        }));
+        })) : [{ field: null, message: error.message || 'Unknown validation error' }];
 
         logger.warn('Params validation error', {
           path: req.path,
