@@ -36,8 +36,8 @@ export async function createStripeCheckoutSession({
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.FRONTEND_URL}/settings?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL}/settings?canceled=true`,
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?canceled=true`,
       metadata: {
         shopId,
         packageId,
@@ -47,7 +47,10 @@ export async function createStripeCheckoutSession({
       customer_email: `${shopDomain}@sendly.com`, // Use shop domain as email
       billing_address_collection: 'required',
       shipping_address_collection: {
-        allowed_countries: ['US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'CH', 'SE', 'NO', 'DK', 'FI'],
+        allowed_countries: ['US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'CH', 'SE', 'NO', 'DK', 'FI', 'GR'],
+      },
+      payment_intent_data: {
+        statement_descriptor: 'SENDLY MARKETING',
       },
     });
 

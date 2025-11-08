@@ -16,9 +16,10 @@ const CREDIT_PACKAGES = [
     id: 'package_1000',
     name: '1,000 SMS Credits',
     credits: 1000,
-    price: 29.99,
-    currency: 'EUR',
-    stripePriceId: process.env.STRIPE_PRICE_ID_1000 || 'price_1000_credits',
+    priceEUR: 29.99,
+    priceUSD: 32.99,
+    stripePriceIdEUR: process.env.STRIPE_PRICE_ID_1000_EUR || 'price_1000_credits_eur',
+    stripePriceIdUSD: process.env.STRIPE_PRICE_ID_1000_USD || 'price_1000_credits_usd',
     description: 'Perfect for small businesses getting started',
     popular: false,
     features: ['1,000 SMS messages', 'No expiration', 'Priority support'],
@@ -27,9 +28,10 @@ const CREDIT_PACKAGES = [
     id: 'package_5000',
     name: '5,000 SMS Credits',
     credits: 5000,
-    price: 129.99,
-    currency: 'EUR',
-    stripePriceId: process.env.STRIPE_PRICE_ID_5000 || 'price_5000_credits',
+    priceEUR: 129.99,
+    priceUSD: 142.99,
+    stripePriceIdEUR: process.env.STRIPE_PRICE_ID_5000_EUR || 'price_5000_credits_eur',
+    stripePriceIdUSD: process.env.STRIPE_PRICE_ID_5000_USD || 'price_5000_credits_usd',
     description: 'Great value for growing businesses',
     popular: true,
     features: ['5,000 SMS messages', 'No expiration', 'Priority support', '13% savings'],
@@ -38,9 +40,10 @@ const CREDIT_PACKAGES = [
     id: 'package_10000',
     name: '10,000 SMS Credits',
     credits: 10000,
-    price: 229.99,
-    currency: 'EUR',
-    stripePriceId: process.env.STRIPE_PRICE_ID_10000 || 'price_10000_credits',
+    priceEUR: 229.99,
+    priceUSD: 252.99,
+    stripePriceIdEUR: process.env.STRIPE_PRICE_ID_10000_EUR || 'price_10000_credits_eur',
+    stripePriceIdUSD: process.env.STRIPE_PRICE_ID_10000_USD || 'price_10000_credits_usd',
     description: 'Best value for high-volume senders',
     popular: false,
     features: ['10,000 SMS messages', 'No expiration', 'Priority support', '23% savings'],
@@ -49,9 +52,10 @@ const CREDIT_PACKAGES = [
     id: 'package_25000',
     name: '25,000 SMS Credits',
     credits: 25000,
-    price: 499.99,
-    currency: 'EUR',
-    stripePriceId: process.env.STRIPE_PRICE_ID_25000 || 'price_25000_credits',
+    priceEUR: 499.99,
+    priceUSD: 549.99,
+    stripePriceIdEUR: process.env.STRIPE_PRICE_ID_25000_EUR || 'price_25000_credits_eur',
+    stripePriceIdUSD: process.env.STRIPE_PRICE_ID_25000_USD || 'price_25000_credits_usd',
     description: 'Enterprise solution for maximum reach',
     popular: false,
     features: ['25,000 SMS messages', 'No expiration', 'Dedicated support', '33% savings'],
@@ -86,11 +90,22 @@ export async function getBalance(storeId) {
 
 /**
  * Get available credit packages
- * @returns {Array} Available packages
+ * @param {string} currency - Currency code (EUR or USD), defaults to EUR
+ * @returns {Array} Available packages with currency-specific pricing
  */
-export function getPackages() {
-  logger.info('Getting credit packages');
-  return CREDIT_PACKAGES;
+export function getPackages(currency = 'EUR') {
+  logger.info('Getting credit packages', { currency });
+
+  return CREDIT_PACKAGES.map(pkg => ({
+    id: pkg.id,
+    name: pkg.name,
+    credits: pkg.credits,
+    price: currency === 'USD' ? pkg.priceUSD : pkg.priceEUR,
+    currency,
+    description: pkg.description,
+    popular: pkg.popular,
+    features: pkg.features,
+  }));
 }
 
 /**
@@ -121,10 +136,10 @@ export async function createPurchaseSession(storeId, packageId, returnUrls) {
   // Validate package
   const pkg = getPackageById(packageId);
 
-  // Get shop details
+  // Get shop details with currency
   const shop = await prisma.shop.findUnique({
     where: { id: storeId },
-    select: { id: true, shopDomain: true, shopName: true },
+    select: { id: true, shopDomain: true, shopName: true, currency: true },
   });
 
   if (!shop) {
@@ -136,13 +151,20 @@ export async function createPurchaseSession(storeId, packageId, returnUrls) {
     throw new ValidationError('Success and cancel URLs are required');
   }
 
+  // Select currency and price based on shop currency
+  const currency = shop.currency || 'EUR';
+  const price = currency === 'USD' ? pkg.priceUSD : pkg.priceEUR;
+  const stripePriceId = currency === 'USD'
+    ? pkg.stripePriceIdUSD
+    : pkg.stripePriceIdEUR;
+
   // Create billing transaction record
   const transaction = await prisma.billingTransaction.create({
     data: {
       shopId: storeId,
       creditsAdded: pkg.credits,
-      amount: Math.round(pkg.price * 100), // Convert to cents
-      currency: pkg.currency,
+      amount: Math.round(price * 100), // Convert to cents
+      currency, // Use shop currency
       packageType: packageId,
       stripeSessionId: 'pending', // Will be updated after Stripe session creation
       status: 'pending',
@@ -151,8 +173,13 @@ export async function createPurchaseSession(storeId, packageId, returnUrls) {
 
   // Create Stripe checkout session
   const session = await createStripeCheckoutSession({
-    priceId: pkg.stripePriceId,
-    quantity: 1,
+    packageId,
+    credits: pkg.credits,
+    price,
+    currency,
+    stripePriceId, // Use selected price ID based on currency
+    shopId: storeId,
+    shopDomain: shop.shopDomain,
     successUrl: returnUrls.successUrl,
     cancelUrl: returnUrls.cancelUrl,
     metadata: {

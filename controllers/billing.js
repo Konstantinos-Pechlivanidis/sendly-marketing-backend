@@ -1,6 +1,7 @@
 import { getStoreId } from '../middlewares/store-resolution.js';
 import { logger } from '../utils/logger.js';
 import billingService from '../services/billing.js';
+import prisma from '../services/prisma.js';
 
 /**
  * Billing Controller
@@ -36,7 +37,16 @@ export async function getBalance(req, res, next) {
  */
 export async function getPackages(req, res, next) {
   try {
-    const packages = billingService.getPackages();
+    const storeId = getStoreId(req);
+
+    // Get shop currency
+    const shop = await prisma.shop.findUnique({
+      where: { id: storeId },
+      select: { currency: true },
+    });
+
+    const currency = shop?.currency || 'EUR';
+    const packages = billingService.getPackages(currency);
 
     return res.json({
       success: true,
