@@ -1,6 +1,6 @@
 import prisma from './prisma.js';
 import { logger } from '../utils/logger.js';
-import { ValidationError, NotFoundError } from '../utils/errors.js';
+import { NotFoundError } from '../utils/errors.js';
 
 /**
  * Templates Service

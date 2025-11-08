@@ -78,7 +78,7 @@ export async function createPurchase(req, res, next) {
     const session = await billingService.createPurchaseSession(
       storeId,
       packageId,
-      { successUrl, cancelUrl }
+      { successUrl, cancelUrl },
     );
 
     return res.json({

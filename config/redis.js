@@ -38,7 +38,7 @@ export const redisConfig = {
 export const createRedisConnection = (config = {}) => {
   const finalConfig = { ...redisConfig, ...config };
 
-  // Handle Redis URL format
+  // Handle Redis URL format (supports both URL string and connection object)
   if (process.env.REDIS_URL) {
     return new IORedis(process.env.REDIS_URL, {
       maxRetriesPerRequest: null,
@@ -48,6 +48,20 @@ export const createRedisConnection = (config = {}) => {
       commandTimeout: 5000,
       retryDelayOnFailover: 100,
       enableOfflineQueue: false,
+      // Support for Redis Cloud with username/password
+      username: process.env.REDIS_USERNAME,
+      password: process.env.REDIS_PASSWORD,
+    });
+  }
+
+  // If REDIS_HOST and REDIS_PORT are provided, use object format
+  if (process.env.REDIS_HOST && process.env.REDIS_PORT) {
+    return new IORedis({
+      host: process.env.REDIS_HOST,
+      port: parseInt(process.env.REDIS_PORT, 10),
+      username: process.env.REDIS_USERNAME || 'default',
+      password: process.env.REDIS_PASSWORD,
+      ...finalConfig,
     });
   }
 

@@ -125,7 +125,7 @@ export const globalErrorHandler = async (error, req, res, _next) => {
   try {
     // Import logger dynamically to avoid circular dependencies
     const { logger } = await import('./logger.js');
-    
+
     // Log error using logger
     logger.error('Global error handler', {
       message: err.message,

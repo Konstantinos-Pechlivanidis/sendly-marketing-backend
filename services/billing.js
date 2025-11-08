@@ -1,7 +1,7 @@
 import prisma from './prisma.js';
 import { logger } from '../utils/logger.js';
 import { ValidationError, NotFoundError } from '../utils/errors.js';
-import { createStripeCheckoutSession, verifyWebhookSignature } from './stripe.js';
+import { createStripeCheckoutSession } from './stripe.js';
 
 /**
  * Billing Service
@@ -100,7 +100,7 @@ export function getPackages() {
  */
 export function getPackageById(packageId) {
   const pkg = CREDIT_PACKAGES.find(p => p.id === packageId);
-  
+
   if (!pkg) {
     throw new NotFoundError('Package');
   }

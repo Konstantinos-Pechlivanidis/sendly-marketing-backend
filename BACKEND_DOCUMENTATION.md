@@ -1162,3 +1162,158 @@ The backend is now production-ready with enterprise-grade features, comprehensiv
 **Last Updated**: October 19, 2025  
 **Status**: Production Ready ✅  
 **Next Steps**: Deploy and monitor in production environment
+
+---
+
+# API Request Payload Examples
+
+This section provides complete and detailed JSON payload examples, field descriptions, and notes for all POST and PATCH API endpoints available in the Sendly Marketing Backend.
+
+---
+
+## Campaigns
+
+### Create Campaign (`POST /campaigns`)
+
+**Example:**
+```json
+{
+  "name": "Black Friday Campaign",
+  "message": "Don't miss our biggest sale!",
+  "audience": "all",
+  "discountId": "discount_1234ABC",
+  "scheduleType": "scheduled",
+  "scheduleAt": "2025-12-01T14:12:00Z"
+}
+```
+
+| Field         | Type    | Required | Notes                                                                 |
+|-------------- |---------|----------|-----------------------------------------------------------------------|
+| name          | string  | YES      | Min 1, Max 200 chars. Campaign name.                                 |
+| message       | string  | YES      | Min 1, Max 1600 chars. SMS/message text.                             |
+| audience      | string  | NO       | "all", "male", "female", "men", "women", or "segment:<id>". Default: all |
+| discountId    | string  | NO       | Associated discount: Discount object ID.                             |
+| scheduleType  | string  | NO       | "immediate" (default), "scheduled", or "recurring"                  |
+| scheduleAt    | string  | COND.    | ISO8601 date, **required if** scheduleType is "scheduled"            |
+| recurringDays | int     | COND.    | 1–365, **required if** scheduleType is "recurring"                   |
+
+**Notes:**
+- `scheduleAt` must be in the future.
+- When `audience` begins with "segment:", use a valid segment ID.
+- If `scheduleType` is omitted, defaults to "immediate".
+
+---
+
+### Update Campaign (`PATCH /campaigns/:id`)
+
+**Example:**
+```json
+{
+  "name": "Spring Flash Sale",
+  "scheduleAt": "2025-03-01T10:00:00Z"
+}
+```
+
+| Field         | Type    | Required | Notes                                                      |
+|-------------- |---------|----------|------------------------------------------------------------|
+| name          | string  | NO       | Min 1, Max 200 chars.                                      |
+| message       | string  | NO       | Min 1, Max 1600 chars.                                     |
+| audience      | string  | NO       | See above.                                                 |
+| discountId    | string  | NO       | See above. Can be null to clear.                           |
+| scheduleType  | string  | NO       | "immediate", "scheduled", "recurring"                     |
+| scheduleAt    | string  | NO       | ISO8601, see above.                                        |
+| recurringDays | int     | NO       | 1–365 days, see above.                                     |
+
+*At least one field must be provided. Omitting a field leaves it unchanged.*
+
+---
+
+## Contacts
+
+### Create Contact (`POST /contacts`)
+
+**Example:**
+```json
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "phoneE164": "+306977123456",
+  "email": "john@example.com",
+  "gender": "male",
+  "birthDate": "1990-01-01T00:00:00Z",
+  "smsConsent": "opted_in",
+  "tags": ["vip", "spring-sale"]
+}
+```
+
+| Field      | Type    | Required | Notes                                              |
+|----------- |---------|----------|----------------------------------------------------|
+| firstName  | string  | NO       | Min 1, Max 100 chars.                              |
+| lastName   | string  | NO       | Min 1, Max 100 chars.                              |
+| phoneE164  | string  | YES      | Format: E.164, e.g. "+306977123456"               |
+| email      | string  | NO       | Valid email address.                               |
+| gender     | string  | NO       | "male", "female", "other"                         |
+| birthDate  | string  | NO       | ISO8601. Cannot be in future.                      |
+| smsConsent | string  | NO       | "opted_in", "opted_out", "unknown" (default)     |
+| tags       | array   | NO       | Array of strings. Default: empty                    |
+
+**Minimal:**
+```json
+{ "phoneE164": "+306977123456" }
+```
+
+---
+
+### Update Contact (`PATCH /contacts/:id`)
+
+**Example:**
+```json
+{
+  "email": "new-mail@example.com",
+  "tags": ["customer", "newsletter"]
+}
+```
+
+*At least one field is required. Structure and allowed fields are as above, but all are optional.*
+
+---
+
+### Import Contacts (`POST /contacts/import`)
+
+**Example:**
+```json
+{
+  "contacts": [
+    { "phoneE164": "+306988812345", "firstName": "Alice" },
+    { "phoneE164": "+306944412345", "firstName": "Bob", "tags": ["lead"] }
+  ]
+}
+```
+| Field    | Type          | Required | Notes                         |
+|----------|---------------|----------|-------------------------------|
+| contacts | array<object> | YES      | Array of valid contact objects |
+*Each object matches the Create Contact schema.*
+
+---
+
+## Billing
+
+### Create Purchase Session (`POST /billing/purchase`)
+
+**Example:**
+```json
+{
+  "packageId": "package_1000",
+  "successUrl": "https://myapp.com/billing/success",
+  "cancelUrl": "https://myapp.com/billing/cancel"
+}
+```
+| Field      | Type    | Required | Notes                                                    |
+|------------|---------|----------|----------------------------------------------------------|
+| packageId  | string  | YES      | "package_1000", "package_5000", etc.                   |
+| successUrl | string  | YES      | URL to redirect after success                            |
+| cancelUrl  | string  | YES      | URL to redirect after cancel                             |
+
+---
+
+*If you need more endpoints or fields included, or want GET/query/filter parameter docs, just ask!*

@@ -358,3 +358,53 @@ model Template {
   updatedAt     DateTime @updatedAt
   usage         TemplateUsage[]
 }
+
+model QueueJob {
+  id            String    @id @default(cuid())
+  queueName     String
+  jobName       String
+  data          String    // JSON string
+  status        String    @default("pending") // pending, processing, completed, failed
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(3)
+  priority      Int       @default(0)
+  delay         DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  failedAt      DateTime?
+  result        String?   // JSON string
+  error         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([queueName, status])
+  @@index([status, createdAt])
+  @@index([delay])
+}
+
+model ShopifySession {
+  id          String    @id
+  shop        String
+  state       String?
+  isOnline    Boolean   @default(false)
+  scope       String?
+  expires     DateTime?
+  accessToken String?
+  userId      String?
+  sessionData String    // JSON string
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([shop])
+  @@index([expires])
+  @@index([shop, isOnline])
+}
+
+model RateLimitRecord {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+  @@index([createdAt])
+}

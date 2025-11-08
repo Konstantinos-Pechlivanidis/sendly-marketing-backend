@@ -81,16 +81,16 @@ async function updateCampaignMetrics(campaignId, status) {
   const updates = {};
 
   switch (status) {
-    case 'sent':
-      updates.totalSent = { increment: 1 };
-      break;
-    case 'delivered':
-      updates.totalDelivered = { increment: 1 };
-      break;
-    case 'failed':
-    case 'undelivered':
-      updates.totalFailed = { increment: 1 };
-      break;
+  case 'sent':
+    updates.totalSent = { increment: 1 };
+    break;
+  case 'delivered':
+    updates.totalDelivered = { increment: 1 };
+    break;
+  case 'failed':
+  case 'undelivered':
+    updates.totalFailed = { increment: 1 };
+    break;
   }
 
   if (Object.keys(updates).length > 0) {

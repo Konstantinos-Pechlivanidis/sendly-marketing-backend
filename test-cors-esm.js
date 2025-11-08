@@ -5,6 +5,7 @@
  */
 
 import fetch from 'node-fetch';
+// eslint-disable-next-line no-unused-vars
 import { logger } from './utils/logger.js';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
@@ -31,7 +32,7 @@ async function testCORSHeaders() {
     console.log(`   Access-Control-Allow-Headers: ${response.headers.get('Access-Control-Allow-Headers')}`);
     console.log(`   Access-Control-Allow-Credentials: ${response.headers.get('Access-Control-Allow-Credentials')}`);
     console.log(`   Access-Control-Max-Age: ${response.headers.get('Access-Control-Max-Age')}`);
-    
+
     if (response.status === 200) {
       console.log('   ✅ OPTIONS preflight request successful\n');
     } else {
@@ -66,7 +67,7 @@ async function testCORSHeaders() {
 
     console.log(`   Status: ${response.status}`);
     console.log(`   Access-Control-Allow-Origin: ${response.headers.get('Access-Control-Allow-Origin')}`);
-    
+
     if (response.status === 200 || response.status === 201) {
       console.log('   ✅ POST request successful\n');
     } else {
@@ -90,7 +91,7 @@ async function testCORSHeaders() {
 
     console.log(`   Status: ${response.status}`);
     console.log(`   Access-Control-Allow-Origin: ${response.headers.get('Access-Control-Allow-Origin')}`);
-    
+
     if (response.status === 403 || response.status === 500) {
       console.log('   ✅ Blocked origin correctly rejected\n');
     } else {
@@ -107,8 +108,9 @@ async function testESMCompatibility() {
   // Test 1: Import error classes
   console.log('1. Testing error classes import...');
   try {
+    // eslint-disable-next-line no-unused-vars
     const { AppError, ValidationError, AuthenticationError } = await import('./utils/errors.js');
-    
+
     const testError = new ValidationError('Test validation error');
     console.log(`   ✅ Error classes imported successfully: ${testError.constructor.name}`);
     console.log(`   ✅ Error message: ${testError.message}`);
@@ -145,10 +147,10 @@ async function testESMCompatibility() {
 
 async function runAllTests() {
   console.log('🚀 Starting CORS and ESM Compatibility Tests...\n');
-  
+
   await testCORSHeaders();
   await testESMCompatibility();
-  
+
   console.log('🏁 All tests completed!');
 }
 

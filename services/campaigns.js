@@ -40,7 +40,7 @@ async function resolveRecipients(shopId, audience) {
   logger.info('Resolving recipients', { shopId, audience });
 
   const base = normalizeAudienceQuery(audience);
-  
+
   if (base) {
     const contacts = await prisma.contact.findMany({
       where: { shopId, ...base },
@@ -75,9 +75,11 @@ async function resolveRecipients(shopId, audience) {
  * @param {string} audience - Audience filter
  * @returns {Promise<number>} Recipient count
  */
+// Unused function - kept for potential future API use
+// eslint-disable-next-line no-unused-vars
 async function calculateRecipientCount(shopId, audience) {
   const base = normalizeAudienceQuery(audience);
-  
+
   if (base) {
     return await prisma.contact.count({
       where: { shopId, ...base },
@@ -96,7 +98,7 @@ async function calculateRecipientCount(shopId, audience) {
     });
 
     return members.filter(
-      m => m.contact?.shopId === shopId && m.contact?.smsConsent === 'opted_in'
+      m => m.contact?.shopId === shopId && m.contact?.smsConsent === 'opted_in',
     ).length;
   }
 

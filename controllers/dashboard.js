@@ -10,7 +10,7 @@ export async function overview(req, res, next) {
   try {
     const storeId = getStoreId(req);
     const data = await dashboardService.getOverview(storeId);
-    
+
     return res.json({
       success: true,
       data,
@@ -29,7 +29,7 @@ export async function quickStats(req, res, next) {
   try {
     const storeId = getStoreId(req);
     const data = await dashboardService.getQuickStats(storeId);
-    
+
     return res.json({
       success: true,
       data,

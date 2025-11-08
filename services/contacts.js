@@ -42,7 +42,7 @@ function normalizePhone(phone) {
   let normalized = phone.replace(/[^\d+]/g, '');
   // Ensure it starts with +
   if (!normalized.startsWith('+')) {
-    normalized = '+' + normalized;
+    normalized = `+${normalized}`;
   }
   return normalized;
 }
@@ -261,12 +261,12 @@ export async function createContact(storeId, contactData) {
   const { hasDuplicate, duplicate } = await checkDuplicates(
     storeId,
     phoneE164,
-    contactData.email
+    contactData.email,
   );
 
   if (hasDuplicate) {
     throw new ConflictError(
-      `Contact already exists with ${duplicate.phoneE164 === phoneE164 ? 'phone' : 'email'}: ${duplicate.phoneE164 === phoneE164 ? phoneE164 : contactData.email}`
+      `Contact already exists with ${duplicate.phoneE164 === phoneE164 ? 'phone' : 'email'}: ${duplicate.phoneE164 === phoneE164 ? phoneE164 : contactData.email}`,
     );
   }
 
@@ -318,13 +318,13 @@ export async function updateContact(storeId, contactId, contactData) {
     if (!isValidPhoneE164(phoneE164)) {
       throw new ValidationError('Invalid phone number format. Use E.164 format (e.g., +306977123456)');
     }
-    
+
     // Check for duplicates
     const { hasDuplicate } = await checkDuplicates(storeId, phoneE164, null, contactId);
     if (hasDuplicate) {
       throw new ConflictError(`Contact already exists with phone: ${phoneE164}`);
     }
-    
+
     updateData.phoneE164 = phoneE164;
   }
 
@@ -333,14 +333,14 @@ export async function updateContact(storeId, contactId, contactData) {
     if (contactData.email && !isValidEmail(contactData.email)) {
       throw new ValidationError('Invalid email format');
     }
-    
+
     if (contactData.email) {
       const { hasDuplicate } = await checkDuplicates(storeId, null, contactData.email, contactId);
       if (hasDuplicate) {
         throw new ConflictError(`Contact already exists with email: ${contactData.email}`);
       }
     }
-    
+
     updateData.email = contactData.email;
   }
 
@@ -487,7 +487,7 @@ export async function getBirthdayContacts(storeId, daysAhead = 7) {
     const thisYearBirthday = new Date(
       today.getFullYear(),
       birthDate.getMonth(),
-      birthDate.getDate()
+      birthDate.getDate(),
     );
 
     // If birthday already passed this year, check next year

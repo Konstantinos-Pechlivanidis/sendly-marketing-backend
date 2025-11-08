@@ -174,8 +174,8 @@ export async function stats(req, res, next) {
           optedIn: stats.byConsent.opted_in,
           optedOut: stats.byConsent.opted_out,
           unknown: stats.byConsent.unknown,
-          consentRate: stats.total > 0 
-            ? Math.round((stats.byConsent.opted_in / stats.total) * 100) 
+          consentRate: stats.total > 0
+            ? Math.round((stats.byConsent.opted_in / stats.total) * 100)
             : 0,
         },
         gender: {
@@ -187,8 +187,8 @@ export async function stats(req, res, next) {
         birthDate: {
           withBirthDate: stats.withBirthday,
           withoutBirthDate: stats.total - stats.withBirthday,
-          birthDateRate: stats.total > 0 
-            ? Math.round((stats.withBirthday / stats.total) * 100) 
+          birthDateRate: stats.total > 0
+            ? Math.round((stats.withBirthday / stats.total) * 100)
             : 0,
         },
         automation: {

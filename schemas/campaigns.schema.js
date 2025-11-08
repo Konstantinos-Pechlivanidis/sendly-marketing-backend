@@ -14,11 +14,11 @@ const scheduleTypeSchema = z.enum(['immediate', 'scheduled', 'recurring']);
 // Audience validation
 const audienceSchema = z.string()
   .refine((val) => {
-    return val === 'all' || 
-           val === 'male' || 
-           val === 'female' || 
-           val === 'men' || 
-           val === 'women' || 
+    return val === 'all' ||
+           val === 'male' ||
+           val === 'female' ||
+           val === 'men' ||
+           val === 'women' ||
            val.startsWith('segment:');
   }, {
     message: 'Audience must be "all", "male", "female", "men", "women", or "segment:<id>"',
