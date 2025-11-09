@@ -12,10 +12,11 @@ import { ValidationError, NotFoundError } from '../utils/errors.js';
  * @param {string} messageId - Message ID
  * @param {string} status - Delivery status
  * @param {Object} metadata - Additional metadata
+ * @param {string} storeId - Optional store ID for security validation (used when called from API)
  * @returns {Promise<Object>} Updated message log
  */
-export async function trackMessageStatus(messageId, status, metadata = {}) {
-  logger.info('Tracking message status', { messageId, status });
+export async function trackMessageStatus(messageId, status, metadata = {}, storeId = null) {
+  logger.info('Tracking message status', { messageId, status, storeId });
 
   // Validate status
   const validStatuses = ['queued', 'sent', 'delivered', 'failed', 'undelivered'];
@@ -23,16 +24,21 @@ export async function trackMessageStatus(messageId, status, metadata = {}) {
     throw new ValidationError(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
   }
 
-  // Find message
-  const message = await prisma.messageLog.findUnique({
-    where: { id: messageId },
+  // ✅ Security: Find message with optional storeId validation
+  const whereClause = { id: messageId };
+  if (storeId) {
+    whereClause.shopId = storeId; // ✅ Validate message belongs to store if storeId provided
+  }
+
+  const message = await prisma.messageLog.findFirst({
+    where: whereClause,
   });
 
   if (!message) {
     throw new NotFoundError('Message');
   }
 
-  // Update message status
+  // ✅ Security: Update message status (shopId already validated if provided)
   const updated = await prisma.messageLog.update({
     where: { id: messageId },
     data: {
@@ -137,14 +143,18 @@ export async function processDeliveryWebhook(webhookData) {
 
 /**
  * Get message tracking details
+ * @param {string} storeId - Store ID (for security validation)
  * @param {string} messageId - Message ID
  * @returns {Promise<Object>} Message tracking details
  */
-export async function getMessageTracking(messageId) {
-  logger.info('Getting message tracking', { messageId });
+export async function getMessageTracking(storeId, messageId) {
+  logger.info('Getting message tracking', { storeId, messageId });
 
-  const message = await prisma.messageLog.findUnique({
-    where: { id: messageId },
+  const message = await prisma.messageLog.findFirst({
+    where: {
+      id: messageId,
+      shopId: storeId, // ✅ Security: Validate message belongs to store
+    },
     include: {
       campaign: {
         select: {

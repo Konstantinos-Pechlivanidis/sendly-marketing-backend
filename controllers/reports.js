@@ -2,6 +2,8 @@ import { getStoreId } from '../middlewares/store-resolution.js';
 import { logger } from '../utils/logger.js';
 import { getKPIs, getCampaignPerformance, getAutomationInsights, getCreditUsage, getContactInsights } from '../services/reports.js';
 import prisma from '../services/prisma.js';
+import { sendSuccess } from '../utils/response.js';
+import { NotFoundError } from '../utils/errors.js';
 
 export async function overview(req, res, next) {
   try {
@@ -25,27 +27,24 @@ export async function overview(req, res, next) {
     // Get contact insights
     const contactInsights = await getContactInsights(storeId, { from, to });
 
-    res.json({
-      success: true,
-      data: {
-        overview: {
-          totalCampaigns: kpis.overview.totalCampaigns,
-          totalContacts: kpis.overview.totalContacts,
-          totalSmsSent: campaignPerformance.summary.totalMessages,
-          deliveryRate: campaignPerformance.summary.deliveryRate,
-          creditsRemaining: kpis.overview.creditsRemaining,
-        },
-        campaignPerformance: campaignPerformance.summary,
-        automationInsights: automationInsights.summary,
-        creditUsage: creditUsage.summary,
-        contactInsights: contactInsights.summary,
-        recentActivity: kpis.recentActivity,
-        health: kpis.health,
-        dateRange: {
-          from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          to: to || new Date().toISOString(),
-          window: '30d',
-        },
+    return sendSuccess(res, {
+      overview: {
+        totalCampaigns: kpis.overview.totalCampaigns,
+        totalContacts: kpis.overview.totalContacts,
+        totalSmsSent: campaignPerformance.summary.totalMessages,
+        deliveryRate: campaignPerformance.summary.deliveryRate,
+        creditsRemaining: kpis.overview.creditsRemaining,
+      },
+      campaignPerformance: campaignPerformance.summary,
+      automationInsights: automationInsights.summary,
+      creditUsage: creditUsage.summary,
+      contactInsights: contactInsights.summary,
+      recentActivity: kpis.recentActivity,
+      health: kpis.health,
+      dateRange: {
+        from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        to: to || new Date().toISOString(),
+        window: '30d',
       },
     });
   } catch (error) {
@@ -111,38 +110,37 @@ export async function campaigns(req, res, next) {
       },
     });
 
-    res.json({
-      success: true,
-      data: {
-        campaigns: campaigns.map(campaign => ({
-          id: campaign.id,
-          name: campaign.name,
-          status: campaign.status,
-          scheduleType: campaign.scheduleType,
-          createdAt: campaign.createdAt,
-          updatedAt: campaign.updatedAt,
-          messageCount: campaign._count.messages,
-        })),
-        totalCount,
-        campaignStats: {
-          totalSent: campaignPerformance.summary.totalMessages,
-          totalDelivered: campaignPerformance.summary.delivered,
-          totalFailed: campaignPerformance.summary.failed,
-          avgDeliveryRate: campaignPerformance.summary.deliveryRate,
-        },
-        topPerformers: campaignPerformance.topPerformers,
-        trends: campaignPerformance.trends,
-        statusBreakdown: campaignPerformance.statusBreakdown,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: totalCount,
-          hasMore: offset + parseInt(limit) < totalCount,
-        },
-        dateRange: {
-          from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          to: to || new Date().toISOString(),
-        },
+    return sendSuccess(res, {
+      campaigns: campaigns.map(campaign => ({
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        scheduleType: campaign.scheduleType,
+        createdAt: campaign.createdAt,
+        updatedAt: campaign.updatedAt,
+        messageCount: campaign._count.messages,
+      })),
+      totalCount,
+      campaignStats: {
+        totalSent: campaignPerformance.summary.totalMessages,
+        totalDelivered: campaignPerformance.summary.delivered,
+        totalFailed: campaignPerformance.summary.failed,
+        avgDeliveryRate: campaignPerformance.summary.deliveryRate,
+      },
+      topPerformers: campaignPerformance.topPerformers,
+      trends: campaignPerformance.trends,
+      statusBreakdown: campaignPerformance.statusBreakdown,
+      pagination: {
+        page: parseInt(page),
+        pageSize: parseInt(limit),
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        hasNextPage: offset + parseInt(limit) < totalCount,
+        hasPrevPage: parseInt(page) > 1,
+      },
+      dateRange: {
+        from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        to: to || new Date().toISOString(),
       },
     });
   } catch (error) {
@@ -172,10 +170,7 @@ export async function campaignById(req, res, next) {
     });
 
     if (!campaign) {
-      return res.status(404).json({
-        success: false,
-        error: 'Campaign not found',
-      });
+      throw new NotFoundError('Campaign');
     }
 
     // Get message analytics
@@ -214,27 +209,24 @@ export async function campaignById(req, res, next) {
       orderBy: { createdAt: 'asc' },
     });
 
-    res.json({
-      success: true,
-      data: {
-        campaign,
-        analytics: {
-          sent,
-          delivered,
-          failed,
-          deliveryRate: Math.round(deliveryRate * 100) / 100,
-        },
-        recipientAnalytics: {
-          total: totalRecipients,
-          optedIn,
-          optedOut,
-        },
-        trends: dailyTrends.map(trend => ({
-          date: trend.createdAt.toISOString().split('T')[0],
-          messages: trend._count.id,
-        })),
-        creditsUsed: sent,
+    return sendSuccess(res, {
+      campaign,
+      analytics: {
+        sent,
+        delivered,
+        failed,
+        deliveryRate: Math.round(deliveryRate * 100) / 100,
       },
+      recipientAnalytics: {
+        total: totalRecipients,
+        optedIn,
+        optedOut,
+      },
+      trends: dailyTrends.map(trend => ({
+        date: trend.createdAt.toISOString().split('T')[0],
+        messages: trend._count.id,
+      })),
+      creditsUsed: sent,
     });
   } catch (error) {
     logger.error('Campaign details error:', error);
@@ -252,18 +244,15 @@ export async function automations(req, res, next) {
     // Get automation insights
     const automationInsights = await getAutomationInsights(storeId, { from, to });
 
-    res.json({
-      success: true,
-      data: {
-        summary: automationInsights.summary,
-        statusBreakdown: automationInsights.statusBreakdown,
-        typeBreakdown: automationInsights.typeBreakdown,
-        trends: automationInsights.trends,
-        activeAutomations: automationInsights.activeAutomations,
-        dateRange: {
-          from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          to: to || new Date().toISOString(),
-        },
+    return sendSuccess(res, {
+      summary: automationInsights.summary,
+      statusBreakdown: automationInsights.statusBreakdown,
+      typeBreakdown: automationInsights.typeBreakdown,
+      trends: automationInsights.trends,
+      activeAutomations: automationInsights.activeAutomations,
+      dateRange: {
+        from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        to: to || new Date().toISOString(),
       },
     });
   } catch (error) {
@@ -333,20 +322,17 @@ export async function messaging(req, res, next) {
     const delivered = statusStats.find(s => s.status === 'delivered')?._count?.status || 0;
     const failed = statusStats.find(s => s.status === 'failed')?._count?.status || 0;
 
-    res.json({
-      success: true,
-      data: {
-        totalMessages,
-        byDirection: { inbound, outbound },
-        byStatus: { sent, delivered, failed },
-        trends: dailyTrends.map(trend => ({
-          date: trend.createdAt.toISOString().split('T')[0],
-          messages: trend._count.id,
-        })),
-        dateRange: {
-          from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          to: to || new Date().toISOString(),
-        },
+    return sendSuccess(res, {
+      totalMessages,
+      byDirection: { inbound, outbound },
+      byStatus: { sent, delivered, failed },
+      trends: dailyTrends.map(trend => ({
+        date: trend.createdAt.toISOString().split('T')[0],
+        messages: trend._count.id,
+      })),
+      dateRange: {
+        from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        to: to || new Date().toISOString(),
       },
     });
   } catch (error) {
@@ -365,17 +351,14 @@ export async function credits(req, res, next) {
     // Get credit usage data
     const creditUsage = await getCreditUsage(storeId, { from, to, usageType });
 
-    res.json({
-      success: true,
-      data: {
-        summary: creditUsage.summary,
-        usageBreakdown: creditUsage.usageBreakdown,
-        trends: creditUsage.trends,
-        recentPurchases: creditUsage.recentPurchases,
-        dateRange: {
-          from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          to: to || new Date().toISOString(),
-        },
+    return sendSuccess(res, {
+      summary: creditUsage.summary,
+      usageBreakdown: creditUsage.usageBreakdown,
+      trends: creditUsage.trends,
+      recentPurchases: creditUsage.recentPurchases,
+      dateRange: {
+        from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        to: to || new Date().toISOString(),
       },
     });
   } catch (error) {
@@ -393,10 +376,7 @@ export async function kpis(req, res, next) {
     // Get KPIs data
     const kpis = await getKPIs(storeId);
 
-    res.json({
-      success: true,
-      data: kpis,
-    });
+    return sendSuccess(res, kpis);
   } catch (error) {
     logger.error('KPIs error:', error);
     next(error);
@@ -413,16 +393,13 @@ export async function contacts(req, res, next) {
     // Get contact insights
     const contactInsights = await getContactInsights(storeId, { from, to });
 
-    res.json({
-      success: true,
-      data: {
-        summary: contactInsights.summary,
-        genderDistribution: contactInsights.genderDistribution,
-        consentBreakdown: contactInsights.consentBreakdown,
-        dateRange: {
-          from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          to: to || new Date().toISOString(),
-        },
+    return sendSuccess(res, {
+      summary: contactInsights.summary,
+      genderDistribution: contactInsights.genderDistribution,
+      consentBreakdown: contactInsights.consentBreakdown,
+      dateRange: {
+        from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        to: to || new Date().toISOString(),
       },
     });
   } catch (error) {
@@ -460,15 +437,12 @@ export async function exportData(req, res, next) {
 
     // For now, return the data directly
     // In production, you'd generate a file and return a download URL
-    res.json({
-      success: true,
-      data: {
-        exportData,
-        format,
-        reportType: type,
-        generatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      },
+    return sendSuccess(res, {
+      exportData,
+      format,
+      reportType: type,
+      generatedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
   } catch (error) {
     logger.error('Export error:', error);

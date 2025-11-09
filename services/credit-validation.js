@@ -259,11 +259,78 @@ export async function getCreditUsageStats(storeId) {
   }
 }
 
+/**
+ * Refund credits to a store (for rollback scenarios)
+ * @param {string} storeId - The store ID
+ * @param {number} credits - Number of credits to refund
+ * @param {string} reason - Reason for refund (e.g., 'campaign:campaignId:rollback')
+ * @returns {Promise<{success: boolean, creditsAdded: number, creditsRemaining: number}>}
+ */
+export async function refundCredits(storeId, credits, reason = 'refund') {
+  if (!storeId) {
+    throw new Error('Store ID is required for credit refund');
+  }
+
+  if (!credits || credits <= 0) {
+    throw new Error('Credits must be greater than 0');
+  }
+
+  try {
+    // Use a transaction to ensure atomic credit refund
+    const result = await prisma.$transaction(async (tx) => {
+      const store = await tx.shop.findUnique({
+        where: { id: storeId },
+        select: { id: true, credits: true, shopDomain: true },
+      });
+
+      if (!store) {
+        throw new Error('Store not found');
+      }
+
+      // Add credits atomically
+      const updatedStore = await tx.shop.update({
+        where: { id: storeId },
+        data: {
+          credits: {
+            increment: credits,
+          },
+        },
+        select: { credits: true },
+      });
+
+      logger.info('Credits refunded successfully', {
+        storeId,
+        storeDomain: store.shopDomain,
+        creditsRefunded: credits,
+        creditsRemaining: updatedStore.credits,
+        reason,
+      });
+
+      return {
+        success: true,
+        creditsAdded: credits,
+        creditsRemaining: updatedStore.credits,
+      };
+    });
+
+    return result;
+  } catch (error) {
+    logger.error('Credit refund failed', {
+      storeId,
+      credits,
+      reason,
+      error: error.message,
+    });
+    throw error;
+  }
+}
+
 export default {
   validateAndConsumeCredits,
   checkAvailableCredits,
   validateCreditsForMessages,
   logAutomationSkip,
   getCreditUsageStats,
+  refundCredits,
   InsufficientCreditsError,
 };

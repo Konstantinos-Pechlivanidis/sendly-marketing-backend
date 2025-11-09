@@ -1,10 +1,13 @@
 import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { getStoreId } from '../middlewares/store-resolution.js';
+import { sendSuccess, sendPaginated } from '../utils/response.js';
+import { NotFoundError, ValidationError } from '../utils/errors.js';
 
 /**
  * Get all public templates with optional category filter
  */
-export async function getAllTemplates(req, res) {
+export async function getAllTemplates(req, res, _next) {
   try {
     const { category, search, limit = 50, offset = 0 } = req.query;
 
@@ -53,37 +56,40 @@ export async function getAllTemplates(req, res) {
       distinct: ['category'],
     });
 
-    res.json({
-      success: true,
-      data: {
-        templates,
-        pagination: {
-          total,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          hasMore: parseInt(offset) + parseInt(limit) < total,
-        },
+    // Convert offset/limit to page/pageSize for standardization
+    const page = Math.floor(parseInt(offset) / parseInt(limit)) + 1;
+    const pageSize = parseInt(limit);
+    const totalPages = Math.ceil(total / pageSize);
+
+    return sendPaginated(
+      res,
+      templates,
+      {
+        page,
+        pageSize,
+        total,
+        totalPages,
+        hasNextPage: parseInt(offset) + parseInt(limit) < total,
+        hasPrevPage: parseInt(offset) > 0,
+      },
+      {
+        templates, // Include templates array for backward compatibility
         categories: categories.map(c => c.category),
       },
-    });
+    );
   } catch (error) {
     logger.error('Failed to fetch templates', {
       error: error.message,
       query: req.query,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch templates',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Get a single template by ID
  */
-export async function getTemplateById(req, res) {
+export async function getTemplateById(req, res, _next) {
   try {
     const { id } = req.params;
 
@@ -105,35 +111,23 @@ export async function getTemplateById(req, res) {
     });
 
     if (!template) {
-      return res.status(404).json({
-        success: false,
-        error: 'Template not found',
-        message: 'The requested template does not exist or is not public',
-      });
+      throw new NotFoundError('Template');
     }
 
-    res.json({
-      success: true,
-      data: template,
-    });
+    return sendSuccess(res, template);
   } catch (error) {
     logger.error('Failed to fetch template', {
       error: error.message,
       templateId: req.params.id,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch template',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Get template categories
  */
-export async function getTemplateCategories(req, res) {
+export async function getTemplateCategories(req, res, _next) {
   try {
     const categories = await prisma.template.findMany({
       where: { isPublic: true },
@@ -142,37 +136,33 @@ export async function getTemplateCategories(req, res) {
       orderBy: { category: 'asc' },
     });
 
-    res.json({
-      success: true,
-      data: categories.map(c => c.category),
-    });
+    return sendSuccess(res, categories.map(c => c.category));
   } catch (error) {
     logger.error('Failed to fetch template categories', {
       error: error.message,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch template categories',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Track template usage (for analytics)
  */
-export async function trackTemplateUsage(req, res) {
+export async function trackTemplateUsage(req, res, _next) {
   try {
     const { templateId } = req.params;
-    const { shopId } = req.shop || {};
+
+    // ✅ Security: Get storeId from context (preferred) or fallback to req.shop
+    let shopId = null;
+    try {
+      shopId = getStoreId(req); // ✅ Use store context if available
+    } catch (error) {
+      // Fallback for legacy support
+      shopId = req.shop?.shopId || req.shop?.id;
+    }
 
     if (!shopId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Shop ID required',
-        message: 'Shop context is required to track template usage',
-      });
+      throw new ValidationError('Shop context is required to track template usage. Please ensure you are properly authenticated.');
     }
 
     // Check if template exists and is public
@@ -184,11 +174,7 @@ export async function trackTemplateUsage(req, res) {
     });
 
     if (!template) {
-      return res.status(404).json({
-        success: false,
-        error: 'Template not found',
-        message: 'The requested template does not exist or is not public',
-      });
+      throw new NotFoundError('Template');
     }
 
     // Upsert template usage record
@@ -211,22 +197,14 @@ export async function trackTemplateUsage(req, res) {
       },
     });
 
-    res.json({
-      success: true,
-      message: 'Template usage tracked',
-    });
+    return sendSuccess(res, null, 'Template usage tracked');
   } catch (error) {
     logger.error('Failed to track template usage', {
       error: error.message,
       templateId: req.params.templateId,
       shopId: req.shop?.id,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to track template usage',
-      message: error.message,
-    });
+    throw error;
   }
 }
 

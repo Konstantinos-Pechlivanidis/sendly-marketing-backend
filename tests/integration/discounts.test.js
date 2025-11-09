@@ -1,15 +1,16 @@
+/* eslint-disable no-console */
 /**
  * Discounts Endpoints Tests
  * Comprehensive tests for all discount-related endpoints
  */
 
-import request from 'supertest';
-import app from '../../app.js';
+import { request } from '../helpers/test-client.js';
 import {
   createTestShop,
   cleanupTestData,
   createTestHeaders,
 } from '../helpers/test-utils.js';
+import { testConfig } from '../config/test-config.js';
 
 describe('Discounts Endpoints', () => {
   let testShop;
@@ -18,12 +19,15 @@ describe('Discounts Endpoints', () => {
   let testHeaders;
 
   beforeAll(async () => {
+    console.log('\n📦 Setting up test shop for discounts tests...');
+    // Use the actual sms-blossom-dev shop from production
     testShop = await createTestShop({
-      shopDomain: 'discounts-test.myshopify.com',
+      shopDomain: testConfig.testShop.shopDomain, // sms-blossom-dev.myshopify.com
     });
     // eslint-disable-next-line no-unused-vars
     testShopId = testShop.id;
     testHeaders = createTestHeaders(testShop.shopDomain);
+    console.log(`✅ Test shop ready: ${testShop.shopDomain} (ID: ${testShop.id})\n`);
   });
 
   afterAll(async () => {
@@ -32,7 +36,7 @@ describe('Discounts Endpoints', () => {
 
   describe('GET /discounts', () => {
     it('should return Shopify discounts', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/discounts')
         .set(testHeaders);
 
@@ -47,7 +51,7 @@ describe('Discounts Endpoints', () => {
     });
 
     it('should filter discounts by status', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/discounts?status=active')
         .set(testHeaders);
 
@@ -60,7 +64,7 @@ describe('Discounts Endpoints', () => {
     it('should return specific discount', async () => {
       const discountId = 'discount_123';
 
-      const res = await request(app)
+      const res = await request()
         .get(`/discounts/${discountId}`)
         .set(testHeaders);
 
@@ -78,7 +82,7 @@ describe('Discounts Endpoints', () => {
     it('should validate discount code', async () => {
       const code = 'SAVE20';
 
-      const res = await request(app)
+      const res = await request()
         .get(`/discounts/validate/${code}`)
         .set(testHeaders);
 
@@ -95,7 +99,7 @@ describe('Discounts Endpoints', () => {
     it('should return invalid for non-existent code', async () => {
       const code = 'INVALID_CODE';
 
-      const res = await request(app)
+      const res = await request()
         .get(`/discounts/validate/${code}`)
         .set(testHeaders);
 

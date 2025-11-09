@@ -1,20 +1,15 @@
 import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { getStoreId } from '../middlewares/store-resolution.js';
+import { sendSuccess } from '../utils/response.js';
+import { ValidationError, NotFoundError } from '../utils/errors.js';
 
 /**
  * Get current user settings
  */
-export async function getSettings(req, res) {
+export async function getSettings(req, res, _next) {
   try {
-    const { shopId } = req.shop || {};
-
-    if (!shopId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Shop ID required',
-        message: 'Shop context is required to fetch settings',
-      });
-    }
+    const shopId = getStoreId(req);
 
     // Get shop with settings and recent transactions
     const shop = await prisma.shop.findUnique({
@@ -38,11 +33,7 @@ export async function getSettings(req, res) {
     });
 
     if (!shop) {
-      return res.status(404).json({
-        success: false,
-        error: 'Shop not found',
-        message: 'Shop not found in our system',
-      });
+      throw new NotFoundError('Shop');
     }
 
     // Usage guide content
@@ -68,58 +59,38 @@ export async function getSettings(req, res) {
       ],
     };
 
-    res.json({
-      success: true,
-      data: {
-        shop: {
-          id: shop.id,
-          shopDomain: shop.shopDomain,
-          credits: shop.credits,
-          createdAt: shop.createdAt,
-          updatedAt: shop.updatedAt,
-        },
-        settings: shop.settings,
-        recentTransactions: shop.billingTransactions,
-        usageGuide,
+    return sendSuccess(res, {
+      shop: {
+        id: shop.id,
+        shopDomain: shop.shopDomain,
+        credits: shop.credits,
+        createdAt: shop.createdAt,
+        updatedAt: shop.updatedAt,
       },
+      settings: shop.settings,
+      recentTransactions: shop.billingTransactions,
+      usageGuide,
     });
   } catch (error) {
     logger.error('Failed to fetch settings', {
       error: error.message,
-      shopId: req.shop?.id,
+      shopId: req.ctx?.store?.id || 'unknown',
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch settings',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Update sender number
  */
-export async function updateSenderNumber(req, res) {
+export async function updateSenderNumber(req, res, _next) {
   try {
     const { senderNumber } = req.body;
-    const { shopId } = req.shop || {};
-
-    if (!shopId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Shop ID required',
-        message: 'Shop context is required to update settings',
-      });
-    }
+    const shopId = getStoreId(req);
 
     // Validate sender number format
     if (!senderNumber || typeof senderNumber !== 'string') {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid sender number',
-        message: 'Sender number is required and must be a string',
-      });
+      throw new ValidationError('Sender number is required and must be a string');
     }
 
     // Validate format: E.164 for phone numbers or 3-11 alphanumeric for names
@@ -127,11 +98,7 @@ export async function updateSenderNumber(req, res) {
     const isAlphanumeric = /^[a-zA-Z0-9]{3,11}$/.test(senderNumber);
 
     if (!isE164 && !isAlphanumeric) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid sender number format',
-        message: 'Sender number must be either a valid E.164 phone number (e.g., +1234567890) or 3-11 alphanumeric characters',
-      });
+      throw new ValidationError('Sender number must be either a valid E.164 phone number (e.g., +1234567890) or 3-11 alphanumeric characters');
     }
 
     // Update or create shop settings
@@ -151,43 +118,26 @@ export async function updateSenderNumber(req, res) {
       senderNumber,
     });
 
-    res.json({
-      success: true,
-      data: {
-        senderNumber: settings.senderNumber,
-        updatedAt: settings.updatedAt,
-      },
-      message: 'Sender number updated successfully',
-    });
+    return sendSuccess(res, {
+      senderNumber: settings.senderNumber,
+      updatedAt: settings.updatedAt,
+    }, 'Sender number updated successfully');
   } catch (error) {
     logger.error('Failed to update sender number', {
       error: error.message,
-      shopId: req.shop?.id,
+      shopId: req.ctx?.store?.id || 'unknown',
       senderNumber: req.body.senderNumber,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update sender number',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Get account information
  */
-export async function getAccountInfo(req, res) {
+export async function getAccountInfo(req, res, _next) {
   try {
-    const { shopId } = req.shop || {};
-
-    if (!shopId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Shop ID required',
-        message: 'Shop context is required to fetch account information',
-      });
-    }
+    const shopId = getStoreId(req);
 
     const shop = await prisma.shop.findUnique({
       where: { id: shopId },
@@ -205,11 +155,7 @@ export async function getAccountInfo(req, res) {
     });
 
     if (!shop) {
-      return res.status(404).json({
-        success: false,
-        error: 'Shop not found',
-        message: 'Shop not found in our system',
-      });
+      throw new NotFoundError('Shop');
     }
 
     // Calculate usage statistics
@@ -231,36 +177,31 @@ export async function getAccountInfo(req, res) {
       },
     });
 
-    res.json({
-      success: true,
-      data: {
-        account: {
-          shopDomain: shop.shopDomain,
-          credits: shop.credits,
-          createdAt: shop.createdAt,
-          senderNumber: shop.settings?.senderNumber,
-          senderName: shop.settings?.senderName,
-        },
-        usage: {
-          totalContacts: shop._count.contacts,
-          totalCampaigns: shop._count.campaigns,
-          totalAutomations: shop._count.automations,
-          totalMessages,
-          totalSpent: totalSpent._sum.amount || 0,
-        },
+    return sendSuccess(res, {
+      shopDomain: shop.shopDomain,
+      shopName: shop.shopName || shop.shopDomain.replace('.myshopify.com', ''),
+      credits: shop.credits,
+      account: {
+        shopDomain: shop.shopDomain,
+        credits: shop.credits,
+        createdAt: shop.createdAt,
+        senderNumber: shop.settings?.senderNumber,
+        senderName: shop.settings?.senderName,
+      },
+      usage: {
+        totalContacts: shop._count.contacts,
+        totalCampaigns: shop._count.campaigns,
+        totalAutomations: shop._count.automations,
+        totalMessages,
+        totalSpent: totalSpent._sum.amount || 0,
       },
     });
   } catch (error) {
     logger.error('Failed to fetch account information', {
       error: error.message,
-      shopId: req.shop?.id,
+      shopId: req.ctx?.store?.id || 'unknown',
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch account information',
-      message: error.message,
-    });
+    throw error;
   }
 }
 

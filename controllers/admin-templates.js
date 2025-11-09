@@ -1,20 +1,18 @@
 import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { sendSuccess, sendCreated, sendPaginated } from '../utils/response.js';
+import { NotFoundError, ValidationError } from '../utils/errors.js';
 
 /**
  * Create a new template (admin only)
  */
-export async function createTemplate(req, res) {
+export async function createTemplate(req, res, _next) {
   try {
     const { title, category, content, previewImage, tags = [] } = req.body;
 
     // Validate required fields
     if (!title || !category || !content) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields',
-        message: 'Title, category, and content are required',
-      });
+      throw new ValidationError('Title, category, and content are required');
     }
 
     const template = await prisma.template.create({
@@ -34,29 +32,20 @@ export async function createTemplate(req, res) {
       category: template.category,
     });
 
-    res.status(201).json({
-      success: true,
-      data: template,
-      message: 'Template created successfully',
-    });
+    return sendCreated(res, template, 'Template created successfully');
   } catch (error) {
     logger.error('Failed to create template', {
       error: error.message,
       body: req.body,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create template',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Update a template (admin only)
  */
-export async function updateTemplate(req, res) {
+export async function updateTemplate(req, res, _next) {
   try {
     const { id } = req.params;
     const { title, category, content, previewImage, tags, isPublic } = req.body;
@@ -67,11 +56,7 @@ export async function updateTemplate(req, res) {
     });
 
     if (!existingTemplate) {
-      return res.status(404).json({
-        success: false,
-        error: 'Template not found',
-        message: 'The requested template does not exist',
-      });
+      throw new NotFoundError('Template');
     }
 
     const template = await prisma.template.update({
@@ -92,30 +77,21 @@ export async function updateTemplate(req, res) {
       category: template.category,
     });
 
-    res.json({
-      success: true,
-      data: template,
-      message: 'Template updated successfully',
-    });
+    return sendSuccess(res, template, 'Template updated successfully');
   } catch (error) {
     logger.error('Failed to update template', {
       error: error.message,
       templateId: req.params.id,
       body: req.body,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update template',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Delete a template (admin only)
  */
-export async function deleteTemplate(req, res) {
+export async function deleteTemplate(req, res, _next) {
   try {
     const { id } = req.params;
 
@@ -125,11 +101,7 @@ export async function deleteTemplate(req, res) {
     });
 
     if (!existingTemplate) {
-      return res.status(404).json({
-        success: false,
-        error: 'Template not found',
-        message: 'The requested template does not exist',
-      });
+      throw new NotFoundError('Template');
     }
 
     // Delete template (cascade will handle related records)
@@ -142,28 +114,20 @@ export async function deleteTemplate(req, res) {
       title: existingTemplate.title,
     });
 
-    res.json({
-      success: true,
-      message: 'Template deleted successfully',
-    });
+    return sendSuccess(res, null, 'Template deleted successfully');
   } catch (error) {
     logger.error('Failed to delete template', {
       error: error.message,
       templateId: req.params.id,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to delete template',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Get all templates (including private ones) for admin management
  */
-export async function getAllTemplatesAdmin(req, res) {
+export async function getAllTemplatesAdmin(req, res, _next) {
   try {
     const { category, search, limit = 50, offset = 0 } = req.query;
 
@@ -202,36 +166,36 @@ export async function getAllTemplatesAdmin(req, res) {
       prisma.template.count({ where }),
     ]);
 
-    res.json({
-      success: true,
-      data: {
-        templates,
-        pagination: {
-          total,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          hasMore: parseInt(offset) + parseInt(limit) < total,
-        },
+    // Convert offset/limit to page/pageSize for standardization
+    const page = Math.floor(parseInt(offset) / parseInt(limit)) + 1;
+    const pageSize = parseInt(limit);
+    const totalPages = Math.ceil(total / pageSize);
+
+    return sendPaginated(
+      res,
+      templates,
+      {
+        page,
+        pageSize,
+        total,
+        totalPages,
+        hasNextPage: parseInt(offset) + parseInt(limit) < total,
+        hasPrevPage: parseInt(offset) > 0,
       },
-    });
+    );
   } catch (error) {
     logger.error('Failed to fetch templates for admin', {
       error: error.message,
       query: req.query,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch templates',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Get template usage statistics
  */
-export async function getTemplateStats(req, res) {
+export async function getTemplateStats(req, res, _next) {
   try {
     const { id } = req.params;
 
@@ -253,29 +217,22 @@ export async function getTemplateStats(req, res) {
     });
 
     if (!template) {
-      return res.status(404).json({
-        success: false,
-        error: 'Template not found',
-        message: 'The requested template does not exist',
-      });
+      throw new NotFoundError('Template');
     }
 
     const totalUsage = template.usage.reduce((sum, usage) => sum + usage.usedCount, 0);
     const uniqueShops = template.usage.length;
 
-    res.json({
-      success: true,
-      data: {
-        template: {
-          id: template.id,
-          title: template.title,
-          category: template.category,
-        },
-        stats: {
-          totalUsage,
-          uniqueShops,
-          usage: template.usage,
-        },
+    return sendSuccess(res, {
+      template: {
+        id: template.id,
+        title: template.title,
+        category: template.category,
+      },
+      stats: {
+        totalUsage,
+        uniqueShops,
+        usage: template.usage,
       },
     });
   } catch (error) {
@@ -283,12 +240,7 @@ export async function getTemplateStats(req, res) {
       error: error.message,
       templateId: req.params.id,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch template statistics',
-      message: error.message,
-    });
+    throw error;
   }
 }
 

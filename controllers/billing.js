@@ -2,6 +2,8 @@ import { getStoreId } from '../middlewares/store-resolution.js';
 import { logger } from '../utils/logger.js';
 import billingService from '../services/billing.js';
 import prisma from '../services/prisma.js';
+import { sendSuccess, sendPaginated } from '../utils/response.js';
+import { ValidationError } from '../utils/errors.js';
 
 /**
  * Billing Controller
@@ -18,14 +20,12 @@ export async function getBalance(req, res, next) {
 
     const balance = await billingService.getBalance(storeId);
 
-    return res.json({
-      success: true,
-      data: balance,
-    });
+    return sendSuccess(res, balance);
   } catch (error) {
     logger.error('Get balance error', {
       error: error.message,
-      storeId: getStoreId(req),
+      stack: error.stack,
+      storeId: req.ctx?.store?.id,
     });
     next(error);
   }
@@ -48,13 +48,12 @@ export async function getPackages(req, res, next) {
     const currency = shop?.currency || 'EUR';
     const packages = billingService.getPackages(currency);
 
-    return res.json({
-      success: true,
-      data: packages,
-    });
+    return sendSuccess(res, { packages });
   } catch (error) {
     logger.error('Get packages error', {
       error: error.message,
+      stack: error.stack,
+      storeId: req.ctx?.store?.id,
     });
     next(error);
   }
@@ -70,19 +69,11 @@ export async function createPurchase(req, res, next) {
     const { packageId, successUrl, cancelUrl } = req.body;
 
     if (!packageId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Package ID required',
-        message: 'Package ID is required to create purchase session',
-      });
+      throw new ValidationError('Package ID is required to create purchase session');
     }
 
     if (!successUrl || !cancelUrl) {
-      return res.status(400).json({
-        success: false,
-        error: 'Return URLs required',
-        message: 'Success and cancel URLs are required',
-      });
+      throw new ValidationError('Success and cancel URLs are required');
     }
 
     const session = await billingService.createPurchaseSession(
@@ -91,11 +82,7 @@ export async function createPurchase(req, res, next) {
       { successUrl, cancelUrl },
     );
 
-    return res.json({
-      success: true,
-      data: session,
-      message: 'Checkout session created successfully',
-    });
+    return sendSuccess(res, session, 'Checkout session created successfully');
   } catch (error) {
     logger.error('Create purchase error', {
       error: error.message,
@@ -123,12 +110,8 @@ export async function getHistory(req, res, next) {
 
     const result = await billingService.getTransactionHistory(storeId, filters);
 
-    return res.json({
-      success: true,
-      data: {
-        transactions: result.transactions,
-        pagination: result.pagination,
-      },
+    return sendPaginated(res, result.transactions, result.pagination, {
+      transactions: result.transactions, // Include for backward compatibility
     });
   } catch (error) {
     logger.error('Get transaction history error', {
@@ -155,12 +138,8 @@ export async function getBillingHistory(req, res, next) {
 
     const result = await billingService.getBillingHistory(storeId, filters);
 
-    return res.json({
-      success: true,
-      data: {
-        transactions: result.transactions,
-        pagination: result.pagination,
-      },
+    return sendPaginated(res, result.transactions, result.pagination, {
+      transactions: result.transactions, // Include for backward compatibility
     });
   } catch (error) {
     logger.error('Get billing history error', {

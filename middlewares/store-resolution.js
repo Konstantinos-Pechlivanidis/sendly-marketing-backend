@@ -1,5 +1,6 @@
 import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { ValidationError } from '../utils/errors.js';
 
 /**
  * Store Resolution Middleware - Single Source of Truth
@@ -30,6 +31,7 @@ export async function resolveStore(req, res, next) {
 
     // Method 1: Shopify session/JWT (primary method)
     // Check multiple possible sources for shop domain
+    // Note: Express converts headers to lowercase, so we only check lowercase
     const possibleShopDomain =
       req.headers['x-shopify-shop-domain'] ||
       req.headers['x-shopify-shop'] ||
@@ -41,7 +43,16 @@ export async function resolveStore(req, res, next) {
       req.body?.shop_domain ||
       req.body?.shop_name;
 
-    logger.info('🔍 Possible shop domain found:', possibleShopDomain);
+    logger.info('🔍 Possible shop domain found:', {
+      found: possibleShopDomain,
+      headers: {
+        'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+        'x-shopify-shop': req.headers['x-shopify-shop'],
+        'x-shopify-shop-name': req.headers['x-shopify-shop-name'],
+      },
+      query: req.query,
+      bodyKeys: req.body ? Object.keys(req.body) : [],
+    });
 
     // Method 1.5: Extract shop domain from URL path (for embedded Shopify apps)
     // URL pattern: /store/{shop-domain}/apps/{app-name}/app
@@ -90,13 +101,20 @@ export async function resolveStore(req, res, next) {
       }
     }
 
-    if (!shopDomain) {
-      // No shop domain provided - use development fallback
+    // Final validation - ensure shopDomain is a valid string
+    if (!shopDomain || typeof shopDomain !== 'string') {
+      // No shop domain provided - use development fallback for testing
       logger.warn('No shop domain provided in headers, query, or body', {
-        headers: Object.keys(req.headers),
+        headers: Object.keys(req.headers).filter(h => h.toLowerCase().includes('shop')),
+        headerValues: {
+          'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+          'x-shopify-shop': req.headers['x-shopify-shop'],
+          'x-shopify-shop-name': req.headers['x-shopify-shop-name'],
+        },
         query: req.query,
         body: req.body ? Object.keys(req.body) : 'no body',
         url: req.url,
+        possibleShopDomain,
       });
 
       // For development/testing, use a default store
@@ -104,10 +122,38 @@ export async function resolveStore(req, res, next) {
       logger.info('Using development fallback store', { shopDomain });
     }
 
-    // Ensure shopDomain is never undefined
-    if (!shopDomain) {
-      shopDomain = 'sms-blossom-dev.myshopify.com';
-      logger.warn('shopDomain was undefined, using fallback', { shopDomain });
+    // Ensure shopDomain is a valid string after all attempts
+    if (!shopDomain || typeof shopDomain !== 'string') {
+      logger.error('Invalid shopDomain after all attempts', {
+        shopDomain,
+        type: typeof shopDomain,
+        headers: Object.keys(req.headers).filter(h => h.toLowerCase().includes('shop')),
+        headerValues: {
+          'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+          'x-shopify-shop': req.headers['x-shopify-shop'],
+        },
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid shop domain',
+        message: 'Unable to determine shop domain from request. Please provide X-Shopify-Shop-Domain header.',
+        code: 'INVALID_SHOP_DOMAIN',
+      });
+    }
+
+    // Double-check shopDomain is valid before querying
+    if (!shopDomain || typeof shopDomain !== 'string') {
+      logger.error('shopDomain is invalid before Prisma query', {
+        shopDomain,
+        type: typeof shopDomain,
+        possibleShopDomain,
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid shop domain',
+        message: 'Unable to determine shop domain from request. Please provide X-Shopify-Shop-Domain header.',
+        code: 'INVALID_SHOP_DOMAIN',
+      });
     }
 
     try {
@@ -310,7 +356,13 @@ export function requireStore(req, res, next) {
  */
 export function getStoreId(req) {
   if (!req.ctx?.store?.id) {
-    throw new Error('Store context not available');
+    // Provide more context in error message
+    const endpoint = req.originalUrl || req.url || 'unknown';
+    const action = endpoint.includes('settings') ? 'fetch settings' :
+      endpoint.includes('automations') ? 'fetch automations' :
+        endpoint.includes('account') ? 'fetch account information' :
+          'access this resource';
+    throw new ValidationError(`Shop context is required to ${action}. Please ensure you are properly authenticated.`, 400);
   }
   return req.ctx.store.id;
 }

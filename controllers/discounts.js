@@ -1,5 +1,7 @@
 import { getDiscountCodes, getDiscountCode } from '../services/shopify.js';
 import { logger } from '../utils/logger.js';
+import { sendSuccess } from '../utils/response.js';
+import { ValidationError } from '../utils/errors.js';
 
 /**
  * Get available discount codes for a shop
@@ -7,7 +9,10 @@ import { logger } from '../utils/logger.js';
  */
 export async function getShopifyDiscounts(req, res, next) {
   try {
-    const shopDomain = req.shop;
+    const shopDomain = req.ctx?.store?.shopDomain;
+    if (!shopDomain) {
+      throw new ValidationError('Store context is required');
+    }
 
     const discountCodes = await getDiscountCodes(shopDomain);
 
@@ -22,17 +27,14 @@ export async function getShopifyDiscounts(req, res, next) {
       active: activeDiscounts.length,
     });
 
-    res.json({
-      success: true,
-      data: {
-        discounts: activeDiscounts,
-        total: discountCodes.length,
-        active: activeDiscounts.length,
-      },
+    return sendSuccess(res, {
+      discounts: activeDiscounts,
+      total: discountCodes.length,
+      active: activeDiscounts.length,
     });
   } catch (error) {
     logger.error('Error in getShopifyDiscounts', {
-      shopDomain: req.shop,
+      shopDomain: req.ctx?.store?.shopDomain || 'unknown',
       error: error.message,
     });
     next(error);
@@ -46,7 +48,10 @@ export async function getShopifyDiscounts(req, res, next) {
 export async function getShopifyDiscount(req, res, next) {
   try {
     const { id } = req.params;
-    const shopDomain = req.shop;
+    const shopDomain = req.ctx?.store?.shopDomain;
+    if (!shopDomain) {
+      throw new ValidationError('Store context is required');
+    }
 
     const discount = await getDiscountCode(shopDomain, id);
 
@@ -56,13 +61,10 @@ export async function getShopifyDiscount(req, res, next) {
       title: discount.title,
     });
 
-    res.json({
-      success: true,
-      data: discount,
-    });
+    return sendSuccess(res, discount);
   } catch (error) {
     logger.error('Error in getShopifyDiscount', {
-      shopDomain: req.shop,
+      shopDomain: req.ctx?.store?.shopDomain || 'unknown',
       discountId: req.params.id,
       error: error.message,
     });
@@ -77,13 +79,13 @@ export async function getShopifyDiscount(req, res, next) {
 export async function validateDiscount(req, res, next) {
   try {
     const { discountId } = req.body;
-    const shopDomain = req.shop;
+    const shopDomain = req.ctx?.store?.shopDomain;
+    if (!shopDomain) {
+      throw new ValidationError('Store context is required');
+    }
 
     if (!discountId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Discount ID is required',
-      });
+      throw new ValidationError('Discount ID is required');
     }
 
     const discount = await getDiscountCode(shopDomain, discountId);
@@ -100,19 +102,16 @@ export async function validateDiscount(req, res, next) {
       status: discount.status,
     });
 
-    res.json({
-      success: true,
-      data: {
-        discount,
-        isValid,
-        canUse,
-        reason: !isValid ? 'Discount is not active or has expired' :
-          !canUse ? 'Discount is not available for use' : null,
-      },
+    return sendSuccess(res, {
+      discount,
+      isValid,
+      canUse,
+      reason: !isValid ? 'Discount is not active or has expired' :
+        !canUse ? 'Discount is not available for use' : null,
     });
   } catch (error) {
     logger.error('Error in validateDiscount', {
-      shopDomain: req.shop,
+      shopDomain: req.ctx?.store?.shopDomain || 'unknown',
       discountId: req.body.discountId,
       error: error.message,
     });

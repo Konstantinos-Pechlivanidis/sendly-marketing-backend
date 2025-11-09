@@ -1,20 +1,16 @@
 import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { getStoreId } from '../middlewares/store-resolution.js';
+import { sendSuccess } from '../utils/response.js';
+import { NotFoundError } from '../utils/errors.js';
 
 /**
  * Get all automations for the current user
  */
-export async function getUserAutomations(req, res) {
+export async function getUserAutomations(req, res, _next) {
   try {
-    const { shopId } = req.shop || {};
-
-    if (!shopId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Shop ID required',
-        message: 'Shop context is required to fetch automations',
-      });
-    }
+    // ✅ Security: Get storeId from context
+    const shopId = getStoreId(req);
 
     const userAutomations = await prisma.userAutomation.findMany({
       where: { shopId },
@@ -48,40 +44,26 @@ export async function getUserAutomations(req, res) {
       updatedAt: userAutomation.updatedAt,
     }));
 
-    res.json({
-      success: true,
-      data: automations,
-    });
+    return sendSuccess(res, automations);
   } catch (error) {
     logger.error('Failed to fetch user automations', {
       error: error.message,
-      shopId: req.shop?.id,
+      shopId: req.ctx?.store?.id,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch automations',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Update user automation (message content or active status)
  */
-export async function updateUserAutomation(req, res) {
+export async function updateUserAutomation(req, res, _next) {
   try {
     const { id } = req.params;
     const { userMessage, isActive } = req.body;
-    const { shopId } = req.shop || {};
 
-    if (!shopId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Shop ID required',
-        message: 'Shop context is required to update automations',
-      });
-    }
+    // ✅ Security: Get storeId from context
+    const shopId = getStoreId(req);
 
     // Check if the user automation exists and belongs to the shop
     const existingUserAutomation = await prisma.userAutomation.findFirst({
@@ -95,11 +77,7 @@ export async function updateUserAutomation(req, res) {
     });
 
     if (!existingUserAutomation) {
-      return res.status(404).json({
-        success: false,
-        error: 'Automation not found',
-        message: 'The requested automation does not exist or does not belong to your shop',
-      });
+      throw new NotFoundError('Automation');
     }
 
     // Update the user automation
@@ -129,42 +107,33 @@ export async function updateUserAutomation(req, res) {
       changes: { userMessage, isActive },
     });
 
-    res.json({
-      success: true,
-      data: {
-        id: updatedUserAutomation.id,
-        automationId: updatedUserAutomation.automationId,
-        title: updatedUserAutomation.automation.title,
-        description: updatedUserAutomation.automation.description,
-        triggerEvent: updatedUserAutomation.automation.triggerEvent,
-        defaultMessage: updatedUserAutomation.automation.defaultMessage,
-        userMessage: updatedUserAutomation.userMessage,
-        isActive: updatedUserAutomation.isActive,
-        isSystemDefault: updatedUserAutomation.automation.isSystemDefault,
-        createdAt: updatedUserAutomation.createdAt,
-        updatedAt: updatedUserAutomation.updatedAt,
-      },
-      message: 'Automation updated successfully',
-    });
+    return sendSuccess(res, {
+      id: updatedUserAutomation.id,
+      automationId: updatedUserAutomation.automationId,
+      title: updatedUserAutomation.automation.title,
+      description: updatedUserAutomation.automation.description,
+      triggerEvent: updatedUserAutomation.automation.triggerEvent,
+      defaultMessage: updatedUserAutomation.automation.defaultMessage,
+      userMessage: updatedUserAutomation.userMessage,
+      isActive: updatedUserAutomation.isActive,
+      isSystemDefault: updatedUserAutomation.automation.isSystemDefault,
+      createdAt: updatedUserAutomation.createdAt,
+      updatedAt: updatedUserAutomation.updatedAt,
+    }, 'Automation updated successfully');
   } catch (error) {
     logger.error('Failed to update user automation', {
       error: error.message,
       userAutomationId: req.params.id,
-      shopId: req.shop?.id,
+      shopId: req.ctx?.store?.id,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update automation',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Get system default automations (admin only)
  */
-export async function getSystemDefaults(req, res) {
+export async function getSystemDefaults(req, res, _next) {
   try {
     const systemAutomations = await prisma.automation.findMany({
       where: { isSystemDefault: true },
@@ -181,27 +150,19 @@ export async function getSystemDefaults(req, res) {
       orderBy: { createdAt: 'asc' },
     });
 
-    res.json({
-      success: true,
-      data: systemAutomations,
-    });
+    return sendSuccess(res, systemAutomations);
   } catch (error) {
     logger.error('Failed to fetch system default automations', {
       error: error.message,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch system defaults',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Sync new system defaults to all users (admin only)
  */
-export async function syncSystemDefaults(req, res) {
+export async function syncSystemDefaults(req, res, _next) {
   try {
     // Get all shops
     const shops = await prisma.shop.findMany({
@@ -248,42 +209,26 @@ export async function syncSystemDefaults(req, res) {
       totalAutomations: systemAutomations.length,
     });
 
-    res.json({
-      success: true,
-      data: {
-        syncedCount,
-        totalShops: shops.length,
-        totalAutomations: systemAutomations.length,
-      },
-      message: `Successfully synced ${syncedCount} new automations to all users`,
-    });
+    return sendSuccess(res, {
+      syncedCount,
+      totalShops: shops.length,
+      totalAutomations: systemAutomations.length,
+    }, `Successfully synced ${syncedCount} new automations to all users`);
   } catch (error) {
     logger.error('Failed to sync system defaults', {
       error: error.message,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to sync system defaults',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Get automation statistics for a user
  */
-export async function getAutomationStats(req, res) {
+export async function getAutomationStats(req, res, _next) {
   try {
-    const { shopId } = req.shop || {};
-
-    if (!shopId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Shop ID required',
-        message: 'Shop context is required to fetch automation statistics',
-      });
-    }
+    // ✅ Security: Get storeId from context
+    const shopId = getStoreId(req);
 
     const stats = await prisma.userAutomation.aggregate({
       where: { shopId },
@@ -302,25 +247,17 @@ export async function getAutomationStats(req, res) {
       },
     });
 
-    res.json({
-      success: true,
-      data: {
-        totalAutomations: stats._count.id,
-        activeAutomations: activeCount,
-        inactiveAutomations: stats._count.id - activeCount,
-      },
+    return sendSuccess(res, {
+      totalAutomations: stats._count.id,
+      activeAutomations: activeCount,
+      inactiveAutomations: stats._count.id - activeCount,
     });
   } catch (error) {
     logger.error('Failed to fetch automation statistics', {
       error: error.message,
-      shopId: req.shop?.id,
+      shopId: req.ctx?.store?.id,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch automation statistics',
-      message: error.message,
-    });
+    throw error;
   }
 }
 

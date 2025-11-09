@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 /**
  * Comprehensive Endpoint Testing Script
  * Tests all API endpoints with dummy data and verifies database operations

@@ -3,13 +3,12 @@
  * Tests for health check and core endpoints
  */
 
-import request from 'supertest';
-import app from '../../app.js';
+import { request } from '../helpers/test-client.js';
 
 describe('Core Endpoints', () => {
   describe('GET /', () => {
     it('should return API status', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/');
 
       expect(res.status).toBe(200);
@@ -21,7 +20,7 @@ describe('Core Endpoints', () => {
 
   describe('GET /health', () => {
     it('should return basic health check', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/health');
 
       expect(res.status).toBe(200);
@@ -32,7 +31,7 @@ describe('Core Endpoints', () => {
 
   describe('GET /health/config', () => {
     it('should return configuration health', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/health/config');
 
       expect(res.status).toBe(200);
@@ -45,7 +44,7 @@ describe('Core Endpoints', () => {
 
   describe('GET /health/full', () => {
     it('should return comprehensive health check', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/health/full');
 
       expect(res.status).toBe(200);
@@ -61,7 +60,7 @@ describe('Core Endpoints', () => {
 
   describe('GET /metrics', () => {
     it('should return metrics in JSON format', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/metrics');
 
       expect(res.status).toBe(200);
@@ -69,7 +68,7 @@ describe('Core Endpoints', () => {
     });
 
     it('should return metrics in Prometheus format', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/metrics?format=prometheus');
 
       expect(res.status).toBe(200);
@@ -79,7 +78,7 @@ describe('Core Endpoints', () => {
 
   describe('GET /whoami', () => {
     it('should return shop information when authenticated', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/whoami')
         .set({
           'X-Shopify-Shop-Domain': 'test-store.myshopify.com',

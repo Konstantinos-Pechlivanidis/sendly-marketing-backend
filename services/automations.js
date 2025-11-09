@@ -88,7 +88,8 @@ export async function triggerAutomation({
       shopId,
     });
 
-    if (smsResult.success) {
+    // sendSms returns {messageId, status} on success, throws error on failure
+    if (smsResult && smsResult.messageId) {
       // Log the automation trigger
       await prisma.messageLog.create({
         data: {
@@ -116,17 +117,16 @@ export async function triggerAutomation({
         automationId: userAutomation.automationId,
       };
     } else {
-      logger.error('Failed to send automation SMS', {
+      logger.error('Failed to send automation SMS - unexpected result', {
         shopId,
         contactId,
         triggerEvent,
-        error: smsResult.error,
+        result: smsResult,
       });
 
       return {
         success: false,
-        reason: 'SMS sending failed',
-        error: smsResult.error,
+        reason: 'SMS sending failed - unexpected result',
       };
     }
   } catch (error) {

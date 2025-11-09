@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Global Test Teardown
  * Runs once after all tests

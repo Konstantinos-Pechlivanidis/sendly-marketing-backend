@@ -4,6 +4,8 @@ import { handleMittoSend } from './jobs/mittoSend.js';
 import { logger } from '../utils/logger.js';
 
 // SMS Worker
+// Optimized for high-volume SMS sending (500k+ SMS/day)
+// Concurrency and rate limits adjusted for Black Friday peak loads
 export const smsWorker = new Worker(
   'sms-send',
   async (job) => {
@@ -12,9 +14,16 @@ export const smsWorker = new Worker(
   },
   {
     connection: queueRedis,
-    concurrency: 20,
-    removeOnComplete: 100,
-    removeOnFail: 50,
+    concurrency: 200, // Increased from 50 to handle 500k+ SMS campaigns
+    removeOnComplete: 1000, // Keep more completed jobs for monitoring
+    removeOnFail: 500, // Keep more failed jobs for analysis
+    limiter: {
+      max: 500, // Max 500 jobs per duration (increased from 100)
+      // Note: Verify with Mitto support for enterprise rate limits
+      // Standard accounts: 100-200 SMS/second
+      // Enterprise accounts: 500-1000 SMS/second (contact Mitto)
+      duration: 1000, // Per second
+    },
   },
 );
 

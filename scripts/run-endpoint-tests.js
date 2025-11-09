@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Run Endpoint Tests
  * Executes comprehensive endpoint testing with database verification

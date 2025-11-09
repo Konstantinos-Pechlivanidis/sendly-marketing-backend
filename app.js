@@ -164,8 +164,12 @@ app.use('/audiences', resolveStore, requireStore, audiencesRoutes);
 app.use('/shopify', resolveStore, requireStore, shopifyRoutes);
 
 // Public routes (no store context required)
-app.use('/templates', templatesRoutes); // Public templates
-app.use('/tracking', trackingRoutes); // Tracking endpoints
+app.use('/templates', templatesRoutes); // Public templates (trackTemplateUsage handles store context internally)
+
+// Tracking routes (require store context for security)
+app.use('/tracking', resolveStore, requireStore, trackingRoutes); // ✅ Tracking endpoints now require store context
+
+// Webhook routes (no store context - validated by webhook signatures)
 app.use('/automation-webhooks', automationWebhookRoutes); // Automation webhooks
 app.use('/webhooks/stripe', stripeWebhookRoutes); // Stripe webhooks
 
@@ -176,15 +180,7 @@ app.use('/admin/templates', resolveStore, requireStore, adminTemplatesRoutes);
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  process.exit(0);
-});
+// Note: Graceful shutdown is handled in index.js
+// This ensures proper cleanup of all connections (Redis, Prisma, etc.)
 
 export default app;

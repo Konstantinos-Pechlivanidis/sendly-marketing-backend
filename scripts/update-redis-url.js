@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 /**
  * Helper script to update Redis URL in .env file
  * Run: node scripts/update-redis-url.js

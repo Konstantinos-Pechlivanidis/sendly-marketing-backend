@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { diagnostics as shopifyDiag } from '../services/shopify.js';
 import prisma from '../services/prisma.js';
-import IORedis from 'ioredis';
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
 import { metrics } from '../utils/metrics.js';
@@ -50,12 +49,18 @@ r.get('/health/full', async (req, res) => {
   // Redis health
   try {
     const redisStart = Date.now();
-    const redis = new IORedis(process.env.REDIS_URL, { lazyConnect: true });
-    await redis.connect();
-    await redis.ping();
-    await redis.quit();
+    const { checkRedisHealth } = await import('../config/redis.js');
+    const { queueRedis } = await import('../config/redis.js');
+    const health = await checkRedisHealth(queueRedis);
     const redisDuration = Date.now() - redisStart;
-    out.checks.redis = { status: 'healthy', responseTime: `${redisDuration}ms` };
+    out.checks.redis = {
+      status: health.status,
+      responseTime: `${redisDuration}ms`,
+      latency: health.latency,
+    };
+    if (health.status !== 'healthy') {
+      out.ok = false;
+    }
   } catch (e) {
     out.checks.redis = { status: 'unhealthy', error: String(e.message) };
     out.ok = false;
@@ -132,14 +137,44 @@ r.get('/health/full', async (req, res) => {
 
 // app uninstall webhook (Shopify validates HMAC if you use Registry.process in a handler)
 r.post('/webhooks/app_uninstalled', async (req, res) => {
-  // TODO: add Shopify.Webhooks.Registry.process(req, res) if using the Registry,
-  // and cleanup any shop data linked to req.body.myshopify_domain
+  // Note: Shopify webhook validation should be implemented via Registry.process
+  // Cleanup shop data when app is uninstalled
+  const shopDomain = req.body?.myshopify_domain;
+  if (shopDomain) {
+    // TODO: Implement shop cleanup logic when app is uninstalled
+    // This should remove all shop-related data from the database
+    logger.info('App uninstall webhook received', { shopDomain });
+  }
   res.status(200).send('OK');
 });
 
-// example "whoami" with session token
-r.get('/whoami', (req, res) => {
-  res.json({ shop: req.shop });
+// example "whoami" with session token - requires store context
+r.get('/whoami', async (req, res) => {
+  // ✅ Use store context if available (from resolveStore middleware)
+  if (req.ctx?.store) {
+    return res.json({
+      success: true,
+      shop: {
+        id: req.ctx.store.id,
+        shopDomain: req.ctx.store.shopDomain,
+        credits: req.ctx.store.credits,
+        currency: req.ctx.store.currency,
+        timezone: req.ctx.store.timezone,
+      },
+    });
+  }
+
+  // Fallback for legacy support
+  if (req.shop) {
+    return res.json({ shop: req.shop });
+  }
+
+  // No store context available
+  return res.status(401).json({
+    success: false,
+    error: 'Store context required',
+    message: 'This endpoint requires store context. Please ensure you are properly authenticated.',
+  });
 });
 
 // Metrics endpoint (for monitoring systems)

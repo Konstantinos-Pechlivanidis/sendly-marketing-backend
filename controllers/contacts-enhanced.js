@@ -1,6 +1,8 @@
 import { getStoreId } from '../middlewares/store-resolution.js';
 import { logger } from '../utils/logger.js';
 import contactsService from '../services/contacts.js';
+import { sendSuccess, sendCreated, sendPaginated } from '../utils/response.js';
+import { ValidationError } from '../utils/errors.js';
 
 /**
  * Enhanced Contacts Controller
@@ -28,11 +30,12 @@ export async function list(req, res, next) {
 
     const result = await contactsService.listContacts(storeId, filters);
 
-    return res.json({
-      success: true,
-      data: {
+    return sendPaginated(
+      res,
+      result.contacts,
+      result.pagination,
+      {
         contacts: result.contacts,
-        pagination: result.pagination,
         filters: {
           applied: filters,
           available: {
@@ -42,7 +45,7 @@ export async function list(req, res, next) {
           },
         },
       },
-    });
+    );
   } catch (error) {
     logger.error('List contacts error', {
       error: error.message,
@@ -64,10 +67,7 @@ export async function getOne(req, res, next) {
 
     const contact = await contactsService.getContactById(storeId, id);
 
-    return res.json({
-      success: true,
-      data: contact,
-    });
+    return sendSuccess(res, contact);
   } catch (error) {
     logger.error('Get contact error', {
       error: error.message,
@@ -89,11 +89,7 @@ export async function create(req, res, next) {
 
     const contact = await contactsService.createContact(storeId, contactData);
 
-    return res.status(201).json({
-      success: true,
-      data: contact,
-      message: 'Contact created successfully',
-    });
+    return sendCreated(res, contact, 'Contact created successfully');
   } catch (error) {
     logger.error('Create contact error', {
       error: error.message,
@@ -116,11 +112,7 @@ export async function update(req, res, next) {
 
     const contact = await contactsService.updateContact(storeId, id, contactData);
 
-    return res.json({
-      success: true,
-      data: contact,
-      message: 'Contact updated successfully',
-    });
+    return sendSuccess(res, contact, 'Contact updated successfully');
   } catch (error) {
     logger.error('Update contact error', {
       error: error.message,
@@ -142,10 +134,7 @@ export async function remove(req, res, next) {
 
     await contactsService.deleteContact(storeId, id);
 
-    return res.json({
-      success: true,
-      message: 'Contact deleted successfully',
-    });
+    return sendSuccess(res, null, 'Contact deleted successfully');
   } catch (error) {
     logger.error('Delete contact error', {
       error: error.message,
@@ -166,35 +155,40 @@ export async function stats(req, res, next) {
 
     const stats = await contactsService.getContactStats(storeId);
 
-    return res.json({
-      success: true,
-      data: {
-        total: stats.total,
-        smsConsent: {
-          optedIn: stats.byConsent.opted_in,
-          optedOut: stats.byConsent.opted_out,
-          unknown: stats.byConsent.unknown,
-          consentRate: stats.total > 0
-            ? Math.round((stats.byConsent.opted_in / stats.total) * 100)
-            : 0,
-        },
-        gender: {
-          male: stats.byGender.male,
-          female: stats.byGender.female,
-          other: stats.byGender.other,
-          unspecified: stats.byGender.unknown,
-        },
-        birthDate: {
-          withBirthDate: stats.withBirthday,
-          withoutBirthDate: stats.total - stats.withBirthday,
-          birthDateRate: stats.total > 0
-            ? Math.round((stats.withBirthday / stats.total) * 100)
-            : 0,
-        },
-        automation: {
-          birthdayEligible: stats.withBirthday,
-          smsEligible: stats.byConsent.opted_in,
-        },
+    return sendSuccess(res, {
+      total: stats.total,
+      optedIn: stats.byConsent.opted_in,
+      optedOut: stats.byConsent.opted_out,
+      smsConsent: {
+        optedIn: stats.byConsent.opted_in,
+        optedOut: stats.byConsent.opted_out,
+        unknown: stats.byConsent.unknown,
+        consentRate: stats.total > 0
+          ? Math.round((stats.byConsent.opted_in / stats.total) * 100)
+          : 0,
+      },
+      byGender: {
+        male: stats.byGender.male,
+        female: stats.byGender.female,
+        other: stats.byGender.other,
+        unspecified: stats.byGender.unknown,
+      },
+      gender: {
+        male: stats.byGender.male,
+        female: stats.byGender.female,
+        other: stats.byGender.other,
+        unspecified: stats.byGender.unknown,
+      },
+      birthDate: {
+        withBirthDate: stats.withBirthday,
+        withoutBirthDate: stats.total - stats.withBirthday,
+        birthDateRate: stats.total > 0
+          ? Math.round((stats.withBirthday / stats.total) * 100)
+          : 0,
+      },
+      automation: {
+        birthdayEligible: stats.withBirthday,
+        smsEligible: stats.byConsent.opted_in,
       },
     });
   } catch (error) {
@@ -217,13 +211,11 @@ export async function getBirthdayContacts(req, res, next) {
 
     const contacts = await contactsService.getBirthdayContacts(storeId, daysAhead);
 
-    return res.json({
-      success: true,
-      data: {
-        daysAhead,
-        total: contacts.length,
-        contacts,
-      },
+    return sendSuccess(res, {
+      daysAhead,
+      total: contacts.length,
+      count: contacts.length,
+      contacts,
     });
   } catch (error) {
     logger.error('Get birthday contacts error', {
@@ -244,20 +236,12 @@ export async function importCsv(req, res, next) {
     const { contacts } = req.body;
 
     if (!Array.isArray(contacts) || contacts.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid contacts data',
-        message: 'Contacts must be provided as a non-empty array',
-      });
+      throw new ValidationError('Contacts must be provided as a non-empty array');
     }
 
     const result = await contactsService.importContacts(storeId, contacts);
 
-    return res.json({
-      success: true,
-      data: result,
-      message: `Successfully imported ${result.created} contacts, updated ${result.updated}, skipped ${result.skipped}`,
-    });
+    return sendSuccess(res, result, `Successfully imported ${result.created} contacts, updated ${result.updated}, skipped ${result.skipped}`);
   } catch (error) {
     logger.error('Import contacts error', {
       error: error.message,

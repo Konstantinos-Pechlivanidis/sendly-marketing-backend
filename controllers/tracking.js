@@ -1,6 +1,9 @@
 import prisma from '../services/prisma.js';
 import { getMessageStatus } from '../services/mitto.js';
 import { logger } from '../utils/logger.js';
+import { getStoreId } from '../middlewares/store-resolution.js';
+import { ValidationError, NotFoundError } from '../utils/errors.js';
+import { sendSuccess } from '../utils/response.js';
 
 /**
  * Get delivery status for a specific message
@@ -9,17 +12,18 @@ import { logger } from '../utils/logger.js';
 export async function getMittoMessageStatus(req, res, next) {
   try {
     const { messageId } = req.params;
+    const storeId = getStoreId(req); // ✅ Security: Get store ID from context
 
     if (!messageId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Message ID is required',
-      });
+      throw new ValidationError('Message ID is required');
     }
 
-    // Get current status from database
+    // ✅ Security: Get current status from database with shopId validation
     const messageLog = await prisma.messageLog.findFirst({
-      where: { providerMsgId: messageId },
+      where: {
+        providerMsgId: messageId,
+        shopId: storeId, // ✅ Validate message belongs to store
+      },
       select: {
         id: true,
         phoneE164: true,
@@ -39,10 +43,7 @@ export async function getMittoMessageStatus(req, res, next) {
     });
 
     if (!messageLog) {
-      return res.status(404).json({
-        success: false,
-        error: 'Message not found',
-      });
+      throw new NotFoundError('Message');
     }
 
     // Fetch latest status from Mitto API
@@ -87,18 +88,15 @@ export async function getMittoMessageStatus(req, res, next) {
         }
       }
 
-      res.json({
-        success: true,
-        data: {
-          messageId,
-          phoneE164: messageLog.phoneE164,
-          status: messageLog.status,
-          deliveryStatus: mittoStatus.deliveryStatus,
-          senderNumber: messageLog.senderNumber,
-          createdAt: messageLog.createdAt,
-          updatedAt: mittoStatus.updatedAt,
-          campaign: messageLog.campaign,
-        },
+      return sendSuccess(res, {
+        messageId,
+        phoneE164: messageLog.phoneE164,
+        status: messageLog.status,
+        deliveryStatus: mittoStatus.deliveryStatus,
+        senderNumber: messageLog.senderNumber,
+        createdAt: messageLog.createdAt,
+        updatedAt: mittoStatus.updatedAt,
+        campaign: messageLog.campaign,
       });
     } catch (error) {
       logger.error('Failed to fetch status from Mitto', {
@@ -107,19 +105,16 @@ export async function getMittoMessageStatus(req, res, next) {
       });
 
       // Return database status if Mitto API fails
-      res.json({
-        success: true,
-        data: {
-          messageId,
-          phoneE164: messageLog.phoneE164,
-          status: messageLog.status,
-          deliveryStatus: messageLog.deliveryStatus,
-          senderNumber: messageLog.senderNumber,
-          createdAt: messageLog.createdAt,
-          updatedAt: messageLog.updatedAt,
-          campaign: messageLog.campaign,
-          warning: 'Status may not be up-to-date due to API error',
-        },
+      return sendSuccess(res, {
+        messageId,
+        phoneE164: messageLog.phoneE164,
+        status: messageLog.status,
+        deliveryStatus: messageLog.deliveryStatus,
+        senderNumber: messageLog.senderNumber,
+        createdAt: messageLog.createdAt,
+        updatedAt: messageLog.updatedAt,
+        campaign: messageLog.campaign,
+        warning: 'Status may not be up-to-date due to API error',
       });
     }
   } catch (error) {
@@ -138,13 +133,13 @@ export async function getMittoMessageStatus(req, res, next) {
 export async function getCampaignDeliveryStatus(req, res, next) {
   try {
     const { campaignId } = req.params;
-    const shopDomain = req.shop;
+    const storeId = getStoreId(req); // ✅ Security: Use storeId instead of shopDomain
 
-    // Verify campaign belongs to shop
+    // ✅ Security: Verify campaign belongs to shop using storeId
     const campaign = await prisma.campaign.findFirst({
       where: {
         id: campaignId,
-        shop: { shopDomain },
+        shopId: storeId, // ✅ More secure: direct shopId check
       },
       include: {
         metrics: true,
@@ -164,10 +159,7 @@ export async function getCampaignDeliveryStatus(req, res, next) {
     });
 
     if (!campaign) {
-      return res.status(404).json({
-        success: false,
-        error: 'Campaign not found',
-      });
+      throw new NotFoundError('Campaign');
     }
 
     // Get delivery statistics
@@ -180,19 +172,17 @@ export async function getCampaignDeliveryStatus(req, res, next) {
       pending: campaign.recipients.filter(r => !r.deliveryStatus || r.deliveryStatus === 'Queued').length,
     };
 
-    res.json({
-      success: true,
-      data: {
-        campaign: {
-          id: campaign.id,
-          name: campaign.name,
-          status: campaign.status,
-          createdAt: campaign.createdAt,
-        },
-        metrics: campaign.metrics,
-        recipients: campaign.recipients,
-        statistics: stats,
+    return sendSuccess(res, {
+      campaignId: campaign.id, // ✅ Add campaignId for test compatibility
+      campaign: {
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        createdAt: campaign.createdAt,
       },
+      messages: campaign.recipients, // ✅ Rename recipients to messages for test compatibility
+      summary: stats, // ✅ Rename statistics to summary for test compatibility
+      metrics: campaign.metrics,
     });
   } catch (error) {
     logger.error('Error in getCampaignDeliveryStatus', {
@@ -212,30 +202,37 @@ export async function bulkUpdateDeliveryStatus(req, res, next) {
     const { messageIds } = req.body;
 
     if (!Array.isArray(messageIds) || messageIds.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Message IDs array is required',
-      });
+      throw new ValidationError('Message IDs array is required');
     }
 
     const results = [];
+
+    const storeId = getStoreId(req); // ✅ Security: Get store ID
 
     for (const messageId of messageIds) {
       try {
         const mittoStatus = await getMessageStatus(messageId);
 
-        // Update message log
+        // ✅ Security: Update message log with shopId validation
         await prisma.messageLog.updateMany({
-          where: { providerMsgId: messageId },
+          where: {
+            providerMsgId: messageId,
+            shopId: storeId, // ✅ Only update messages from this store
+          },
           data: {
             deliveryStatus: mittoStatus.deliveryStatus,
             updatedAt: new Date(),
           },
         });
 
-        // Update campaign recipient
+        // ✅ Security: Update campaign recipient with store validation
         const recipient = await prisma.campaignRecipient.findFirst({
-          where: { mittoMessageId: messageId },
+          where: {
+            mittoMessageId: messageId,
+            campaign: {
+              shopId: storeId, // ✅ Validate campaign belongs to store
+            },
+          },
         });
 
         if (recipient) {
@@ -267,13 +264,10 @@ export async function bulkUpdateDeliveryStatus(req, res, next) {
       }
     }
 
-    res.json({
-      success: true,
-      data: {
-        updated: results.filter(r => r.success).length,
-        failed: results.filter(r => !r.success).length,
-        results,
-      },
+    return sendSuccess(res, {
+      updated: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+      results,
     });
   } catch (error) {
     logger.error('Error in bulkUpdateDeliveryStatus', {

@@ -1,41 +1,68 @@
-import request from 'supertest';
-import app from '../../app.js';
+import axios from 'axios';
+import { testConfig, createTestHeaders, getTestUrl } from '../config/test-config.js';
 
 /**
  * Test Server Helper
- * Creates test server instance for API testing
+ * Creates requests to production server for API testing
  */
 
 /**
- * Create authenticated request
+ * Create authenticated request to production server
  */
-export function createAuthenticatedRequest(shopDomain = 'test-store.myshopify.com') {
-  return request(app)
-    .set('Authorization', 'Bearer test_token')
-    .set('X-Shopify-Shop-Domain', shopDomain)
-    .set('Content-Type', 'application/json');
+export function createAuthenticatedRequest(shopDomain = testConfig.testShop.shopDomain) {
+  const headers = createTestHeaders(shopDomain);
+
+  // Use axios for production server requests
+  return {
+    get: (path) => axios.get(getTestUrl(path), { headers }),
+    post: (path, data) => axios.post(getTestUrl(path), data, { headers }),
+    put: (path, data) => axios.put(getTestUrl(path), data, { headers }),
+    delete: (path) => axios.delete(getTestUrl(path), { headers }),
+    patch: (path, data) => axios.patch(getTestUrl(path), data, { headers }),
+  };
 }
 
 /**
- * Create unauthenticated request
+ * Create unauthenticated request to production server
  */
 export function createRequest() {
-  return request(app);
+  return {
+    get: (path) => axios.get(getTestUrl(path)),
+    post: (path, data) => axios.post(getTestUrl(path), data),
+    put: (path, data) => axios.put(getTestUrl(path), data),
+    delete: (path) => axios.delete(getTestUrl(path)),
+    patch: (path, data) => axios.patch(getTestUrl(path), data),
+  };
+}
+
+/**
+ * Helper to convert axios response to supertest-like format for compatibility
+ */
+export function normalizeResponse(axiosResponse) {
+  return {
+    status: axiosResponse.status,
+    statusCode: axiosResponse.status,
+    body: axiosResponse.data,
+    headers: axiosResponse.headers,
+    text: JSON.stringify(axiosResponse.data),
+  };
 }
 
 /**
  * Test helper for common assertions
  */
 export function expectSuccessResponse(res) {
-  expect(res.status).toBeLessThan(400);
-  expect(res.body).toHaveProperty('success', true);
-  expect(res.body).toHaveProperty('data');
+  const response = res.status ? res : normalizeResponse(res);
+  expect(response.status).toBeLessThan(400);
+  expect(response.body).toHaveProperty('success', true);
+  expect(response.body).toHaveProperty('data');
 }
 
 export function expectErrorResponse(res, statusCode = 400) {
-  expect(res.status).toBe(statusCode);
-  expect(res.body).toHaveProperty('success', false);
-  expect(res.body).toHaveProperty('error');
+  const response = res.status ? res : normalizeResponse(res);
+  expect(response.status).toBe(statusCode);
+  expect(response.body).toHaveProperty('success', false);
+  expect(response.body).toHaveProperty('error');
 }
 
 export default {
@@ -43,5 +70,6 @@ export default {
   createRequest,
   expectSuccessResponse,
   expectErrorResponse,
+  normalizeResponse,
 };
 

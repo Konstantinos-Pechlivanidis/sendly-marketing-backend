@@ -1,10 +1,10 @@
+/* eslint-disable no-console */
 /**
  * Response Structure Validation Tests
  * Verifies that all endpoint responses match expected structure
  */
 
-import request from 'supertest';
-import app from '../../app.js';
+import { request } from '../helpers/test-client.js';
 import {
   createTestShop,
   cleanupTestData,
@@ -13,6 +13,7 @@ import {
   createTestCampaign,
 } from '../helpers/test-utils.js';
 import { validateApiResponse, expectedResponses } from '../helpers/response-validator.js';
+import { testConfig } from '../config/test-config.js';
 
 describe('Response Structure Validation', () => {
   let testShop;
@@ -21,13 +22,16 @@ describe('Response Structure Validation', () => {
   let testHeaders;
 
   beforeAll(async () => {
+    console.log('\n📦 Setting up test shop for response structure tests...');
+    // Use the actual sms-blossom-dev shop from production
     testShop = await createTestShop({
-      shopDomain: 'structure-test.myshopify.com',
-      credits: 1000,
+      shopDomain: testConfig.testShop.shopDomain, // sms-blossom-dev.myshopify.com
+      credits: testConfig.testShop.credits,
     });
     // eslint-disable-next-line no-unused-vars
     testShopId = testShop.id;
     testHeaders = createTestHeaders(testShop.shopDomain);
+    console.log(`✅ Test shop ready: ${testShop.shopDomain} (ID: ${testShop.id})\n`);
   });
 
   afterAll(async () => {
@@ -36,7 +40,7 @@ describe('Response Structure Validation', () => {
 
   describe('Dashboard Responses', () => {
     it('GET /dashboard/overview should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/dashboard/overview')
         .set(testHeaders);
 
@@ -45,7 +49,7 @@ describe('Response Structure Validation', () => {
     });
 
     it('GET /dashboard/quick-stats should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/dashboard/quick-stats')
         .set(testHeaders);
 
@@ -56,15 +60,17 @@ describe('Response Structure Validation', () => {
 
   describe('Contacts Responses', () => {
     beforeEach(async () => {
+      await cleanupTestData();
+      const timestamp = Date.now();
       await createTestContact({
-        phoneE164: '+306977111111',
+        phoneE164: `+306977${String(timestamp).slice(-6)}`,
         firstName: 'Test',
         smsConsent: 'opted_in',
       });
     });
 
     it('GET /contacts should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts?page=1&pageSize=10')
         .set(testHeaders);
 
@@ -78,7 +84,7 @@ describe('Response Structure Validation', () => {
         firstName: 'Test2',
       });
 
-      const res = await request(app)
+      const res = await request()
         .get(`/contacts/${contact.id}`)
         .set(testHeaders);
 
@@ -87,13 +93,14 @@ describe('Response Structure Validation', () => {
     });
 
     it('POST /contacts should match expected structure', async () => {
+      const timestamp = Date.now();
       const contactData = {
-        phoneE164: '+306977333333',
+        phoneE164: `+306977${String(timestamp + 2).slice(-6)}`,
         firstName: 'New',
         smsConsent: 'opted_in',
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/contacts')
         .set(testHeaders)
         .send(contactData);
@@ -103,7 +110,7 @@ describe('Response Structure Validation', () => {
     });
 
     it('GET /contacts/stats should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts/stats')
         .set(testHeaders);
 
@@ -114,15 +121,17 @@ describe('Response Structure Validation', () => {
 
   describe('Campaigns Responses', () => {
     beforeEach(async () => {
+      await cleanupTestData();
+      const timestamp = Date.now();
       await createTestCampaign({
-        name: 'Test Campaign',
+        name: `TEST_Test Campaign ${timestamp}`,
         message: 'Test message',
         status: 'draft',
       });
     });
 
     it('GET /campaigns should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/campaigns?page=1&pageSize=10')
         .set(testHeaders);
 
@@ -131,12 +140,13 @@ describe('Response Structure Validation', () => {
     });
 
     it('GET /campaigns/:id should match expected structure', async () => {
+      const timestamp = Date.now();
       const campaign = await createTestCampaign({
-        name: 'Test Campaign 2',
+        name: `TEST_Test Campaign 2 ${timestamp}`,
         message: 'Test',
       });
 
-      const res = await request(app)
+      const res = await request()
         .get(`/campaigns/${campaign.id}`)
         .set(testHeaders);
 
@@ -145,14 +155,15 @@ describe('Response Structure Validation', () => {
     });
 
     it('POST /campaigns should match expected structure', async () => {
+      const timestamp = Date.now();
       const campaignData = {
-        name: 'New Campaign',
+        name: `TEST_New Campaign ${timestamp}`,
         message: 'New message',
         audience: 'all',
         scheduleType: 'immediate',
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/campaigns')
         .set(testHeaders)
         .send(campaignData);
@@ -164,7 +175,7 @@ describe('Response Structure Validation', () => {
 
   describe('Billing Responses', () => {
     it('GET /billing/balance should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/billing/balance')
         .set(testHeaders);
 
@@ -173,7 +184,7 @@ describe('Response Structure Validation', () => {
     });
 
     it('GET /billing/packages should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/billing/packages')
         .set(testHeaders);
 
@@ -182,7 +193,7 @@ describe('Response Structure Validation', () => {
     });
 
     it('GET /billing/history should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/billing/history?page=1&pageSize=10')
         .set(testHeaders);
 
@@ -193,7 +204,7 @@ describe('Response Structure Validation', () => {
 
   describe('Reports Responses', () => {
     it('GET /reports/overview should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/reports/overview')
         .set(testHeaders);
 
@@ -202,7 +213,7 @@ describe('Response Structure Validation', () => {
     });
 
     it('GET /reports/kpis should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/reports/kpis')
         .set(testHeaders);
 
@@ -213,7 +224,7 @@ describe('Response Structure Validation', () => {
 
   describe('Settings Responses', () => {
     it('GET /settings should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/settings')
         .set(testHeaders);
 
@@ -222,7 +233,7 @@ describe('Response Structure Validation', () => {
     });
 
     it('GET /settings/account should match expected structure', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/settings/account')
         .set(testHeaders);
 
@@ -233,7 +244,7 @@ describe('Response Structure Validation', () => {
 
   describe('Error Response Structure', () => {
     it('should return proper error structure for 404', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts/non-existent-id')
         .set(testHeaders);
 
@@ -244,7 +255,7 @@ describe('Response Structure Validation', () => {
     });
 
     it('should return proper error structure for 400 validation', async () => {
-      const res = await request(app)
+      const res = await request()
         .post('/contacts')
         .set(testHeaders)
         .send({

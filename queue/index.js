@@ -2,15 +2,16 @@ import { Queue } from 'bullmq';
 import { queueRedis, createSafeRedisConnection } from '../config/redis.js';
 
 // SMS Queue configuration
+// Optimized for large-scale SMS sending (100k+ recipients)
 export const smsQueue = new Queue('sms-send', {
   connection: createSafeRedisConnection() || queueRedis,
   defaultJobOptions: {
-    removeOnComplete: 100,
-    removeOnFail: 50,
-    attempts: 3,
+    removeOnComplete: 500, // Keep more completed jobs for monitoring
+    removeOnFail: 100, // Keep more failed jobs for retry
+    attempts: 5, // Increased retry attempts for better reliability
     backoff: {
       type: 'exponential',
-      delay: 2000,
+      delay: 2000, // Start with 2s, then 4s, 8s, 16s, 32s
     },
   },
 });

@@ -1,15 +1,16 @@
+/* eslint-disable no-console */
 /**
  * Automations Endpoints Tests
  * Comprehensive tests for all automation-related endpoints
  */
 
-import request from 'supertest';
-import app from '../../app.js';
+import { request } from '../helpers/test-client.js';
 import {
   createTestShop,
   cleanupTestData,
   createTestHeaders,
 } from '../helpers/test-utils.js';
+import { testConfig } from '../config/test-config.js';
 import prisma from '../../services/prisma.js';
 
 describe('Automations Endpoints', () => {
@@ -18,11 +19,14 @@ describe('Automations Endpoints', () => {
   let testHeaders;
 
   beforeAll(async () => {
+    console.log('\n📦 Setting up test shop for automations tests...');
+    // Use the actual sms-blossom-dev shop from production
     testShop = await createTestShop({
-      shopDomain: 'automations-test.myshopify.com',
+      shopDomain: testConfig.testShop.shopDomain, // sms-blossom-dev.myshopify.com
     });
     testShopId = testShop.id;
     testHeaders = createTestHeaders(testShop.shopDomain);
+    console.log(`✅ Test shop ready: ${testShop.shopDomain} (ID: ${testShop.id})\n`);
   });
 
   afterAll(async () => {
@@ -51,7 +55,7 @@ describe('Automations Endpoints', () => {
     });
 
     it('should return user automations', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/automations')
         .set(testHeaders);
 
@@ -72,7 +76,7 @@ describe('Automations Endpoints', () => {
         data: { isEnabled: false },
       });
 
-      const res = await request(app)
+      const res = await request()
         .get('/automations?enabled=true')
         .set(testHeaders);
 
@@ -107,7 +111,7 @@ describe('Automations Endpoints', () => {
     });
 
     it('should return automation statistics', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/automations/stats')
         .set(testHeaders);
 
@@ -140,7 +144,7 @@ describe('Automations Endpoints', () => {
         settings: { delay: 120 },
       };
 
-      const res = await request(app)
+      const res = await request()
         .put(`/automations/${automationId}`)
         .set(testHeaders)
         .send(updateData);
@@ -162,7 +166,7 @@ describe('Automations Endpoints', () => {
         isEnabled: false,
       };
 
-      const res = await request(app)
+      const res = await request()
         .put(`/automations/${automationId}`)
         .set(testHeaders)
         .send(updateData);
@@ -196,7 +200,7 @@ describe('Automations Endpoints', () => {
     });
 
     it('should return system default automations', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/automations/defaults')
         .set(testHeaders);
 
@@ -209,7 +213,7 @@ describe('Automations Endpoints', () => {
 
   describe('POST /automations/sync', () => {
     it('should sync system defaults with user automations', async () => {
-      const res = await request(app)
+      const res = await request()
         .post('/automations/sync')
         .set(testHeaders);
 

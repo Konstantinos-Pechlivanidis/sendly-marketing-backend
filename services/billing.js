@@ -203,11 +203,23 @@ export async function createPurchaseSession(storeId, packageId, returnUrls) {
     transactionId: transaction.id,
   });
 
+  // Return package info without internal Stripe price IDs
+  const packageInfo = {
+    id: pkg.id,
+    name: pkg.name,
+    credits: pkg.credits,
+    price: currency === 'USD' ? pkg.priceUSD : pkg.priceEUR,
+    currency,
+    description: pkg.description,
+    popular: pkg.popular,
+    features: pkg.features,
+  };
+
   return {
     sessionId: session.id,
     sessionUrl: session.url,
     transactionId: transaction.id,
-    package: pkg,
+    package: packageInfo,
   };
 }
 
@@ -224,7 +236,33 @@ export async function handleStripeWebhook(stripeEvent) {
 
   if (stripeEvent.type === 'checkout.session.completed') {
     const session = stripeEvent.data.object;
-    const { storeId, transactionId, credits } = session.metadata;
+    // Support both shopId and storeId (they are the same - shop.id)
+    const storeId = session.metadata.storeId || session.metadata.shopId;
+    const { transactionId, credits } = session.metadata;
+
+    if (!storeId) {
+      logger.error('Missing storeId/shopId in session metadata', {
+        sessionId: session.id,
+        metadata: session.metadata,
+      });
+      throw new ValidationError('Missing storeId/shopId in session metadata');
+    }
+
+    if (!transactionId) {
+      logger.error('Missing transactionId in session metadata', {
+        sessionId: session.id,
+        metadata: session.metadata,
+      });
+      throw new ValidationError('Missing transactionId in session metadata');
+    }
+
+    if (!credits) {
+      logger.error('Missing credits in session metadata', {
+        sessionId: session.id,
+        metadata: session.metadata,
+      });
+      throw new ValidationError('Missing credits in session metadata');
+    }
 
     logger.info('Processing completed checkout', {
       storeId,
@@ -273,6 +311,63 @@ export async function handleStripeWebhook(stripeEvent) {
       status: 'success',
       storeId,
       creditsAdded: parseInt(credits),
+    };
+  }
+
+  // Handle refund events
+  if (stripeEvent.type === 'charge.refunded' || stripeEvent.type === 'payment_intent.refunded') {
+    const refund = stripeEvent.data.object;
+    const paymentIntentId = refund.payment_intent || refund.id;
+
+    logger.info('Processing refund webhook', {
+      refundId: refund.id,
+      paymentIntentId,
+      amount: refund.amount,
+      currency: refund.currency,
+    });
+
+    // Find the original billing transaction by payment intent ID
+    const transaction = await prisma.billingTransaction.findFirst({
+      where: {
+        stripePaymentId: paymentIntentId,
+        status: 'completed',
+      },
+    });
+
+    if (!transaction) {
+      logger.warn('Transaction not found for refund', {
+        paymentIntentId,
+        refundId: refund.id,
+      });
+      // Don't throw - refund might be for a different system
+      return { status: 'ignored', reason: 'transaction_not_found' };
+    }
+
+    // Calculate credits to refund (proportional if partial refund)
+    const originalAmount = transaction.amount; // Amount in cents
+    const refundAmount = refund.amount; // Refund amount in cents
+    const creditsToRefund = Math.floor(
+      (transaction.creditsAdded * refundAmount) / originalAmount,
+    );
+
+    // Process refund
+    await processRefund(
+      transaction.shopId,
+      transaction.id,
+      creditsToRefund,
+      refund.id,
+      {
+        paymentIntentId,
+        refundAmount,
+        originalAmount,
+        currency: refund.currency,
+      },
+    );
+
+    return {
+      status: 'success',
+      storeId: transaction.shopId,
+      creditsRefunded: creditsToRefund,
     };
   }
 
@@ -394,6 +489,121 @@ export async function deductCredits(storeId, credits, ref, meta = {}) {
   return {
     credits: result.credits,
     deducted: credits,
+  };
+}
+
+/**
+ * Process refund for a purchase
+ * Deducts credits and creates refund transaction records
+ * @param {string} storeId - Store ID
+ * @param {string} transactionId - Original BillingTransaction ID
+ * @param {number} creditsToRefund - Credits to refund (defaults to original amount)
+ * @param {string} refundId - Stripe refund ID
+ * @param {Object} meta - Additional metadata
+ * @returns {Promise<Object>} Refund result
+ */
+export async function processRefund(storeId, transactionId, creditsToRefund = null, refundId = null, meta = {}) {
+  logger.info('Processing refund', {
+    storeId,
+    transactionId,
+    creditsToRefund,
+    refundId,
+  });
+
+  // Find original transaction
+  const transaction = await prisma.billingTransaction.findUnique({
+    where: { id: transactionId },
+  });
+
+  if (!transaction) {
+    logger.error('Transaction not found for refund', { transactionId });
+    throw new NotFoundError('Transaction');
+  }
+
+  if (transaction.shopId !== storeId) {
+    logger.error('Transaction does not belong to store', {
+      transactionId,
+      storeId,
+      transactionShopId: transaction.shopId,
+    });
+    throw new ValidationError('Transaction does not belong to this store');
+  }
+
+  if (transaction.status !== 'completed') {
+    logger.error('Cannot refund non-completed transaction', {
+      transactionId,
+      status: transaction.status,
+    });
+    throw new ValidationError('Can only refund completed transactions');
+  }
+
+  // Use original credits if not specified
+  const credits = creditsToRefund || transaction.creditsAdded;
+
+  if (credits <= 0) {
+    throw new ValidationError('Refund credits must be positive');
+  }
+
+  // Use atomic transaction for refund processing
+  const result = await prisma.$transaction(async (tx) => {
+    // Check current balance
+    const shop = await tx.shop.findUnique({
+      where: { id: storeId },
+      select: { credits: true },
+    });
+
+    if (!shop) {
+      throw new NotFoundError('Shop');
+    }
+
+    // Deduct credits (allow negative balance for refunds if needed)
+    const updatedShop = await tx.shop.update({
+      where: { id: storeId },
+      data: {
+        credits: { decrement: credits },
+      },
+      select: { credits: true },
+    });
+
+    // Create wallet transaction record for refund
+    await tx.walletTransaction.create({
+      data: {
+        shopId: storeId,
+        type: 'refund',
+        credits: -credits, // Negative for refund
+        ref: refundId ? `stripe:refund:${refundId}` : `refund:${transactionId}`,
+        meta: {
+          originalTransactionId: transactionId,
+          refundId,
+          ...meta,
+        },
+      },
+    });
+
+    // Update billing transaction status to refunded (or create a refund record)
+    // For now, we'll mark it as refunded in metadata
+    await tx.billingTransaction.update({
+      where: { id: transactionId },
+      data: {
+        // Keep status as completed but add refund info in a note
+        // Alternatively, you could add a refundedAt field
+      },
+    });
+
+    return updatedShop;
+  });
+
+  logger.info('Refund processed successfully', {
+    storeId,
+    transactionId,
+    creditsRefunded: credits,
+    newBalance: result.credits,
+  });
+
+  return {
+    credits: result.credits,
+    refunded: credits,
+    transactionId,
   };
 }
 

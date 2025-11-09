@@ -87,11 +87,13 @@ export const sessionRedis = createRedisConnection({
 });
 
 // Fallback Redis connections with error handling
-export const createSafeRedisConnection = (config = {}) => {
+export const createSafeRedisConnection = async (config = {}) => {
   try {
-    return createRedisConnection(config);
+    const connection = createRedisConnection(config);
+    return connection;
   } catch (error) {
-    console.warn('Redis connection failed, using fallback:', error.message);
+    const { logger } = await import('../utils/logger.js').catch(() => ({ logger: console }));
+    logger.warn('Redis connection failed, using fallback', { error: error.message });
     return null;
   }
 };
@@ -120,37 +122,61 @@ export const checkRedisHealth = async (redis) => {
 // Graceful shutdown
 export const closeRedisConnections = async () => {
   try {
+    // Import logger dynamically to avoid circular dependencies
+    const { logger } = await import('../utils/logger.js');
+
     await Promise.all([
       queueRedis.quit(),
       cacheRedis.quit(),
       sessionRedis.quit(),
     ]);
-    console.log('Redis connections closed gracefully');
+    logger.info('Redis connections closed gracefully');
   } catch (error) {
-    console.error('Error closing Redis connections:', error);
+    // Fallback to console if logger import fails
+    const { logger } = await import('../utils/logger.js').catch(() => ({ logger: console }));
+    logger.error('Error closing Redis connections', { error: error.message });
   }
 };
 
 // Error handling
 const handleRedisError = (redis, name) => {
-  redis.on('error', (error) => {
-    console.error(`Redis ${name} error:`, error);
+  // Use lazy logger import to avoid circular dependencies
+  let logger = null;
+  const getLogger = async () => {
+    if (!logger) {
+      try {
+        const loggerModule = await import('../utils/logger.js');
+        logger = loggerModule.logger;
+      } catch {
+        logger = console; // Fallback to console
+      }
+    }
+    return logger;
+  };
+
+  redis.on('error', async (error) => {
+    const log = await getLogger();
+    log.error(`Redis ${name} error`, { error: error.message, name });
   });
 
-  redis.on('connect', () => {
-    console.log(`Redis ${name} connected`);
+  redis.on('connect', async () => {
+    const log = await getLogger();
+    log.info(`Redis ${name} connected`, { name });
   });
 
-  redis.on('ready', () => {
-    console.log(`Redis ${name} ready`);
+  redis.on('ready', async () => {
+    const log = await getLogger();
+    log.info(`Redis ${name} ready`, { name });
   });
 
-  redis.on('close', () => {
-    console.log(`Redis ${name} connection closed`);
+  redis.on('close', async () => {
+    const log = await getLogger();
+    log.info(`Redis ${name} connection closed`, { name });
   });
 
-  redis.on('reconnecting', () => {
-    console.log(`Redis ${name} reconnecting`);
+  redis.on('reconnecting', async () => {
+    const log = await getLogger();
+    log.info(`Redis ${name} reconnecting`, { name });
   });
 };
 
@@ -159,6 +185,5 @@ handleRedisError(queueRedis, 'Queue');
 handleRedisError(cacheRedis, 'Cache');
 handleRedisError(sessionRedis, 'Session');
 
-// Graceful shutdown handlers
-process.on('SIGTERM', closeRedisConnections);
-process.on('SIGINT', closeRedisConnections);
+// Note: Graceful shutdown is handled in index.js
+// This ensures proper cleanup order (HTTP server -> Redis -> Prisma)

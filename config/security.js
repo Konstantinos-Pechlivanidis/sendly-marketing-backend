@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import { logger } from '../utils/logger.js';
 // hpp is used in app.js
 
 // Rate limiting configurations
@@ -249,12 +250,12 @@ export const securityLogger = (req, res, next) => {
 
     // Log suspicious activity
     if (res.statusCode >= 400) {
-      console.warn('Security event:', logData);
+      logger.warn('Security event detected', logData);
     }
 
     // Log potential attacks
     if (req.url.includes('..') || req.url.includes('<script>') || req.url.includes('javascript:')) {
-      console.error('Potential attack detected:', logData);
+      logger.error('Potential attack detected', logData);
     }
   });
 

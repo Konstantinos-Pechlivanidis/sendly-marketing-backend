@@ -1,16 +1,18 @@
+/* eslint-disable no-console */
 /**
  * Audiences Endpoints Tests
  * Comprehensive tests for all audience-related endpoints
  */
 
-import request from 'supertest';
-import app from '../../app.js';
+import { request } from '../helpers/test-client.js';
 import {
   createTestShop,
   cleanupTestData,
+  cleanupBeforeTest,
   createTestHeaders,
   createTestContact,
 } from '../helpers/test-utils.js';
+import { testConfig } from '../config/test-config.js';
 import prisma from '../../services/prisma.js';
 
 describe('Audiences Endpoints', () => {
@@ -19,11 +21,14 @@ describe('Audiences Endpoints', () => {
   let testHeaders;
 
   beforeAll(async () => {
+    console.log('\n📦 Setting up test shop for audiences tests...');
+    // Use the actual sms-blossom-dev shop from production
     testShop = await createTestShop({
-      shopDomain: 'audiences-test.myshopify.com',
+      shopDomain: testConfig.testShop.shopDomain, // sms-blossom-dev.myshopify.com
     });
     testShopId = testShop.id;
     testHeaders = createTestHeaders(testShop.shopDomain);
+    console.log(`✅ Test shop ready: ${testShop.shopDomain} (ID: ${testShop.id})\n`);
   });
 
   afterAll(async () => {
@@ -32,26 +37,28 @@ describe('Audiences Endpoints', () => {
 
   describe('GET /audiences', () => {
     beforeEach(async () => {
-      // Create contacts with different attributes
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
+      // Create contacts with different attributes and unique phones
       await createTestContact({
-        phoneE164: '+306977111111',
+        phoneE164: `+306977${String(timestamp).slice(-6)}`,
         smsConsent: 'opted_in',
         gender: 'male',
       });
       await createTestContact({
-        phoneE164: '+306977222222',
+        phoneE164: `+306977${String(timestamp + 1).slice(-6)}`,
         smsConsent: 'opted_in',
         gender: 'female',
       });
       await createTestContact({
-        phoneE164: '+306977333333',
+        phoneE164: `+306977${String(timestamp + 2).slice(-6)}`,
         smsConsent: 'opted_out',
         gender: 'male',
       });
     });
 
     it('should return all available audiences', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/audiences')
         .set(testHeaders);
 
@@ -63,7 +70,7 @@ describe('Audiences Endpoints', () => {
     });
 
     it('should include contact counts for each audience', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/audiences')
         .set(testHeaders);
 
@@ -76,7 +83,7 @@ describe('Audiences Endpoints', () => {
     });
 
     it('should include predefined audiences (men, women)', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/audiences')
         .set(testHeaders);
 
@@ -94,21 +101,23 @@ describe('Audiences Endpoints', () => {
 
   describe('GET /audiences/:audienceId/details', () => {
     beforeEach(async () => {
-      // Create contacts for testing
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
+      // Create contacts for testing with unique phones
       await createTestContact({
-        phoneE164: '+306977111111',
+        phoneE164: `+306977${String(timestamp).slice(-6)}`,
         smsConsent: 'opted_in',
         gender: 'male',
       });
       await createTestContact({
-        phoneE164: '+306977222222',
+        phoneE164: `+306977${String(timestamp + 1).slice(-6)}`,
         smsConsent: 'opted_in',
         gender: 'female',
       });
     });
 
     it('should return detailed audience with contact list', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/audiences/all/details?page=1&limit=10')
         .set(testHeaders);
 
@@ -121,7 +130,7 @@ describe('Audiences Endpoints', () => {
     });
 
     it('should return only opted-in contacts for "all" audience', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/audiences/all/details')
         .set(testHeaders);
 
@@ -133,7 +142,7 @@ describe('Audiences Endpoints', () => {
     });
 
     it('should return only male contacts for "men" audience', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/audiences/men/details')
         .set(testHeaders);
 
@@ -146,7 +155,7 @@ describe('Audiences Endpoints', () => {
     });
 
     it('should respect pagination limits', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/audiences/all/details?page=1&limit=1')
         .set(testHeaders);
 
@@ -158,8 +167,10 @@ describe('Audiences Endpoints', () => {
 
   describe('POST /audiences/validate', () => {
     beforeEach(async () => {
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
       await createTestContact({
-        phoneE164: '+306977111111',
+        phoneE164: `+306977${String(timestamp).slice(-6)}`,
         smsConsent: 'opted_in',
       });
     });
@@ -169,7 +180,7 @@ describe('Audiences Endpoints', () => {
         audienceId: 'all',
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/audiences/validate')
         .set(testHeaders)
         .send(validationData);
@@ -208,7 +219,7 @@ describe('Audiences Endpoints', () => {
         audienceId: `segment:${segment.id}`,
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/audiences/validate')
         .set(testHeaders)
         .send(validationData);
@@ -224,7 +235,7 @@ describe('Audiences Endpoints', () => {
         audienceId: 'non-existent',
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/audiences/validate')
         .set(testHeaders)
         .send(validationData);

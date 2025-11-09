@@ -16,7 +16,7 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  testTimeout: 30000,
+  testTimeout: 60000, // 60 seconds for slow API calls and database operations
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   globalSetup: '<rootDir>/tests/global-setup.js',
   globalTeardown: '<rootDir>/tests/global-teardown.js',

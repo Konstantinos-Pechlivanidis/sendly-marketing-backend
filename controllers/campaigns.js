@@ -1,6 +1,7 @@
 import { getStoreId } from '../middlewares/store-resolution.js';
 import { logger } from '../utils/logger.js';
 import campaignsService from '../services/campaigns.js';
+import { sendSuccess, sendCreated, sendPaginated } from '../utils/response.js';
 
 /**
  * Campaigns Controller
@@ -24,12 +25,8 @@ export async function list(req, res, next) {
 
     const result = await campaignsService.listCampaigns(storeId, filters);
 
-    return res.json({
-      success: true,
-      data: {
-        campaigns: result.campaigns,
-        pagination: result.pagination,
-      },
+    return sendPaginated(res, result.campaigns, result.pagination, {
+      campaigns: result.campaigns, // Include for backward compatibility
     });
   } catch (error) {
     logger.error('List campaigns error', {
@@ -52,10 +49,7 @@ export async function getOne(req, res, next) {
 
     const campaign = await campaignsService.getCampaignById(storeId, id);
 
-    return res.json({
-      success: true,
-      data: campaign,
-    });
+    return sendSuccess(res, campaign);
   } catch (error) {
     logger.error('Get campaign error', {
       error: error.message,
@@ -77,11 +71,7 @@ export async function create(req, res, next) {
 
     const campaign = await campaignsService.createCampaign(storeId, campaignData);
 
-    return res.status(201).json({
-      success: true,
-      data: campaign,
-      message: 'Campaign created successfully',
-    });
+    return sendCreated(res, campaign, 'Campaign created successfully');
   } catch (error) {
     logger.error('Create campaign error', {
       error: error.message,
@@ -104,11 +94,7 @@ export async function update(req, res, next) {
 
     const campaign = await campaignsService.updateCampaign(storeId, id, campaignData);
 
-    return res.json({
-      success: true,
-      data: campaign,
-      message: 'Campaign updated successfully',
-    });
+    return sendSuccess(res, campaign, 'Campaign updated successfully');
   } catch (error) {
     logger.error('Update campaign error', {
       error: error.message,
@@ -130,10 +116,7 @@ export async function remove(req, res, next) {
 
     await campaignsService.deleteCampaign(storeId, id);
 
-    return res.json({
-      success: true,
-      message: 'Campaign deleted successfully',
-    });
+    return sendSuccess(res, null, 'Campaign deleted successfully');
   } catch (error) {
     logger.error('Delete campaign error', {
       error: error.message,
@@ -155,11 +138,7 @@ export async function prepare(req, res, next) {
 
     const result = await campaignsService.prepareCampaign(storeId, id);
 
-    return res.json({
-      success: true,
-      data: result,
-      message: 'Campaign prepared successfully',
-    });
+    return sendSuccess(res, result, 'Campaign prepared successfully');
   } catch (error) {
     logger.error('Prepare campaign error', {
       error: error.message,
@@ -181,11 +160,7 @@ export async function sendNow(req, res, next) {
 
     const result = await campaignsService.sendCampaign(storeId, id);
 
-    return res.json({
-      success: true,
-      data: result,
-      message: 'Campaign queued for sending',
-    });
+    return sendSuccess(res, result, 'Campaign queued for sending');
   } catch (error) {
     logger.error('Send campaign error', {
       error: error.message,
@@ -208,14 +183,7 @@ export async function schedule(req, res, next) {
 
     const campaign = await campaignsService.scheduleCampaign(storeId, id, scheduleData);
 
-    return res.json({
-      success: true,
-      data: {
-        scheduled: true,
-        campaign,
-      },
-      message: 'Campaign scheduled successfully',
-    });
+    return sendSuccess(res, campaign, 'Campaign scheduled successfully'); // ✅ Return campaign directly for test compatibility
   } catch (error) {
     logger.error('Schedule campaign error', {
       error: error.message,
@@ -237,10 +205,7 @@ export async function metrics(req, res, next) {
 
     const metrics = await campaignsService.getCampaignMetrics(storeId, id);
 
-    return res.json({
-      success: true,
-      data: metrics,
-    });
+    return sendSuccess(res, metrics);
   } catch (error) {
     logger.error('Get campaign metrics error', {
       error: error.message,
@@ -261,14 +226,33 @@ export async function stats(req, res, next) {
 
     const stats = await campaignsService.getCampaignStats(storeId);
 
-    return res.json({
-      success: true,
-      data: stats,
-    });
+    return sendSuccess(res, stats);
   } catch (error) {
     logger.error('Get campaign stats error', {
       error: error.message,
       storeId: getStoreId(req),
+    });
+    next(error);
+  }
+}
+
+/**
+ * Retry failed SMS for a campaign
+ * @route POST /campaigns/:id/retry-failed
+ */
+export async function retryFailed(req, res, next) {
+  try {
+    const storeId = getStoreId(req);
+    const { id } = req.params;
+
+    const result = await campaignsService.retryFailedSms(storeId, id);
+
+    return sendSuccess(res, result, 'Failed SMS queued for retry');
+  } catch (error) {
+    logger.error('Retry failed SMS error', {
+      error: error.message,
+      storeId: getStoreId(req),
+      campaignId: req.params.id,
     });
     next(error);
   }
@@ -285,4 +269,5 @@ export default {
   schedule,
   metrics,
   stats,
+  retryFailed,
 };

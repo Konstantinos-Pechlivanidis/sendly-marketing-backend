@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 import prisma from '../services/prisma.js';
+import { sendSuccess } from '../utils/response.js';
+import { AuthenticationError } from '../utils/errors.js';
 
 function verifyMittoSignature(req) {
   const secret = process.env.MITTO_WEBHOOK_SECRET;
@@ -12,7 +14,9 @@ function verifyMittoSignature(req) {
 
 export async function deliveryReport(req, res, next) {
   try {
-    if (!verifyMittoSignature(req)) return res.status(401).json({ error: 'invalid_signature' });
+    if (!verifyMittoSignature(req)) {
+      throw new AuthenticationError('Invalid Mitto webhook signature');
+    }
     const payload = req.body || {};
     const messageId = payload.message_id || payload.id || null;
     const to = payload.to || payload.msisdn || null;
@@ -37,7 +41,7 @@ export async function deliveryReport(req, res, next) {
         }
       }
     }
-    res.status(200).json({ ok: true });
+    return sendSuccess(res, { ok: true });
   } catch (e) {
     next(e);
   }
@@ -45,7 +49,9 @@ export async function deliveryReport(req, res, next) {
 
 export async function inboundMessage(req, res, next) {
   try {
-    if (!verifyMittoSignature(req)) return res.status(401).json({ error: 'invalid_signature' });
+    if (!verifyMittoSignature(req)) {
+      throw new AuthenticationError('Invalid Mitto webhook signature');
+    }
     const payload = req.body || {};
     const from = payload.from || payload.msisdn || null;
     await prisma.messageLog.create({
@@ -58,7 +64,7 @@ export async function inboundMessage(req, res, next) {
         payload,
       },
     });
-    res.status(200).json({ ok: true });
+    return sendSuccess(res, { ok: true });
   } catch (e) {
     next(e);
   }

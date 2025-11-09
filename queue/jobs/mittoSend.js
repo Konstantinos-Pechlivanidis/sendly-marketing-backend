@@ -6,29 +6,61 @@ export async function handleMittoSend(job) {
   const { campaignId, shopId, phoneE164, message, sender } = job.data;
 
   try {
+    // Skip credit consumption for campaign messages (credits already consumed at campaign level)
+    // Individual SMS (non-campaign) will consume credits normally
+    const isCampaignMessage = !!campaignId;
+
     // Use new SMS service with updated API
     const res = await sendSms({
       to: phoneE164,
       text: message,
       senderOverride: sender,
       shopId,
+      skipCreditCheck: isCampaignMessage, // Skip credit check for campaign messages
     });
 
     const msgId = res?.messageId || null;
 
-    // Create campaign recipient record with sender info
-    await prisma.campaignRecipient.create({
-      data: {
+    // Update existing campaign recipient record (created during campaign send)
+    // Find the recipient record for this campaign and phone
+    const recipient = await prisma.campaignRecipient.findFirst({
+      where: {
         campaignId,
-        contactId: null,
         phoneE164,
-        status: 'sent',
-        mittoMessageId: msgId,
-        sentAt: new Date(),
-        senderNumber: sender,
-        deliveryStatus: 'Queued', // Initial status from Mitto
       },
     });
+
+    if (recipient) {
+      // Update existing record
+      await prisma.campaignRecipient.update({
+        where: { id: recipient.id },
+        data: {
+          status: 'sent',
+          mittoMessageId: msgId,
+          sentAt: new Date(),
+          senderNumber: sender,
+          deliveryStatus: 'Queued', // Initial status from Mitto
+        },
+      });
+    } else {
+      // Fallback: create new record if not found (shouldn't happen normally)
+      logger.warn('Campaign recipient not found, creating new record', {
+        campaignId,
+        phoneE164,
+      });
+      await prisma.campaignRecipient.create({
+        data: {
+          campaignId,
+          contactId: null,
+          phoneE164,
+          status: 'sent',
+          mittoMessageId: msgId,
+          sentAt: new Date(),
+          senderNumber: sender,
+          deliveryStatus: 'Queued',
+        },
+      });
+    }
 
     // Create message log with sender info
     await prisma.messageLog.create({
@@ -70,16 +102,34 @@ export async function handleMittoSend(job) {
       errorType,
     });
 
-    // Create failed campaign recipient record
-    await prisma.campaignRecipient.create({
-      data: {
+    // Update existing campaign recipient record with failure status
+    const recipient = await prisma.campaignRecipient.findFirst({
+      where: {
         campaignId,
-        contactId: null,
         phoneE164,
-        status: 'failed',
-        error: errorMessage,
       },
     });
+
+    if (recipient) {
+      await prisma.campaignRecipient.update({
+        where: { id: recipient.id },
+        data: {
+          status: 'failed',
+          error: errorMessage,
+        },
+      });
+    } else {
+      // Fallback: create new record if not found
+      await prisma.campaignRecipient.create({
+        data: {
+          campaignId,
+          contactId: null,
+          phoneE164,
+          status: 'failed',
+          error: errorMessage,
+        },
+      });
+    }
 
     // Create failed message log
     await prisma.messageLog.create({

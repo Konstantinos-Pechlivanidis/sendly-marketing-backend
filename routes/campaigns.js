@@ -49,4 +49,7 @@ r.put('/:id/schedule', validateBody(scheduleCampaignSchema), invalidateCampaigns
 // GET /campaigns/:id/metrics - Get campaign metrics
 r.get('/:id/metrics', campaignMetricsCache, ctrl.metrics);
 
+// POST /campaigns/:id/retry-failed - Retry failed SMS for a campaign
+r.post('/:id/retry-failed', invalidateCampaignsCache, ctrl.retryFailed);
+
 export default r;

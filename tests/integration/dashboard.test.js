@@ -1,17 +1,19 @@
+/* eslint-disable no-console */
 /**
  * Dashboard Endpoints Tests
  * Tests all dashboard-related endpoints
  */
 
-import request from 'supertest';
-import app from '../../app.js';
+import { request } from '../helpers/test-client.js';
 import {
   createTestShop,
   cleanupTestData,
+  cleanupBeforeTest,
   createTestHeaders,
 } from '../helpers/test-utils.js';
 // import { verifyShopCredits } from '../helpers/test-db.js'; // Available for future use
 import prisma from '../../services/prisma.js';
+import { testConfig } from '../config/test-config.js';
 
 describe('Dashboard Endpoints', () => {
   let testShop;
@@ -19,13 +21,15 @@ describe('Dashboard Endpoints', () => {
   let testHeaders;
 
   beforeAll(async () => {
-    // Create test shop
+    console.log('\n📦 Setting up test shop for dashboard tests...');
+    // Use the actual sms-blossom-dev shop from production
     testShop = await createTestShop({
-      shopDomain: 'dashboard-test.myshopify.com',
-      credits: 500,
+      shopDomain: testConfig.testShop.shopDomain, // sms-blossom-dev.myshopify.com
+      credits: testConfig.testShop.credits,
     });
     testShopId = testShop.id;
     testHeaders = createTestHeaders(testShop.shopDomain);
+    console.log(`✅ Test shop ready: ${testShop.shopDomain} (ID: ${testShop.id})\n`);
   });
 
   afterAll(async () => {
@@ -34,27 +38,29 @@ describe('Dashboard Endpoints', () => {
 
   describe('GET /dashboard/overview', () => {
     it('should return dashboard overview with all statistics', async () => {
-      // Create some test data
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
+      // Create some test data with unique phones
       await prisma.contact.createMany({
         data: [
           {
             shopId: testShopId,
-            phoneE164: '+306977111111',
+            phoneE164: `+306977${String(timestamp).slice(-6)}`,
             smsConsent: 'opted_in',
-            firstName: 'John',
+            firstName: 'TEST_John',
             lastName: 'Doe',
           },
           {
             shopId: testShopId,
-            phoneE164: '+306977222222',
+            phoneE164: `+306977${String(timestamp + 1).slice(-6)}`,
             smsConsent: 'opted_in',
-            firstName: 'Jane',
+            firstName: 'TEST_Jane',
             lastName: 'Smith',
           },
         ],
       });
 
-      const res = await request(app)
+      const res = await request()
         .get('/dashboard/overview')
         .set(testHeaders);
 
@@ -75,12 +81,13 @@ describe('Dashboard Endpoints', () => {
 
     it('should return dashboard overview even with no data', async () => {
       // Create a new shop with no data
+      // Use same shop - will test with existing data
       const emptyShop = await createTestShop({
-        shopDomain: 'empty-dashboard.myshopify.com',
+        shopDomain: testConfig.testShop.shopDomain, // sms-blossom-dev.myshopify.com
         credits: 0,
       });
 
-      const res = await request(app)
+      const res = await request()
         .get('/dashboard/overview')
         .set(createTestHeaders(emptyShop.shopDomain));
 
@@ -95,7 +102,7 @@ describe('Dashboard Endpoints', () => {
 
   describe('GET /dashboard/quick-stats', () => {
     it('should return quick statistics', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/dashboard/quick-stats')
         .set(testHeaders);
 
@@ -107,7 +114,7 @@ describe('Dashboard Endpoints', () => {
     });
 
     it('should return quick stats with correct data types', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/dashboard/quick-stats')
         .set(testHeaders);
 
@@ -118,7 +125,7 @@ describe('Dashboard Endpoints', () => {
 
   describe('Error Handling', () => {
     it('should return 401 if store context is missing', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/dashboard/overview')
         .set({
           'Content-Type': 'application/json',
@@ -130,7 +137,7 @@ describe('Dashboard Endpoints', () => {
     });
 
     it('should return 401 if shop domain is invalid', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/dashboard/overview')
         .set({
           'Authorization': 'Bearer test_token',

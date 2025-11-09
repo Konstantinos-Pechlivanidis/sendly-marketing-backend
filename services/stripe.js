@@ -21,11 +21,25 @@ export async function createStripeCheckoutSession({
   stripePriceId,
   shopId,
   shopDomain,
+  metadata = {},
+  successUrl,
+  cancelUrl,
 }) {
   try {
     if (!stripe) {
       throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
     }
+
+    // Merge provided metadata with required fields
+    // Ensure shopId is always present (use from metadata if provided, otherwise from parameter)
+    const finalMetadata = {
+      shopId: metadata.shopId || metadata.storeId || shopId, // Support both shopId and storeId
+      storeId: metadata.storeId || shopId, // Keep storeId for backward compatibility
+      packageId: metadata.packageId || packageId,
+      credits: metadata.credits || credits.toString(),
+      shopDomain: metadata.shopDomain || shopDomain,
+      ...metadata, // Spread any additional metadata (e.g., transactionId)
+    };
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -36,14 +50,9 @@ export async function createStripeCheckoutSession({
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?canceled=true`,
-      metadata: {
-        shopId,
-        packageId,
-        credits: credits.toString(),
-        shopDomain,
-      },
+      success_url: successUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?canceled=true`,
+      metadata: finalMetadata,
       customer_email: `${shopDomain}@sendly.com`, // Use shop domain as email
       billing_address_collection: 'required',
       shipping_address_collection: {
@@ -122,52 +131,121 @@ export function verifyWebhookSignature(payload, signature) {
 
 /**
  * Handle successful payment
+ *
+ * NOTE: This function is kept for backward compatibility.
+ * For new implementations, use billingService.handleStripeWebhook() which has:
+ * - Idempotency checks
+ * - Atomic transactions via addCredits()
+ * - WalletTransaction record creation
+ *
+ * @deprecated Prefer using billingService.handleStripeWebhook() for secure processing
  */
 export async function handlePaymentSuccess(session) {
   try {
-    const { shopId, packageId, credits } = session.metadata;
+    // Support both shopId and storeId in metadata (they are the same - shop.id)
+    const shopId = session.metadata.shopId || session.metadata.storeId;
+    const { packageId, credits, transactionId } = session.metadata;
 
     if (!shopId || !packageId || !credits) {
-      throw new Error('Missing required metadata in session');
+      throw new Error('Missing required metadata in session. Required: shopId/storeId, packageId, credits');
     }
 
     const creditsToAdd = parseInt(credits);
 
-    // Update shop credits
-    const updatedShop = await prisma.shop.update({
-      where: { id: shopId },
-      data: {
-        credits: {
-          increment: creditsToAdd,
-        },
-      },
-    });
+    // If transactionId is provided, check for idempotency
+    if (transactionId) {
+      const transaction = await prisma.billingTransaction.findUnique({
+        where: { id: transactionId },
+      });
 
-    // Update billing transaction status
-    await prisma.billingTransaction.updateMany({
-      where: {
-        shopId,
-        stripeSessionId: session.id,
-        status: 'pending',
-      },
-      data: {
-        status: 'completed',
-        stripePaymentId: session.payment_intent,
-      },
+      if (transaction && transaction.status === 'completed') {
+        // Get current shop balance
+        const shop = await prisma.shop.findUnique({
+          where: { id: shopId },
+          select: { credits: true },
+        });
+
+        logger.warn('Transaction already completed (idempotency check)', {
+          transactionId,
+          sessionId: session.id,
+        });
+        return {
+          success: true,
+          creditsAdded: 0,
+          newBalance: shop?.credits || 0,
+          alreadyProcessed: true,
+        };
+      }
+    }
+
+    // Use atomic transaction for credit addition
+    const result = await prisma.$transaction(async (tx) => {
+      // Update shop credits
+      const updatedShop = await tx.shop.update({
+        where: { id: shopId },
+        data: {
+          credits: {
+            increment: creditsToAdd,
+          },
+        },
+        select: { credits: true },
+      });
+
+      // Update billing transaction status (if transactionId provided)
+      if (transactionId) {
+        await tx.billingTransaction.update({
+          where: { id: transactionId },
+          data: {
+            status: 'completed',
+            stripePaymentId: session.payment_intent,
+          },
+        });
+      } else {
+        // Fallback: update by session ID (less precise)
+        await tx.billingTransaction.updateMany({
+          where: {
+            shopId,
+            stripeSessionId: session.id,
+            status: 'pending',
+          },
+          data: {
+            status: 'completed',
+            stripePaymentId: session.payment_intent,
+          },
+        });
+      }
+
+      // Create wallet transaction record for audit trail
+      await tx.walletTransaction.create({
+        data: {
+          shopId,
+          type: 'purchase',
+          credits: creditsToAdd,
+          ref: `stripe:${session.id}`,
+          meta: {
+            sessionId: session.id,
+            paymentIntent: session.payment_intent,
+            packageId,
+            transactionId: transactionId || null,
+          },
+        },
+      });
+
+      return updatedShop;
     });
 
     logger.info('Payment processed successfully', {
       shopId,
       packageId,
       creditsAdded: creditsToAdd,
-      newBalance: updatedShop.credits,
+      newBalance: result.credits,
       sessionId: session.id,
     });
 
     return {
       success: true,
       creditsAdded: creditsToAdd,
-      newBalance: updatedShop.credits,
+      newBalance: result.credits,
     };
   } catch (error) {
     logger.error('Failed to handle payment success', {
@@ -183,10 +261,11 @@ export async function handlePaymentSuccess(session) {
  */
 export async function handlePaymentFailure(session) {
   try {
-    const { shopId } = session.metadata;
+    // Support both shopId and storeId in metadata
+    const shopId = session.metadata.shopId || session.metadata.storeId;
 
     if (!shopId) {
-      throw new Error('Missing shopId in session metadata');
+      throw new Error('Missing shopId/storeId in session metadata');
     }
 
     // Update billing transaction status

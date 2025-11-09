@@ -39,7 +39,7 @@ export default {
 
   // Mitto SMS Configuration
   mitto: {
-    apiBase: process.env.MITTO_API_BASE || 'http://messaging.mittoapi.com',
+    apiBase: process.env.MITTO_API_BASE || 'https://messaging.mittoapi.com',
     apiKey: process.env.MITTO_API_KEY || 'your_mitto_api_key',
     trafficAccountId: process.env.MITTO_TRAFFIC_ACCOUNT_ID || 'your_traffic_account_id',
     senderName: process.env.MITTO_SENDER_NAME || 'Sendly',

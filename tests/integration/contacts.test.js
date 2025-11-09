@@ -1,13 +1,14 @@
+/* eslint-disable no-console */
 /**
  * Contacts Endpoints Tests
  * Comprehensive tests for all contact-related endpoints
  */
 
-import request from 'supertest';
-import app from '../../app.js';
+import { request } from '../helpers/test-client.js';
 import {
   createTestShop,
   cleanupTestData,
+  cleanupBeforeTest,
   createTestHeaders,
   createTestContact,
 } from '../helpers/test-utils.js';
@@ -16,6 +17,7 @@ import {
   // countRecords, // Available for future use
 } from '../helpers/test-db.js';
 import prisma from '../../services/prisma.js';
+import { testConfig } from '../config/test-config.js';
 
 describe('Contacts Endpoints', () => {
   let testShop;
@@ -23,11 +25,14 @@ describe('Contacts Endpoints', () => {
   let testHeaders;
 
   beforeAll(async () => {
+    console.log('\n📦 Setting up test shop for contacts tests...');
+    // Use the actual sms-blossom-dev shop from production
     testShop = await createTestShop({
-      shopDomain: 'contacts-test.myshopify.com',
+      shopDomain: testConfig.testShop.shopDomain, // sms-blossom-dev.myshopify.com
     });
     testShopId = testShop.id;
     testHeaders = createTestHeaders(testShop.shopDomain);
+    console.log(`✅ Test shop ready: ${testShop.shopDomain} (ID: ${testShop.id})\n`);
   });
 
   afterAll(async () => {
@@ -36,10 +41,11 @@ describe('Contacts Endpoints', () => {
 
   describe('POST /contacts', () => {
     it('should create a new contact with all fields', async () => {
+      const timestamp = Date.now();
       const contactData = {
         firstName: 'John',
         lastName: 'Doe',
-        phoneE164: '+306977123456',
+        phoneE164: `+306977${String(timestamp).slice(-6)}`,
         email: 'john.doe@example.com',
         gender: 'male',
         birthDate: '1990-01-01',
@@ -47,7 +53,7 @@ describe('Contacts Endpoints', () => {
         tags: ['vip', 'newsletter'],
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/contacts')
         .set(testHeaders)
         .send(contactData);
@@ -72,11 +78,12 @@ describe('Contacts Endpoints', () => {
     });
 
     it('should create a contact with minimal required fields (phone only)', async () => {
+      const timestamp = Date.now();
       const contactData = {
-        phoneE164: '+306977654321',
+        phoneE164: `+306977${String(timestamp + 1).slice(-6)}`,
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/contacts')
         .set(testHeaders)
         .send(contactData);
@@ -97,7 +104,7 @@ describe('Contacts Endpoints', () => {
         phoneE164: 'invalid-phone',
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/contacts')
         .set(testHeaders)
         .send(contactData);
@@ -108,12 +115,13 @@ describe('Contacts Endpoints', () => {
     });
 
     it('should reject invalid email format', async () => {
+      const timestamp = Date.now();
       const contactData = {
-        phoneE164: '+306977111111',
+        phoneE164: `+306977${String(timestamp + 2).slice(-6)}`,
         email: 'invalid-email',
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/contacts')
         .set(testHeaders)
         .send(contactData);
@@ -123,15 +131,16 @@ describe('Contacts Endpoints', () => {
     });
 
     it('should reject future birth date', async () => {
+      const timestamp = Date.now();
       const futureDate = new Date();
       futureDate.setFullYear(futureDate.getFullYear() + 1);
 
       const contactData = {
-        phoneE164: '+306977222222',
+        phoneE164: `+306977${String(timestamp + 3).slice(-6)}`,
         birthDate: futureDate.toISOString(),
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/contacts')
         .set(testHeaders)
         .send(contactData);
@@ -143,14 +152,16 @@ describe('Contacts Endpoints', () => {
 
   describe('GET /contacts', () => {
     beforeEach(async () => {
-      // Create test contacts
-      await createTestContact({ phoneE164: '+306977111111', firstName: 'Alice', smsConsent: 'opted_in' });
-      await createTestContact({ phoneE164: '+306977222222', firstName: 'Bob', smsConsent: 'opted_in', gender: 'male' });
-      await createTestContact({ phoneE164: '+306977333333', firstName: 'Carol', smsConsent: 'opted_out', gender: 'female' });
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
+      // Create test contacts with unique phones
+      await createTestContact({ phoneE164: `+306977${String(timestamp).slice(-6)}`, firstName: 'Alice', smsConsent: 'opted_in' });
+      await createTestContact({ phoneE164: `+306977${String(timestamp + 1).slice(-6)}`, firstName: 'Bob', smsConsent: 'opted_in', gender: 'male' });
+      await createTestContact({ phoneE164: `+306977${String(timestamp + 2).slice(-6)}`, firstName: 'Carol', smsConsent: 'opted_out', gender: 'female' });
     });
 
     it('should list all contacts with pagination', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts?page=1&pageSize=10')
         .set(testHeaders);
 
@@ -164,7 +175,7 @@ describe('Contacts Endpoints', () => {
     });
 
     it('should filter contacts by SMS consent', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts?filter=consented')
         .set(testHeaders);
 
@@ -178,7 +189,7 @@ describe('Contacts Endpoints', () => {
     });
 
     it('should search contacts by name', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts?search=Alice')
         .set(testHeaders);
 
@@ -189,7 +200,7 @@ describe('Contacts Endpoints', () => {
     });
 
     it('should filter contacts by gender', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts?gender=male')
         .set(testHeaders);
 
@@ -202,7 +213,7 @@ describe('Contacts Endpoints', () => {
     });
 
     it('should respect max pageSize limit', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts?pageSize=150') // Max is 100
         .set(testHeaders);
 
@@ -215,8 +226,10 @@ describe('Contacts Endpoints', () => {
     let contactId;
 
     beforeEach(async () => {
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
       const contact = await createTestContact({
-        phoneE164: '+306977999999',
+        phoneE164: `+306977${String(timestamp).slice(-6)}`,
         firstName: 'Test',
         lastName: 'User',
       });
@@ -224,7 +237,7 @@ describe('Contacts Endpoints', () => {
     });
 
     it('should get a specific contact by ID', async () => {
-      const res = await request(app)
+      const res = await request()
         .get(`/contacts/${contactId}`)
         .set(testHeaders);
 
@@ -235,7 +248,7 @@ describe('Contacts Endpoints', () => {
     });
 
     it('should return 404 for non-existent contact', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts/non-existent-id')
         .set(testHeaders);
 
@@ -248,8 +261,10 @@ describe('Contacts Endpoints', () => {
     let contactId;
 
     beforeEach(async () => {
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
       const contact = await createTestContact({
-        phoneE164: '+306977888888',
+        phoneE164: `+306977${String(timestamp).slice(-6)}`,
         firstName: 'Original',
       });
       contactId = contact.id;
@@ -262,7 +277,7 @@ describe('Contacts Endpoints', () => {
         tags: ['updated'],
       };
 
-      const res = await request(app)
+      const res = await request()
         .put(`/contacts/${contactId}`)
         .set(testHeaders)
         .send(updateData);
@@ -289,7 +304,7 @@ describe('Contacts Endpoints', () => {
         email: 'partial-update@example.com',
       };
 
-      const res = await request(app)
+      const res = await request()
         .put(`/contacts/${contactId}`)
         .set(testHeaders)
         .send(updateData);
@@ -304,14 +319,16 @@ describe('Contacts Endpoints', () => {
     let contactId;
 
     beforeEach(async () => {
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
       const contact = await createTestContact({
-        phoneE164: '+306977777777',
+        phoneE164: `+306977${String(timestamp).slice(-6)}`,
       });
       contactId = contact.id;
     });
 
     it('should delete a contact', async () => {
-      const res = await request(app)
+      const res = await request()
         .delete(`/contacts/${contactId}`)
         .set(testHeaders);
 
@@ -328,14 +345,16 @@ describe('Contacts Endpoints', () => {
 
   describe('GET /contacts/stats', () => {
     beforeEach(async () => {
-      // Create contacts with different consent statuses
-      await createTestContact({ phoneE164: '+306977111111', smsConsent: 'opted_in', gender: 'male' });
-      await createTestContact({ phoneE164: '+306977222222', smsConsent: 'opted_in', gender: 'female' });
-      await createTestContact({ phoneE164: '+306977333333', smsConsent: 'opted_out' });
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
+      // Create contacts with different consent statuses and unique phones
+      await createTestContact({ phoneE164: `+306977${String(timestamp).slice(-6)}`, smsConsent: 'opted_in', gender: 'male' });
+      await createTestContact({ phoneE164: `+306977${String(timestamp + 1).slice(-6)}`, smsConsent: 'opted_in', gender: 'female' });
+      await createTestContact({ phoneE164: `+306977${String(timestamp + 2).slice(-6)}`, smsConsent: 'opted_out' });
     });
 
     it('should return contact statistics', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts/stats')
         .set(testHeaders);
 
@@ -372,7 +391,7 @@ describe('Contacts Endpoints', () => {
     });
 
     it('should return contacts with birthdays in specified range', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/contacts/birthdays?daysAhead=7')
         .set(testHeaders);
 
@@ -386,15 +405,19 @@ describe('Contacts Endpoints', () => {
 
   describe('POST /contacts/import', () => {
     it('should import multiple contacts', async () => {
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
+      const phone1 = `+306977${String(timestamp).slice(-6)}`;
+      const phone2 = `+306977${String(timestamp + 1).slice(-6)}`;
       const contactsData = {
         contacts: [
           {
-            phoneE164: '+306977111111',
+            phoneE164: phone1,
             firstName: 'Import1',
             smsConsent: 'opted_in',
           },
           {
-            phoneE164: '+306977222222',
+            phoneE164: phone2,
             firstName: 'Import2',
             email: 'import2@example.com',
             smsConsent: 'opted_in',
@@ -402,7 +425,7 @@ describe('Contacts Endpoints', () => {
         ],
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/contacts/import')
         .set(testHeaders)
         .send(contactsData);
@@ -417,30 +440,33 @@ describe('Contacts Endpoints', () => {
 
       // Verify contacts in database
       const contact1 = await prisma.contact.findFirst({
-        where: { shopId: testShopId, phoneE164: '+306977111111' },
+        where: { shopId: testShopId, phoneE164: phone1 },
       });
       expect(contact1).toBeTruthy();
       expect(contact1.firstName).toBe('Import1');
     });
 
     it('should update existing contacts on import', async () => {
+      await cleanupBeforeTest();
+      const timestamp = Date.now();
+      const phone = `+306977${String(timestamp).slice(-6)}`;
       // Create existing contact
       await createTestContact({
-        phoneE164: '+306977333333',
+        phoneE164: phone,
         firstName: 'Original',
       });
 
       const contactsData = {
         contacts: [
           {
-            phoneE164: '+306977333333',
+            phoneE164: phone,
             firstName: 'Updated',
             email: 'updated@example.com',
           },
         ],
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/contacts/import')
         .set(testHeaders)
         .send(contactsData);
@@ -450,16 +476,17 @@ describe('Contacts Endpoints', () => {
 
       // Verify updated in database
       const updated = await prisma.contact.findFirst({
-        where: { shopId: testShopId, phoneE164: '+306977333333' },
+        where: { shopId: testShopId, phoneE164: phone },
       });
       expect(updated.firstName).toBe('Updated');
     });
 
     it('should skip invalid contacts', async () => {
+      const timestamp = Date.now();
       const contactsData = {
         contacts: [
           {
-            phoneE164: '+306977444444',
+            phoneE164: `+306977${String(timestamp + 4).slice(-6)}`,
             firstName: 'Valid',
             smsConsent: 'opted_in',
           },
@@ -470,7 +497,7 @@ describe('Contacts Endpoints', () => {
         ],
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/contacts/import')
         .set(testHeaders)
         .send(contactsData);

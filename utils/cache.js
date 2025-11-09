@@ -1,4 +1,4 @@
-import IORedis from 'ioredis';
+import { logger } from './logger.js';
 
 class CacheManager {
   constructor() {
@@ -10,35 +10,29 @@ class CacheManager {
 
   async initialize() {
     // Skip Redis in development if not explicitly configured
-    if (process.env.NODE_ENV === 'development' && !process.env.REDIS_URL) {
-      console.log('Development mode: Using memory cache (Redis disabled)');
+    if (process.env.NODE_ENV === 'development' && !process.env.REDIS_HOST && !process.env.REDIS_URL) {
+      logger.info('Development mode: Using memory cache (Redis disabled)');
       this.redis = null;
       return;
     }
 
-    if (process.env.REDIS_URL) {
-      try {
-        this.redis = new IORedis(process.env.REDIS_URL, {
-          maxRetriesPerRequest: 3,
-          retryDelayOnFailover: 100,
-          enableReadyCheck: false,
-          lazyConnect: true,
-          connectTimeout: 10000,
-          commandTimeout: 5000,
-        });
+    // Use the same Redis configuration as config/redis.js
+    try {
+      const { cacheRedis } = await import('../config/redis.js');
+      this.redis = cacheRedis;
 
-        this.redis.on('error', (err) => {
-          console.error('Redis connection error:', err);
-        });
+      this.redis.on('error', (err) => {
+        logger.error('Redis connection error', { error: err.message });
+      });
 
+      // Connect if not already connected
+      if (this.redis.status !== 'ready' && this.redis.status !== 'connecting') {
         await this.redis.connect();
-        console.log('Redis cache initialized');
-      } catch (error) {
-        console.warn('Redis connection failed, falling back to memory cache:', error.message);
-        this.redis = null;
       }
-    } else {
-      console.log('No Redis URL provided, using memory cache');
+      logger.info('Redis cache initialized');
+    } catch (error) {
+      logger.warn('Redis connection failed, falling back to memory cache', { error: error.message });
+      this.redis = null;
     }
   }
 
@@ -55,7 +49,7 @@ class CacheManager {
       try {
         await this.redis.setex(key, ttlSeconds, serializedValue);
       } catch (error) {
-        console.error('Redis set error:', error);
+        logger.error('Redis set error', { error: error.message });
         // Fallback to memory cache
         this.setMemoryCache(key, value, ttlSeconds);
       }
@@ -73,7 +67,7 @@ class CacheManager {
           return JSON.parse(value);
         }
       } catch (error) {
-        console.error('Redis get error:', error);
+        logger.error('Redis get error', { error: error.message });
         // Fallback to memory cache
         return this.getMemoryCache(key);
       }
@@ -90,7 +84,7 @@ class CacheManager {
       try {
         await this.redis.del(key);
       } catch (error) {
-        console.error('Redis delete error:', error);
+        logger.error('Redis delete error', { error: error.message });
       }
     }
 
@@ -107,7 +101,7 @@ class CacheManager {
           await this.redis.del(...keys);
         }
       } catch (error) {
-        console.error('Redis clear pattern error:', error);
+        logger.error('Redis clear pattern error', { error: error.message });
       }
     }
 
@@ -171,7 +165,7 @@ class CacheManager {
           return res.json(cached);
         }
       } catch (error) {
-        console.error('Cache get error:', error);
+        logger.error('Cache get error', { error: error.message });
       }
 
       // Store original json method
@@ -181,7 +175,7 @@ class CacheManager {
       res.json = function (data) {
         // Cache the response
         cacheManager.set(cacheKey, data, ttlSeconds).catch((err) => {
-          console.error('Cache set error:', err);
+          logger.error('Cache set error', { error: err.message });
         });
 
         res.setHeader('X-Cache', 'MISS');

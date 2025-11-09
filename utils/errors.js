@@ -72,6 +72,7 @@ export const formatErrorResponse = (error, req) => {
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   const response = {
+    success: false,
     error: error.code || 'server_error',
     message: error.message || 'Internal server error',
     timestamp: error.timestamp || new Date().toISOString(),
@@ -140,6 +141,7 @@ export const globalErrorHandler = async (error, req, res, _next) => {
     });
   } catch (loggerError) {
     // Fallback to console if logger import fails
+    // eslint-disable-next-line no-console
     console.error('Error in global error handler:', {
       message: err.message,
       code: err.code,

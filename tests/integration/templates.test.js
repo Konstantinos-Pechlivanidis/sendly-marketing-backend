@@ -1,15 +1,16 @@
+/* eslint-disable no-console */
 /**
  * Templates Endpoints Tests
  * Comprehensive tests for all template-related endpoints
  */
 
-import request from 'supertest';
-import app from '../../app.js';
+import { request } from '../helpers/test-client.js';
 import {
   createTestShop,
   cleanupTestData,
   createTestHeaders,
 } from '../helpers/test-utils.js';
+import { testConfig } from '../config/test-config.js';
 import prisma from '../../services/prisma.js';
 
 describe('Templates Endpoints', () => {
@@ -18,11 +19,14 @@ describe('Templates Endpoints', () => {
   let testHeaders;
 
   beforeAll(async () => {
+    console.log('\n📦 Setting up test shop for templates tests...');
+    // Use the actual sms-blossom-dev shop from production
     testShop = await createTestShop({
-      shopDomain: 'templates-test.myshopify.com',
+      shopDomain: testConfig.testShop.shopDomain, // sms-blossom-dev.myshopify.com
     });
     testShopId = testShop.id;
     testHeaders = createTestHeaders(testShop.shopDomain);
+    console.log(`✅ Test shop ready: ${testShop.shopDomain} (ID: ${testShop.id})\n`);
   });
 
   afterAll(async () => {
@@ -35,19 +39,19 @@ describe('Templates Endpoints', () => {
       await prisma.template.createMany({
         data: [
           {
-            name: 'Welcome Message',
+            title: 'Welcome Message',
             category: 'welcome',
             content: 'Welcome to our store!',
             isPublic: true,
           },
           {
-            name: 'Order Confirmation',
+            title: 'Order Confirmation',
             category: 'order',
             content: 'Your order has been confirmed!',
             isPublic: true,
           },
           {
-            name: 'Abandoned Cart',
+            title: 'Abandoned Cart',
             category: 'cart',
             content: 'Complete your purchase!',
             isPublic: true,
@@ -57,7 +61,7 @@ describe('Templates Endpoints', () => {
     });
 
     it('should return all public templates', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/templates')
         .set(testHeaders);
 
@@ -69,7 +73,7 @@ describe('Templates Endpoints', () => {
     });
 
     it('should filter templates by category', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/templates?category=welcome')
         .set(testHeaders);
 
@@ -82,7 +86,7 @@ describe('Templates Endpoints', () => {
     });
 
     it('should search templates by name', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/templates?search=Welcome')
         .set(testHeaders);
 
@@ -97,15 +101,15 @@ describe('Templates Endpoints', () => {
     beforeEach(async () => {
       await prisma.template.createMany({
         data: [
-          { name: 'Template 1', category: 'welcome', isPublic: true },
-          { name: 'Template 2', category: 'order', isPublic: true },
-          { name: 'Template 3', category: 'cart', isPublic: true },
+          { title: 'Template 1', category: 'welcome', content: 'Template 1 content', isPublic: true },
+          { title: 'Template 2', category: 'order', content: 'Template 2 content', isPublic: true },
+          { title: 'Template 3', category: 'cart', content: 'Template 3 content', isPublic: true },
         ],
       });
     });
 
     it('should return template categories', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/templates/categories')
         .set(testHeaders);
 
@@ -122,7 +126,7 @@ describe('Templates Endpoints', () => {
     beforeEach(async () => {
       const template = await prisma.template.create({
         data: {
-          name: 'Test Template',
+          title: 'Test Template',
           category: 'test',
           content: 'Test content',
           isPublic: true,
@@ -132,7 +136,7 @@ describe('Templates Endpoints', () => {
     });
 
     it('should return a specific template by ID', async () => {
-      const res = await request(app)
+      const res = await request()
         .get(`/templates/${templateId}`)
         .set(testHeaders);
 
@@ -144,7 +148,7 @@ describe('Templates Endpoints', () => {
     });
 
     it('should return 404 for non-existent template', async () => {
-      const res = await request(app)
+      const res = await request()
         .get('/templates/non-existent-id')
         .set(testHeaders);
 
@@ -159,7 +163,7 @@ describe('Templates Endpoints', () => {
     beforeEach(async () => {
       const template = await prisma.template.create({
         data: {
-          name: 'Trackable Template',
+          title: 'Trackable Template',
           category: 'test',
           content: 'Test',
           isPublic: true,
@@ -173,7 +177,7 @@ describe('Templates Endpoints', () => {
         campaignId: 'test-campaign-id',
       };
 
-      const res = await request(app)
+      const res = await request()
         .post(`/templates/${templateId}/track`)
         .set(testHeaders)
         .send(trackData);
@@ -194,13 +198,13 @@ describe('Templates Endpoints', () => {
 
     it('should increment usage count for same template', async () => {
       // Track first time
-      await request(app)
+      await request()
         .post(`/templates/${templateId}/track`)
         .set(testHeaders)
         .send({});
 
       // Track second time
-      const res = await request(app)
+      const res = await request()
         .post(`/templates/${templateId}/track`)
         .set(testHeaders)
         .send({});

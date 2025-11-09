@@ -4,20 +4,18 @@ import {
   triggerOrderConfirmation,
 } from '../services/automations.js';
 import prisma from '../services/prisma.js';
+import { sendSuccess } from '../utils/response.js';
+import { NotFoundError, ValidationError } from '../utils/errors.js';
 
 /**
  * Handle Shopify order creation webhook
  */
-export async function handleOrderCreated(req, res) {
+export async function handleOrderCreated(req, res, _next) {
   try {
     const { shop_domain, id, customer, line_items } = req.body;
 
     if (!shop_domain || !id || !customer) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields',
-        message: 'shop_domain, id, and customer are required',
-      });
+      throw new ValidationError('shop_domain, id, and customer are required');
     }
 
     // Find the shop
@@ -27,11 +25,7 @@ export async function handleOrderCreated(req, res) {
 
     if (!shop) {
       logger.warn('Shop not found for order webhook', { shop_domain });
-      return res.status(404).json({
-        success: false,
-        error: 'Shop not found',
-        message: 'Shop domain not found in our system',
-      });
+      throw new NotFoundError('Shop');
     }
 
     // Find the customer contact
@@ -47,11 +41,7 @@ export async function handleOrderCreated(req, res) {
         shopId: shop.id,
         customerEmail: customer.email,
       });
-      return res.status(404).json({
-        success: false,
-        error: 'Contact not found',
-        message: 'Customer not found in our contact database',
-      });
+      throw new NotFoundError('Contact');
     }
 
     // Trigger order confirmation automation
@@ -84,38 +74,25 @@ export async function handleOrderCreated(req, res) {
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Order webhook processed',
-      automationTriggered: result.success,
-    });
+    return sendSuccess(res, { automationTriggered: result.success }, 'Order webhook processed');
   } catch (error) {
     logger.error('Order webhook processing failed', {
       error: error.message,
       body: req.body,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Webhook processing failed',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Handle abandoned cart webhook (if available from Shopify)
  */
-export async function handleCartAbandoned(req, res) {
+export async function handleCartAbandoned(req, res, _next) {
   try {
     const { shop_domain, customer, cart_token, line_items } = req.body;
 
     if (!shop_domain || !customer) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields',
-        message: 'shop_domain and customer are required',
-      });
+      throw new ValidationError('shop_domain and customer are required');
     }
 
     // Find the shop
@@ -125,11 +102,7 @@ export async function handleCartAbandoned(req, res) {
 
     if (!shop) {
       logger.warn('Shop not found for cart webhook', { shop_domain });
-      return res.status(404).json({
-        success: false,
-        error: 'Shop not found',
-        message: 'Shop domain not found in our system',
-      });
+      throw new NotFoundError('Shop');
     }
 
     // Find the customer contact
@@ -145,11 +118,7 @@ export async function handleCartAbandoned(req, res) {
         shopId: shop.id,
         customerEmail: customer.email,
       });
-      return res.status(404).json({
-        success: false,
-        error: 'Contact not found',
-        message: 'Customer not found in our contact database',
-      });
+      throw new NotFoundError('Contact');
     }
 
     // Trigger abandoned cart automation
@@ -181,38 +150,25 @@ export async function handleCartAbandoned(req, res) {
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Cart webhook processed',
-      automationTriggered: result.success,
-    });
+    return sendSuccess(res, { automationTriggered: result.success }, 'Cart webhook processed');
   } catch (error) {
     logger.error('Cart webhook processing failed', {
       error: error.message,
       body: req.body,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Webhook processing failed',
-      message: error.message,
-    });
+    throw error;
   }
 }
 
 /**
  * Manual trigger for testing automations
  */
-export async function triggerAutomationManually(req, res) {
+export async function triggerAutomationManually(req, res, _next) {
   try {
     const { shopId, contactId, triggerEvent, additionalData = {} } = req.body;
 
     if (!shopId || !contactId || !triggerEvent) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields',
-        message: 'shopId, contactId, and triggerEvent are required',
-      });
+      throw new ValidationError('shopId, contactId, and triggerEvent are required');
     }
 
     // Import the automation service
@@ -233,11 +189,7 @@ export async function triggerAutomationManually(req, res) {
         messageId: result.messageId,
       });
 
-      res.json({
-        success: true,
-        data: result,
-        message: 'Automation triggered successfully',
-      });
+      return sendSuccess(res, result, 'Automation triggered successfully');
     } else {
       logger.warn('Manual automation trigger failed', {
         shopId,
@@ -246,24 +198,14 @@ export async function triggerAutomationManually(req, res) {
         reason: result.reason,
       });
 
-      res.status(400).json({
-        success: false,
-        error: 'Automation trigger failed',
-        message: result.reason,
-        data: result,
-      });
+      throw new ValidationError(result.reason || 'Automation trigger failed');
     }
   } catch (error) {
     logger.error('Manual automation trigger failed', {
       error: error.message,
       body: req.body,
     });
-
-    res.status(500).json({
-      success: false,
-      error: 'Manual trigger failed',
-      message: error.message,
-    });
+    throw error;
   }
 }
 

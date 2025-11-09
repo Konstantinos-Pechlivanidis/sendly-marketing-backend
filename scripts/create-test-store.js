@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 

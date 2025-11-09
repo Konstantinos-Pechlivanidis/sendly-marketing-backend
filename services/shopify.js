@@ -1,21 +1,44 @@
 import { shopifyApi, Session } from '@shopify/shopify-api';
-import dotenv from 'dotenv';
 import { logger } from '../utils/logger.js';
-
-dotenv.config();
+import prisma from './prisma.js';
 
 let initialized = false;
+let apiInstance = null;
 
 export function initShopifyContext() {
-  if (initialized) return;
+  if (initialized) return apiInstance;
   const { SHOPIFY_API_KEY, SHOPIFY_API_SECRET, HOST } = process.env;
   if (!SHOPIFY_API_KEY || !SHOPIFY_API_SECRET || !HOST) {
-    console.warn('[Shopify] Missing envs. Check SHOPIFY_API_KEY/SECRET/HOST');
+    logger.warn('Shopify API configuration incomplete', {
+      hasApiKey: !!SHOPIFY_API_KEY,
+      hasApiSecret: !!SHOPIFY_API_SECRET,
+      hasHost: !!HOST,
+    });
   }
-  // For now, use a simple configuration without session storage
-  // In production, you would implement proper session storage
-  console.log('Shopify API initialized with basic configuration');
+
+  // Initialize Shopify API instance
+  try {
+    apiInstance = shopifyApi({
+      apiKey: SHOPIFY_API_KEY,
+      apiSecretKey: SHOPIFY_API_SECRET,
+      scopes: process.env.SCOPES?.split(',') || ['read_products'],
+      hostName: HOST.replace(/^https?:\/\//, '').split('/')[0],
+      apiVersion: '2024-04',
+      isEmbeddedApp: true,
+    });
+    logger.info('Shopify API initialized', {
+      hasApiKey: !!SHOPIFY_API_KEY,
+      hasApiSecret: !!SHOPIFY_API_SECRET,
+      hasHost: !!HOST,
+    });
+  } catch (error) {
+    logger.error('Failed to initialize Shopify API', {
+      error: error.message,
+    });
+  }
+
   initialized = true;
+  return apiInstance;
 }
 
 export function diagnostics() {
@@ -32,18 +55,51 @@ export function diagnostics() {
 
 /**
  * Get Shopify session for a shop
+ * Retrieves the access token from the database for the specific store
  * @param {string} shopDomain - Shop domain
  * @returns {Promise<Session>}
  */
 export async function getShopifySession(shopDomain) {
   try {
-    // In a real implementation, you would fetch this from your database
-    // For now, we'll create a basic session
+    // Validate shopDomain before querying
+    if (!shopDomain || typeof shopDomain !== 'string') {
+      throw new Error(`Invalid shopDomain provided: ${shopDomain}`);
+    }
+
+    // ✅ Fetch store from database to get access token
+    const store = await prisma.shop.findUnique({
+      where: { shopDomain },
+      select: { id: true, accessToken: true, shopDomain: true },
+    });
+
+    if (!store) {
+      throw new Error(`Store not found for domain: ${shopDomain}`);
+    }
+
+    if (!store.accessToken || store.accessToken === 'pending') {
+      logger.warn('Shopify access token not available', {
+        shopDomain,
+        storeId: store.id,
+        accessTokenStatus: store.accessToken || 'missing',
+      });
+      throw new Error(
+        `Shopify access token not available for store: ${shopDomain}. Please complete the app installation.`,
+      );
+    }
+
+    // ✅ Create session with actual access token from database
     const session = new Session({
       id: `shopify_session_${shopDomain}`,
       shop: shopDomain,
       state: 'state',
       isOnline: false,
+      accessToken: store.accessToken, // ✅ Use actual access token from database
+    });
+
+    logger.info('Shopify session created', {
+      shopDomain,
+      storeId: store.id,
+      hasAccessToken: !!store.accessToken,
     });
 
     return session;
@@ -64,9 +120,39 @@ export async function getShopifySession(shopDomain) {
 export async function getDiscountCodes(shopDomain) {
   try {
     const session = await getShopifySession(shopDomain);
+    const api = initShopifyContext();
+
+    if (!api) {
+      logger.error('Shopify API not initialized', {
+        hasApi: !!api,
+      });
+      throw new Error('Shopify API not initialized. Please check API configuration.');
+    }
+
+    // Check for GraphQL client in different possible locations
+    let GraphqlClient = null;
+    if (api.clients && api.clients.Graphql) {
+      GraphqlClient = api.clients.Graphql;
+    } else if (api.clients && api.clients.graphql) {
+      GraphqlClient = api.clients.graphql;
+    } else if (api.Graphql) {
+      GraphqlClient = api.Graphql;
+    } else if (api.graphql) {
+      GraphqlClient = api.graphql;
+    }
+
+    if (!GraphqlClient) {
+      logger.error('Shopify API GraphQL client not available', {
+        hasApi: !!api,
+        hasClients: !!(api && api.clients),
+        apiKeys: api ? Object.keys(api) : [],
+        clientsKeys: api && api.clients ? Object.keys(api.clients) : [],
+      });
+      throw new Error('Shopify API GraphQL client not available. Please check API initialization.');
+    }
 
     // Create a GraphQL client
-    const client = new shopifyApi.clients.Graphql({ session });
+    const client = new GraphqlClient({ session });
 
     // GraphQL query to get discount codes
     const query = `
@@ -207,7 +293,38 @@ export async function getDiscountCodes(shopDomain) {
 export async function getDiscountCode(shopDomain, discountId) {
   try {
     const session = await getShopifySession(shopDomain);
-    const client = new shopifyApi.clients.Graphql({ session });
+    const api = initShopifyContext();
+
+    if (!api) {
+      logger.error('Shopify API not initialized', {
+        hasApi: !!api,
+      });
+      throw new Error('Shopify API not initialized. Please check API configuration.');
+    }
+
+    // Check for GraphQL client in different possible locations
+    let GraphqlClient = null;
+    if (api.clients && api.clients.Graphql) {
+      GraphqlClient = api.clients.Graphql;
+    } else if (api.clients && api.clients.graphql) {
+      GraphqlClient = api.clients.graphql;
+    } else if (api.Graphql) {
+      GraphqlClient = api.Graphql;
+    } else if (api.graphql) {
+      GraphqlClient = api.graphql;
+    }
+
+    if (!GraphqlClient) {
+      logger.error('Shopify API GraphQL client not available', {
+        hasApi: !!api,
+        hasClients: !!(api && api.clients),
+        apiKeys: api ? Object.keys(api) : [],
+        clientsKeys: api && api.clients ? Object.keys(api.clients) : [],
+      });
+      throw new Error('Shopify API GraphQL client not available. Please check API initialization.');
+    }
+
+    const client = new GraphqlClient({ session });
 
     const query = `
       query getDiscountCode($id: ID!) {

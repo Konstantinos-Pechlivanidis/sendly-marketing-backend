@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Global Test Setup
  * Runs once before all tests

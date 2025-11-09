@@ -8,28 +8,28 @@ datasource db {
 }
 
 model Shop {
-  id           String              @id @default(cuid())
-  shopDomain   String              @unique
-  shopName     String?
-  accessToken  String?
-  status       String              @default("active")
-  country      String?
-  currency     String              @default("EUR")
-  credits      Int                 @default(0)
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  automations  UserAutomation[]
-  automationLogs AutomationLog[]
-  campaigns    Campaign[]
-  contacts     Contact[]
-  discounts    DiscountLink[]
-  messages     MessageLog[]
-  segments     Segment[]
-  templates    TemplateUsage[]
-  wallet       Wallet?
-  transactions WalletTransaction[]
+  id                  String               @id @default(cuid())
+  shopDomain          String               @unique
+  shopName            String?
+  accessToken         String?
+  status              String               @default("active")
+  country             String?
+  currency            String               @default("EUR")
+  credits             Int                  @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  automations         UserAutomation[]
+  automationLogs      AutomationLog[]
+  campaigns           Campaign[]
+  contacts            Contact[]
+  discounts           DiscountLink[]
+  messages            MessageLog[]
+  segments            Segment[]
+  templates           TemplateUsage[]
+  wallet              Wallet?
+  transactions        WalletTransaction[]
   billingTransactions BillingTransaction[]
-  settings     ShopSettings?
+  settings            ShopSettings?
 
   @@index([status, createdAt])
   @@index([country])
@@ -42,8 +42,8 @@ model Contact {
   lastName    String?
   phoneE164   String
   email       String?
-  gender      String?             // "male", "female", "other", or null
-  birthDate   DateTime?           // Required for birthday automations
+  gender      String? // "male", "female", "other", or null
+  birthDate   DateTime? // Required for birthday automations
   tags        String[]            @default([])
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
@@ -52,14 +52,14 @@ model Contact {
   shop        Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
   memberships SegmentMembership[]
 
+  @@unique([shopId, phoneE164])
+  @@unique([shopId, email])
   @@index([shopId, phoneE164])
   @@index([shopId, email])
   @@index([shopId, smsConsent])
   @@index([shopId, birthDate])
   @@index([shopId, createdAt])
   @@index([shopId, gender])
-  @@unique([shopId, phoneE164])
-  @@unique([shopId, email])
 }
 
 model Segment {
@@ -72,9 +72,9 @@ model Segment {
   shop        Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
   memberships SegmentMembership[]
 
+  @@unique([shopId, name])
   @@index([shopId, name])
   @@index([shopId, createdAt])
-  @@unique([shopId, name])
 }
 
 model SegmentMembership {
@@ -105,10 +105,10 @@ model Campaign {
   recipients    CampaignRecipient[]
   messages      MessageLog[]
 
+  @@unique([shopId, name])
   @@index([shopId, status])
   @@index([shopId, createdAt])
   @@index([shopId, scheduleAt])
-  @@unique([shopId, name])
 }
 
 model CampaignRecipient {
@@ -121,10 +121,15 @@ model CampaignRecipient {
   sentAt         DateTime?
   deliveredAt    DateTime?
   error          String?
-  deliveryStatus String?   // Mitto delivery status: Delivered, Failed, Queued, etc.
-  senderNumber   String?   // Sender number used for this message
+  deliveryStatus String? // Mitto delivery status: Delivered, Failed, Queued, etc.
+  senderNumber   String? // Sender number used for this message
   campaign       Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact        Contact?  @relation(fields: [contactId], references: [id])
+
+  @@index([campaignId, status]) // For filtering by campaign and status
+  @@index([campaignId, phoneE164]) // For quick lookups during SMS sending
+  @@index([sentAt]) // For time-based queries
+  @@index([status]) // For status-based filtering
 }
 
 model CampaignMetrics {
@@ -138,28 +143,31 @@ model CampaignMetrics {
 }
 
 model MessageLog {
-  id            String           @id @default(cuid())
-  shopId        String
-  phoneE164     String
-  provider      String
-  providerMsgId String?
-  payload       Json?
-  error         String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  campaignId    String?
-  direction     MessageDirection
-  status        MessageStatus?
-  deliveryStatus String?         // Mitto delivery status
-  senderNumber  String?         // Sender number used
-  campaign      Campaign?        @relation(fields: [campaignId], references: [id])
-  shop          Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  id             String           @id @default(cuid())
+  shopId         String
+  phoneE164      String
+  provider       String
+  providerMsgId  String?
+  payload        Json?
+  error          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  campaignId     String?
+  direction      MessageDirection
+  status         MessageStatus?
+  deliveryStatus String? // Mitto delivery status
+  senderNumber   String? // Sender number used
+  campaign       Campaign?        @relation(fields: [campaignId], references: [id])
+  shop           Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId, direction])
   @@index([shopId, status])
   @@index([shopId, createdAt])
   @@index([shopId, providerMsgId])
   @@index([shopId, phoneE164])
+  @@index([campaignId, status]) // For campaign status queries
+  @@index([createdAt, status]) // For time-based filtering with status
+  @@index([providerMsgId]) // For quick lookups by provider message ID
 }
 
 model Wallet {
@@ -225,7 +233,7 @@ model UserAutomation {
   id           String     @id @default(cuid())
   shopId       String
   automationId String
-  userMessage  String?    // Custom message by user
+  userMessage  String? // Custom message by user
   isActive     Boolean    @default(true)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
@@ -236,14 +244,14 @@ model UserAutomation {
 }
 
 model AutomationLog {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   automationId String
   storeId      String
-  status       String     // 'sent', 'skipped', 'failed'
-  reason       String?    // Reason for skip/failure
-  triggeredAt  DateTime   @default(now())
-  createdAt    DateTime   @default(now())
-  shop         Shop       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  status       String // 'sent', 'skipped', 'failed'
+  reason       String? // Reason for skip/failure
+  triggeredAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+  shop         Shop     @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId, status])
   @@index([automationId, triggeredAt])
@@ -317,22 +325,22 @@ enum AutomationTrigger {
 }
 
 model ShopSettings {
-  id              String   @id @default(cuid())
-  shopId          String   @unique
-  senderNumber    String?  // Custom sender number for SMS
-  senderName      String?  // Custom sender name
-  timezone        String   @default("UTC")
-  currency        String   @default("EUR")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  shopId       String   @unique
+  senderNumber String? // Custom sender number for SMS
+  senderName   String? // Custom sender name
+  timezone     String   @default("UTC")
+  currency     String   @default("EUR")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 }
 
 model BillingTransaction {
   id              String   @id @default(cuid())
   shopId          String
   creditsAdded    Int
-  amount          Int      // Amount in cents
+  amount          Int // Amount in cents
   currency        String   @default("EUR")
   packageType     String
   stripeSessionId String
@@ -346,36 +354,36 @@ model BillingTransaction {
 }
 
 model Template {
-  id            String   @id @default(cuid())
-  title         String
-  category      String
-  content       String
-  previewImage  String?
-  tags          String[] @default([])
-  isPublic      Boolean  @default(true)
-  isSystemDefault Boolean @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  usage         TemplateUsage[]
+  id              String          @id @default(cuid())
+  title           String
+  category        String
+  content         String
+  previewImage    String?
+  tags            String[]        @default([])
+  isPublic        Boolean         @default(true)
+  isSystemDefault Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  usage           TemplateUsage[]
 }
 
 model QueueJob {
-  id            String    @id @default(cuid())
-  queueName     String
-  jobName       String
-  data          String    // JSON string
-  status        String    @default("pending") // pending, processing, completed, failed
-  attempts      Int       @default(0)
-  maxAttempts   Int       @default(3)
-  priority      Int       @default(0)
-  delay         DateTime?
-  startedAt     DateTime?
-  completedAt   DateTime?
-  failedAt      DateTime?
-  result        String?   // JSON string
-  error         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  queueName   String
+  jobName     String
+  data        String // JSON string
+  status      String    @default("pending") // pending, processing, completed, failed
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  priority    Int       @default(0)
+  delay       DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  failedAt    DateTime?
+  result      String? // JSON string
+  error       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([queueName, status])
   @@index([status, createdAt])
@@ -391,7 +399,7 @@ model ShopifySession {
   expires     DateTime?
   accessToken String?
   userId      String?
-  sessionData String    // JSON string
+  sessionData String // JSON string
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

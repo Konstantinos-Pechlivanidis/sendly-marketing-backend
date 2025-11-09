@@ -1,15 +1,16 @@
+/* eslint-disable no-console */
 /**
  * Webhooks Endpoints Tests
  * Comprehensive tests for webhook endpoints
  */
 
-import request from 'supertest';
-import app from '../../app.js';
+import { request } from '../helpers/test-client.js';
 import {
   createTestShop,
   cleanupTestData,
   createTestHeaders,
 } from '../helpers/test-utils.js';
+import { testConfig } from '../config/test-config.js';
 
 describe('Webhooks Endpoints', () => {
   let testShop;
@@ -17,11 +18,14 @@ describe('Webhooks Endpoints', () => {
   let testHeaders;
 
   beforeAll(async () => {
+    console.log('\n📦 Setting up test shop for webhooks tests...');
+    // Use the actual sms-blossom-dev shop from production
     testShop = await createTestShop({
-      shopDomain: 'webhooks-test.myshopify.com',
+      shopDomain: testConfig.testShop.shopDomain, // sms-blossom-dev.myshopify.com
     });
     testShopId = testShop.id;
     testHeaders = createTestHeaders(testShop.shopDomain);
+    console.log(`✅ Test shop ready: ${testShop.shopDomain} (ID: ${testShop.id})\n`);
   });
 
   afterAll(async () => {
@@ -34,7 +38,7 @@ describe('Webhooks Endpoints', () => {
         myshopify_domain: 'test-store.myshopify.com',
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/webhooks/app_uninstalled')
         .send(webhookData);
 
@@ -54,7 +58,7 @@ describe('Webhooks Endpoints', () => {
         },
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/automation-webhooks/abandoned-cart')
         .set(testHeaders)
         .send(webhookData);
@@ -77,7 +81,7 @@ describe('Webhooks Endpoints', () => {
         },
       };
 
-      const res = await request(app)
+      const res = await request()
         .post('/webhooks/stripe')
         .set({
           'stripe-signature': 'test_signature',

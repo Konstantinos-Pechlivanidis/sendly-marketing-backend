@@ -56,7 +56,7 @@ async function getSender(shopId, senderOverride = null) {
 }
 
 const mitto = axios.create({
-  baseURL: process.env.MITTO_API_BASE || 'http://messaging.mittoapi.com',
+  baseURL: process.env.MITTO_API_BASE || 'https://messaging.mittoapi.com',
   timeout: 30000,
 });
 
@@ -96,9 +96,10 @@ mitto.interceptors.response.use(
  * @param {string} params.text - SMS message text
  * @param {string} [params.senderOverride] - Override sender name
  * @param {string} [params.shopId] - Shop ID for client settings lookup
+ * @param {boolean} [params.skipCreditCheck] - Skip credit consumption (for campaign messages where credits already consumed)
  * @returns {Promise<{messageId: string, status: string}>}
  */
-export async function sendSms({ to, text, senderOverride = null, shopId = null }) {
+export async function sendSms({ to, text, senderOverride = null, shopId = null, skipCreditCheck = false }) {
   try {
     // Validate phone number
     if (!validateE164PhoneNumber(to)) {
@@ -107,8 +108,8 @@ export async function sendSms({ to, text, senderOverride = null, shopId = null }
       );
     }
 
-    // Validate and consume credits if shopId is provided
-    if (shopId) {
+    // Validate and consume credits if shopId is provided AND not skipping (campaign messages already consumed credits)
+    if (shopId && !skipCreditCheck) {
       try {
         const creditResult = await validateAndConsumeCredits(shopId, 1);
         logger.info('Credits validated and consumed for SMS', {
@@ -122,6 +123,12 @@ export async function sendSms({ to, text, senderOverride = null, shopId = null }
         }
         throw error;
       }
+    } else if (shopId && skipCreditCheck) {
+      // Campaign message - credits already consumed at campaign level
+      logger.info('Skipping credit consumption (campaign message)', {
+        shopId,
+        destination: to,
+      });
     }
 
     // Get sender name

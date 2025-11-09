@@ -1,5 +1,8 @@
 import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { getStoreId } from '../middlewares/store-resolution.js';
+import { sendSuccess, sendPaginated } from '../utils/response.js';
+import { ValidationError } from '../utils/errors.js';
 
 /**
  * Get predefined audiences for campaign targeting
@@ -7,32 +10,21 @@ import { logger } from '../utils/logger.js';
  */
 export async function getAudiences(req, res, next) {
   try {
-    const shopDomain = req.shop;
-
-    const shop = await prisma.shop.findUnique({
-      where: { shopDomain },
-    });
-
-    if (!shop) {
-      return res.status(404).json({
-        success: false,
-        error: 'Shop not found',
-      });
-    }
+    const shopId = getStoreId(req);
 
     // Get contact counts for each audience type
     const [allCount, menCount, womenCount] = await Promise.all([
       // All SMS consented contacts
       prisma.contact.count({
         where: {
-          shopId: shop.id,
+          shopId,
           smsConsent: 'opted_in',
         },
       }),
       // Men with SMS consent
       prisma.contact.count({
         where: {
-          shopId: shop.id,
+          shopId,
           smsConsent: 'opted_in',
           gender: 'male',
         },
@@ -40,7 +32,7 @@ export async function getAudiences(req, res, next) {
       // Women with SMS consent
       prisma.contact.count({
         where: {
-          shopId: shop.id,
+          shopId,
           smsConsent: 'opted_in',
           gender: 'female',
         },
@@ -49,7 +41,7 @@ export async function getAudiences(req, res, next) {
 
     // Get custom segments
     const segments = await prisma.segment.findMany({
-      where: { shopId: shop.id },
+      where: { shopId },
       include: {
         _count: {
           select: {
@@ -107,27 +99,24 @@ export async function getAudiences(req, res, next) {
     const allAudiences = [...audiences, ...customAudiences];
 
     logger.info('Audiences retrieved', {
-      shopId: shop.id,
+      shopId,
       totalAudiences: allAudiences.length,
       totalContacts: allCount,
     });
 
-    res.json({
-      success: true,
-      data: {
-        audiences: allAudiences,
-        totalContacts: allCount,
-        summary: {
-          total: allCount,
-          men: menCount,
-          women: womenCount,
-          segments: segments.length,
-        },
+    return sendSuccess(res, {
+      audiences: allAudiences,
+      totalContacts: allCount,
+      summary: {
+        total: allCount,
+        men: menCount,
+        women: womenCount,
+        segments: segments.length,
       },
     });
   } catch (error) {
     logger.error('Error in getAudiences', {
-      shopDomain: req.shop,
+      shopDomain: req.ctx?.store?.shopDomain || 'unknown',
       error: error.message,
     });
     next(error);
@@ -141,22 +130,11 @@ export async function getAudiences(req, res, next) {
 export async function getAudienceDetails(req, res, next) {
   try {
     const { audienceId } = req.params;
-    const shopDomain = req.shop;
+    const shopId = getStoreId(req);
     const { page = 1, limit = 50 } = req.query;
 
-    const shop = await prisma.shop.findUnique({
-      where: { shopDomain },
-    });
-
-    if (!shop) {
-      return res.status(404).json({
-        success: false,
-        error: 'Shop not found',
-      });
-    }
-
     const whereClause = {
-      shopId: shop.id,
+      shopId,
       smsConsent: 'opted_in',
     };
 
@@ -195,24 +173,21 @@ export async function getAudienceDetails(req, res, next) {
         },
       });
 
-      return res.json({
-        success: true,
-        data: {
-          audienceId,
-          contacts,
-          pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
-            total: totalCount,
-            pages: Math.ceil(totalCount / limit),
-          },
+      return sendPaginated(
+        res,
+        contacts,
+        {
+          page: parseInt(page),
+          pageSize: parseInt(limit),
+          total: totalCount,
+          totalPages: Math.ceil(totalCount / parseInt(limit)),
+          hasNextPage: parseInt(page) < Math.ceil(totalCount / parseInt(limit)),
+          hasPrevPage: parseInt(page) > 1,
         },
-      });
+        { audienceId },
+      );
     } else {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid audience ID',
-      });
+      throw new ValidationError('Invalid audience ID');
     }
 
     // Get contacts for predefined audiences
@@ -235,23 +210,23 @@ export async function getAudienceDetails(req, res, next) {
       prisma.contact.count({ where: whereClause }),
     ]);
 
-    res.json({
-      success: true,
-      data: {
-        audienceId,
-        contacts,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: totalCount,
-          pages: Math.ceil(totalCount / limit),
-        },
+    return sendPaginated(
+      res,
+      contacts,
+      {
+        page: parseInt(page),
+        pageSize: parseInt(limit),
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        hasNextPage: parseInt(page) < Math.ceil(totalCount / parseInt(limit)),
+        hasPrevPage: parseInt(page) > 1,
       },
-    });
+      { audienceId },
+    );
   } catch (error) {
     logger.error('Error in getAudienceDetails', {
       audienceId: req.params.audienceId,
-      shopDomain: req.shop,
+      shopDomain: req.ctx?.store?.shopDomain || 'unknown',
       error: error.message,
     });
     next(error);
@@ -265,18 +240,7 @@ export async function getAudienceDetails(req, res, next) {
 export async function validateAudience(req, res, next) {
   try {
     const { audienceId } = req.body;
-    const shopDomain = req.shop;
-
-    const shop = await prisma.shop.findUnique({
-      where: { shopDomain },
-    });
-
-    if (!shop) {
-      return res.status(404).json({
-        success: false,
-        error: 'Shop not found',
-      });
-    }
+    const shopId = getStoreId(req);
 
     let contactCount = 0;
     let isValid = false;
@@ -286,7 +250,7 @@ export async function validateAudience(req, res, next) {
       if (audienceId === 'all') {
         contactCount = await prisma.contact.count({
           where: {
-            shopId: shop.id,
+            shopId,
             smsConsent: 'opted_in',
           },
         });
@@ -294,7 +258,7 @@ export async function validateAudience(req, res, next) {
       } else if (audienceId === 'men') {
         contactCount = await prisma.contact.count({
           where: {
-            shopId: shop.id,
+            shopId,
             smsConsent: 'opted_in',
             gender: 'male',
           },
@@ -303,7 +267,7 @@ export async function validateAudience(req, res, next) {
       } else if (audienceId === 'women') {
         contactCount = await prisma.contact.count({
           where: {
-            shopId: shop.id,
+            shopId,
             smsConsent: 'opted_in',
             gender: 'female',
           },
@@ -316,7 +280,7 @@ export async function validateAudience(req, res, next) {
         const segment = await prisma.segment.findFirst({
           where: {
             id: segmentId,
-            shopId: shop.id,
+            shopId,
           },
         });
 
@@ -340,19 +304,16 @@ export async function validateAudience(req, res, next) {
       error = err.message;
     }
 
-    res.json({
-      success: true,
-      data: {
-        audienceId,
-        isValid,
-        contactCount,
-        error,
-      },
+    return sendSuccess(res, {
+      audienceId,
+      isValid,
+      contactCount,
+      error,
     });
   } catch (error) {
     logger.error('Error in validateAudience', {
       audienceId: req.body.audienceId,
-      shopDomain: req.shop,
+      shopDomain: req.ctx?.store?.shopDomain || 'unknown',
       error: error.message,
     });
     next(error);
