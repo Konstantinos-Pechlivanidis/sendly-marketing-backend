@@ -262,6 +262,158 @@ export async function hasActiveAutomation(shopId, triggerEvent) {
   return !!automation;
 }
 
+/**
+ * Daily Cron Job: Check for birthdays and trigger automation
+ * Should be called once per day (e.g., at midnight)
+ */
+export async function processDailyBirthdayAutomations() {
+  try {
+    logger.info('Starting daily birthday automation check...');
+
+    // Get today's date (MM-DD format for matching birthdays)
+    const today = new Date();
+    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const todayDay = String(today.getDate()).padStart(2, '0');
+
+    logger.info('Checking for birthdays', {
+      month: todayMonth,
+      day: todayDay,
+      date: today.toISOString(),
+    });
+
+    // Find all contacts with birthday today
+    const contactsWithBirthdayToday = await prisma.contact.findMany({
+      where: {
+        birthday: {
+          not: null,
+        },
+        smsConsent: 'opted_in',
+      },
+      include: {
+        shop: {
+          include: {
+            settings: true,
+            userAutomations: {
+              where: {
+                isActive: true,
+                automation: {
+                  triggerEvent: 'birthday',
+                  isSystemDefault: true,
+                },
+              },
+              include: {
+                automation: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Filter contacts whose birthday is today
+    const birthdayContacts = contactsWithBirthdayToday.filter(contact => {
+      if (!contact.birthday) return false;
+
+      const birthDate = new Date(contact.birthday);
+      const birthMonth = String(birthDate.getMonth() + 1).padStart(2, '0');
+      const birthDay = String(birthDate.getDate()).padStart(2, '0');
+
+      return birthMonth === todayMonth && birthDay === todayDay;
+    });
+
+    logger.info(`Found ${birthdayContacts.length} contacts with birthday today`);
+
+    const results = {
+      total: birthdayContacts.length,
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+      details: [],
+    };
+
+    // Process each contact
+    for (const contact of birthdayContacts) {
+      try {
+        // Check if shop has active birthday automation
+        if (!contact.shop.userAutomations || contact.shop.userAutomations.length === 0) {
+          logger.info('No active birthday automation for shop', {
+            shopId: contact.shopId,
+            contactId: contact.id,
+          });
+          results.skipped++;
+          results.details.push({
+            contactId: contact.id,
+            shopId: contact.shopId,
+            status: 'skipped',
+            reason: 'No active birthday automation',
+          });
+          continue;
+        }
+
+        // Trigger birthday automation
+        const result = await triggerBirthdayOffer({
+          shopId: contact.shopId,
+          contactId: contact.id,
+          birthdayData: {
+            firstName: contact.firstName,
+            lastName: contact.lastName,
+          },
+        });
+
+        if (result.success) {
+          results.sent++;
+          results.details.push({
+            contactId: contact.id,
+            shopId: contact.shopId,
+            status: 'sent',
+            messageId: result.messageId,
+          });
+          logger.info('Birthday SMS sent successfully', {
+            contactId: contact.id,
+            shopId: contact.shopId,
+            messageId: result.messageId,
+          });
+        } else {
+          results.failed++;
+          results.details.push({
+            contactId: contact.id,
+            shopId: contact.shopId,
+            status: 'failed',
+            reason: result.reason,
+          });
+          logger.warn('Birthday SMS failed', {
+            contactId: contact.id,
+            shopId: contact.shopId,
+            reason: result.reason,
+          });
+        }
+      } catch (error) {
+        results.failed++;
+        results.details.push({
+          contactId: contact.id,
+          shopId: contact.shopId,
+          status: 'failed',
+          error: error.message,
+        });
+        logger.error('Error processing birthday automation', {
+          contactId: contact.id,
+          shopId: contact.shopId,
+          error: error.message,
+        });
+      }
+    }
+
+    logger.info('Daily birthday automation check completed', results);
+    return results;
+  } catch (error) {
+    logger.error('Failed to process daily birthday automations', {
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
+}
+
 export default {
   triggerAutomation,
   triggerAbandonedCart,
@@ -270,5 +422,6 @@ export default {
   triggerBirthdayOffer,
   getActiveAutomations,
   hasActiveAutomation,
+  processDailyBirthdayAutomations,
   processMessageTemplate,
 };

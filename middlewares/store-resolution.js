@@ -21,14 +21,6 @@ export async function resolveStore(req, res, next) {
     let shopDomain = null;
     let store = null;
 
-    // Log all headers for debugging
-    logger.info('🔍 Store Resolution - Incoming Request', {
-      url: req.url,
-      method: req.method,
-      headers: req.headers,
-      query: req.query,
-    });
-
     // Method 1: Shopify session/JWT (primary method)
     // Check multiple possible sources for shop domain
     // Note: Express converts headers to lowercase, so we only check lowercase
@@ -42,17 +34,6 @@ export async function resolveStore(req, res, next) {
       req.body?.shop ||
       req.body?.shop_domain ||
       req.body?.shop_name;
-
-    logger.info('🔍 Possible shop domain found:', {
-      found: possibleShopDomain,
-      headers: {
-        'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
-        'x-shopify-shop': req.headers['x-shopify-shop'],
-        'x-shopify-shop-name': req.headers['x-shopify-shop-name'],
-      },
-      query: req.query,
-      bodyKeys: req.body ? Object.keys(req.body) : [],
-    });
 
     // Method 1.5: Extract shop domain from URL path (for embedded Shopify apps)
     // URL pattern: /store/{shop-domain}/apps/{app-name}/app
@@ -75,20 +56,8 @@ export async function resolveStore(req, res, next) {
       if (shopDomain && !shopDomain.includes('.')) {
         shopDomain = `${shopDomain}.myshopify.com`;
       }
-
-      logger.info('Attempting to resolve store from headers/query/body', {
-        shopDomain,
-        headers: req.headers,
-        query: req.query,
-        body: req.body ? Object.keys(req.body) : 'no body',
-      });
     } else if (shopDomainFromPath) {
       shopDomain = shopDomainFromPath;
-      logger.info('Attempting to resolve store from URL path', {
-        shopDomain,
-        url: req.url,
-        extractedFromPath: true,
-      });
     } else {
       // Try to extract from Shopify App Bridge session or JWT
       const shopifySession = req.session?.shopify || req.session?.shop;
@@ -97,13 +66,12 @@ export async function resolveStore(req, res, next) {
         if (shopDomain && !shopDomain.includes('.')) {
           shopDomain = `${shopDomain}.myshopify.com`;
         }
-        logger.info('Found shop domain in session', { shopDomain, session: shopifySession });
       }
     }
 
     // Final validation - ensure shopDomain is a valid string
     if (!shopDomain || typeof shopDomain !== 'string') {
-      // No shop domain provided - use development fallback for testing
+      // No shop domain provided - use development fallback for testing ONLY in development mode
       logger.warn('No shop domain provided in headers, query, or body', {
         headers: Object.keys(req.headers).filter(h => h.toLowerCase().includes('shop')),
         headerValues: {
@@ -115,11 +83,15 @@ export async function resolveStore(req, res, next) {
         body: req.body ? Object.keys(req.body) : 'no body',
         url: req.url,
         possibleShopDomain,
+        nodeEnv: process.env.NODE_ENV,
       });
 
-      // For development/testing, use a default store
-      shopDomain = 'sms-blossom-dev.myshopify.com';
-      logger.info('Using development fallback store', { shopDomain });
+      // For development mode ONLY, use a default store
+      // In test/production, this should fail
+      if (process.env.NODE_ENV === 'development') {
+        shopDomain = 'sms-blossom-dev.myshopify.com';
+        logger.info('Using development fallback store', { shopDomain });
+      }
     }
 
     // Ensure shopDomain is a valid string after all attempts
@@ -166,14 +138,9 @@ export async function resolveStore(req, res, next) {
 
       if (store) {
         storeId = store.id;
-        logger.info('Store resolved from Shopify context', {
-          shopDomain,
-          storeId,
-          method: 'shopify',
-        });
       } else {
         // Auto-create store if it doesn't exist
-        logger.info('Store not found, creating new store', { shopDomain });
+        logger.info('Auto-creating new store', { shopDomain });
 
         store = await prisma.shop.create({
           data: {
@@ -198,11 +165,6 @@ export async function resolveStore(req, res, next) {
         });
 
         storeId = store.id;
-        logger.info('Store created automatically', {
-          shopDomain,
-          storeId,
-          method: 'auto-create',
-        });
       }
     } catch (dbError) {
       logger.error('Database error during store resolution', {
@@ -212,12 +174,11 @@ export async function resolveStore(req, res, next) {
       throw dbError;
     }
 
-    // Method 2: Admin bearer token (for admin operations)
-    if (!store && req.headers.authorization) {
+    // Method 2: Admin bearer token (for admin operations) - DEVELOPMENT ONLY
+    if (!store && process.env.NODE_ENV === 'development' && req.headers.authorization) {
       const token = req.headers.authorization.replace('Bearer ', '');
 
-      // In production, this would validate against your admin token system
-      if (process.env.NODE_ENV === 'development' && token === process.env.ADMIN_TOKEN) {
+      if (token === process.env.ADMIN_TOKEN) {
         // For development, use the first available store
         store = await prisma.shop.findFirst({
           include: {
@@ -228,16 +189,11 @@ export async function resolveStore(req, res, next) {
         if (store) {
           storeId = store.id;
           shopDomain = store.shopDomain;
-          logger.info('Store resolved from admin token', {
-            storeId,
-            shopDomain,
-            method: 'admin',
-          });
         }
       }
     }
 
-    // Method 3: Development mode fallback
+    // Method 3: Development mode fallback - DEVELOPMENT ONLY
     if (!store && process.env.NODE_ENV === 'development') {
       store = await prisma.shop.findFirst({
         include: {
@@ -248,11 +204,6 @@ export async function resolveStore(req, res, next) {
       if (store) {
         storeId = store.id;
         shopDomain = store.shopDomain;
-        logger.info('Store resolved from development fallback', {
-          storeId,
-          shopDomain,
-          method: 'development',
-        });
       }
     }
 
@@ -268,11 +219,6 @@ export async function resolveStore(req, res, next) {
 
       if (store) {
         shopDomain = store.shopDomain;
-        logger.info('Store resolved from explicit store ID', {
-          storeId,
-          shopDomain,
-          method: 'explicit',
-        });
       }
     }
 
@@ -310,13 +256,6 @@ export async function resolveStore(req, res, next) {
 
     // Add store context to logger for this request
     req.logger = logger;
-
-    logger.info('Store context established', {
-      storeId,
-      shopDomain,
-      credits: store.credits,
-      currency: store.settings?.currency,
-    });
 
     next();
   } catch (error) {

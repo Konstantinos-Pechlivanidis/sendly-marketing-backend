@@ -26,12 +26,9 @@ pids/
 *.seed
 *.pid.lock
 
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# nyc test coverage
-.nyc_output
+# Build outputs
+dist/
+build/
 
 # Dependency directories
 jspm_packages/
@@ -101,7 +98,3 @@ Thumbs.db
 # Build outputs
 dist/
 build/
-
-# Test outputs
-test-results/
-playwright-report/

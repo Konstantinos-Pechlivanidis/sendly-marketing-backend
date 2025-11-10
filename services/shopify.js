@@ -49,7 +49,7 @@ export function diagnostics() {
     hasHost: !!HOST,
     scopesCount: (SCOPES || '').split(',').filter(Boolean).length,
     embedded: true,
-    apiVersion: 'April25',
+    apiVersion: '2024-04',
   };
 }
 
@@ -113,6 +113,43 @@ export async function getShopifySession(shopDomain) {
 }
 
 /**
+ * Get GraphQL client from Shopify API instance
+ * @param {Object} api - Shopify API instance
+ * @returns {Class} GraphQL Client class
+ * @throws {Error} If GraphQL client not found
+ */
+function getGraphQLClient(api) {
+  if (!api) {
+    logger.error('Shopify API not initialized');
+    throw new Error('Shopify API not initialized. Please check API configuration.');
+  }
+
+  // Check for GraphQL client in different possible locations
+  let GraphqlClient = null;
+  if (api.clients && api.clients.Graphql) {
+    GraphqlClient = api.clients.Graphql;
+  } else if (api.clients && api.clients.graphql) {
+    GraphqlClient = api.clients.graphql;
+  } else if (api.Graphql) {
+    GraphqlClient = api.Graphql;
+  } else if (api.graphql) {
+    GraphqlClient = api.graphql;
+  }
+
+  if (!GraphqlClient) {
+    logger.error('Shopify API GraphQL client not available', {
+      hasApi: !!api,
+      hasClients: !!(api && api.clients),
+      apiKeys: api ? Object.keys(api) : [],
+      clientsKeys: api && api.clients ? Object.keys(api.clients) : [],
+    });
+    throw new Error('Shopify API GraphQL client not available. Please check API initialization.');
+  }
+
+  return GraphqlClient;
+}
+
+/**
  * Get discount codes for a shop
  * @param {string} shopDomain - Shop domain
  * @returns {Promise<Array>}
@@ -121,35 +158,7 @@ export async function getDiscountCodes(shopDomain) {
   try {
     const session = await getShopifySession(shopDomain);
     const api = initShopifyContext();
-
-    if (!api) {
-      logger.error('Shopify API not initialized', {
-        hasApi: !!api,
-      });
-      throw new Error('Shopify API not initialized. Please check API configuration.');
-    }
-
-    // Check for GraphQL client in different possible locations
-    let GraphqlClient = null;
-    if (api.clients && api.clients.Graphql) {
-      GraphqlClient = api.clients.Graphql;
-    } else if (api.clients && api.clients.graphql) {
-      GraphqlClient = api.clients.graphql;
-    } else if (api.Graphql) {
-      GraphqlClient = api.Graphql;
-    } else if (api.graphql) {
-      GraphqlClient = api.graphql;
-    }
-
-    if (!GraphqlClient) {
-      logger.error('Shopify API GraphQL client not available', {
-        hasApi: !!api,
-        hasClients: !!(api && api.clients),
-        apiKeys: api ? Object.keys(api) : [],
-        clientsKeys: api && api.clients ? Object.keys(api.clients) : [],
-      });
-      throw new Error('Shopify API GraphQL client not available. Please check API initialization.');
-    }
+    const GraphqlClient = getGraphQLClient(api);
 
     // Create a GraphQL client
     const client = new GraphqlClient({ session });
@@ -294,35 +303,7 @@ export async function getDiscountCode(shopDomain, discountId) {
   try {
     const session = await getShopifySession(shopDomain);
     const api = initShopifyContext();
-
-    if (!api) {
-      logger.error('Shopify API not initialized', {
-        hasApi: !!api,
-      });
-      throw new Error('Shopify API not initialized. Please check API configuration.');
-    }
-
-    // Check for GraphQL client in different possible locations
-    let GraphqlClient = null;
-    if (api.clients && api.clients.Graphql) {
-      GraphqlClient = api.clients.Graphql;
-    } else if (api.clients && api.clients.graphql) {
-      GraphqlClient = api.clients.graphql;
-    } else if (api.Graphql) {
-      GraphqlClient = api.Graphql;
-    } else if (api.graphql) {
-      GraphqlClient = api.graphql;
-    }
-
-    if (!GraphqlClient) {
-      logger.error('Shopify API GraphQL client not available', {
-        hasApi: !!api,
-        hasClients: !!(api && api.clients),
-        apiKeys: api ? Object.keys(api) : [],
-        clientsKeys: api && api.clients ? Object.keys(api.clients) : [],
-      });
-      throw new Error('Shopify API GraphQL client not available. Please check API initialization.');
-    }
+    const GraphqlClient = getGraphQLClient(api);
 
     const client = new GraphqlClient({ session });
 

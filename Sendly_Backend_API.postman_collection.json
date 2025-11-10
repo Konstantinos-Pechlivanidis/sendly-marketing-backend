@@ -1,21 +1,20 @@
 {
   "info": {
-    "name": "Sendly Backend API",
-    "description": "Complete API collection for Sendly Marketing Backend - SMS marketing platform for Shopify stores\n\n**Architecture:**\n- All store-scoped endpoints require `X-Shopify-Shop-Domain` header\n- Base URL: https://sendly-marketing-backend.onrender.com\n- Standardized response format with `success`, `data`, and `message` fields\n- Pagination support for list endpoints\n- Rate limiting on campaign operations",
-    "version": "2.0.0",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "name": "Sendly Backend API - Complete",
+    "description": "Complete API collection for Sendly Marketing Backend - SMS marketing platform for Shopify stores\n\n**Setup Instructions:**\n1. Import this collection\n2. Import `Sendly_Dev_Store.postman_environment.json`\n3. Select the \"Sendly Dev Store\" environment\n4. Update `shopify_access_token` with your full access token from Debug Information\n\n**Authentication:**\n- All store-scoped endpoints require `X-Shopify-Shop-Domain` header\n- Header is automatically set via collection variable\n- Base URL: {{base_url}}\n\n**Dev Store:**\n- Shop Domain: {{shopDomain}}\n- Access Token: {{shopify_access_token}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "sendly-api"
   },
   "variable": [
     {
       "key": "base_url",
-      "value": "https://sendly-marketing-backend.onrender.com",
+      "value": "{{base_url}}",
       "type": "string"
     },
     {
       "key": "shopDomain",
-      "value": "your-store.myshopify.com",
-      "type": "string",
-      "description": "Shopify store domain (required for store-scoped endpoints)"
+      "value": "{{shopDomain}}",
+      "type": "string"
     }
   ],
   "item": [
@@ -88,31 +87,11 @@
                 {
                   "key": "format",
                   "value": "json",
-                  "description": "Format: json or prometheus",
-                  "disabled": false
+                  "description": "Format: json or prometheus"
                 }
               ]
             },
             "description": "Get application metrics (JSON or Prometheus format)"
-          }
-        },
-        {
-          "name": "Who Am I",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-Shopify-Shop-Domain",
-                "value": "{{shopDomain}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/whoami",
-              "host": ["{{base_url}}"],
-              "path": ["whoami"]
-            },
-            "description": "Get current user/store information (requires store context)"
           }
         }
       ]
@@ -244,7 +223,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneE164\": \"+306977123456\",\n  \"email\": \"john@example.com\",\n  \"gender\": \"male\",\n  \"birthDate\": \"1990-01-01T00:00:00.000Z\",\n  \"smsConsent\": \"opted_in\",\n  \"tags\": [\"vip\", \"newsletter\"]\n}",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneE164\": \"{{test_phone_1}}\",\n  \"email\": \"john@example.com\",\n  \"gender\": \"male\",\n  \"birthDate\": \"1990-01-01T00:00:00.000Z\",\n  \"smsConsent\": \"opted_in\",\n  \"tags\": [\"vip\", \"newsletter\"]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -414,7 +393,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"contacts\": [\n    {\n      \"firstName\": \"John\",\n      \"lastName\": \"Doe\",\n      \"phoneE164\": \"+306977123456\",\n      \"email\": \"john@example.com\",\n      \"smsConsent\": \"opted_in\"\n    },\n    {\n      \"firstName\": \"Jane\",\n      \"lastName\": \"Smith\",\n      \"phoneE164\": \"+306977123457\",\n      \"email\": \"jane@example.com\",\n      \"smsConsent\": \"opted_in\"\n    }\n  ]\n}",
+              "raw": "{\n  \"contacts\": [\n    {\n      \"firstName\": \"John\",\n      \"lastName\": \"Doe\",\n      \"phoneE164\": \"{{test_phone_1}}\",\n      \"email\": \"john@example.com\",\n      \"smsConsent\": \"opted_in\"\n    },\n    {\n      \"firstName\": \"Jane\",\n      \"lastName\": \"Smith\",\n      \"phoneE164\": \"{{test_phone_2}}\",\n      \"email\": \"jane@example.com\",\n      \"smsConsent\": \"opted_in\"\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -615,11 +594,25 @@
             "method": "POST",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
                 "key": "X-Shopify-Shop-Domain",
                 "value": "{{shopDomain}}",
                 "type": "text"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{base_url}}/campaigns/:id/prepare",
               "host": ["{{base_url}}"],
@@ -641,11 +634,25 @@
             "method": "POST",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
                 "key": "X-Shopify-Shop-Domain",
                 "value": "{{shopDomain}}",
                 "type": "text"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{base_url}}/campaigns/:id/send",
               "host": ["{{base_url}}"],
@@ -752,11 +759,25 @@
             "method": "POST",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
                 "key": "X-Shopify-Shop-Domain",
                 "value": "{{shopDomain}}",
                 "type": "text"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{base_url}}/campaigns/:id/retry-failed",
               "host": ["{{base_url}}"],
@@ -881,11 +902,25 @@
             "method": "POST",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
                 "key": "X-Shopify-Shop-Domain",
                 "value": "{{shopDomain}}",
                 "type": "text"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{base_url}}/automations/sync",
               "host": ["{{base_url}}"],
@@ -938,6 +973,19 @@
           }
         },
         {
+          "name": "Get Template Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/templates/categories",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "categories"]
+            },
+            "description": "Get all template categories"
+          }
+        },
+        {
           "name": "Get Template by ID",
           "request": {
             "method": "GET",
@@ -963,11 +1011,25 @@
             "method": "POST",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
                 "key": "X-Shopify-Shop-Domain",
                 "value": "{{shopDomain}}",
                 "type": "text"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{base_url}}/templates/:id/track",
               "host": ["{{base_url}}"],
@@ -1020,9 +1082,23 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/reports/overview",
+              "raw": "{{base_url}}/reports/overview?from=2025-01-01&to=2025-01-31",
               "host": ["{{base_url}}"],
-              "path": ["reports", "overview"]
+              "path": ["reports", "overview"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2025-01-01",
+                  "description": "Start date (YYYY-MM-DD)",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2025-01-31",
+                  "description": "End date (YYYY-MM-DD)",
+                  "disabled": true
+                }
+              ]
             },
             "description": "Get reports overview"
           }
@@ -1263,7 +1339,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packageId\": \"package_1000\",\n  \"successUrl\": \"https://yourapp.com/success\",\n  \"cancelUrl\": \"https://yourapp.com/cancel\"\n}",
+              "raw": "{\n  \"packageId\": \"package_1000\",\n  \"successUrl\": \"{{frontend_url}}/success\",\n  \"cancelUrl\": \"{{frontend_url}}/cancel\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1420,7 +1496,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"senderNumber\": \"Sendly\",\n  \"senderName\": \"Sendly\"\n}",
+              "raw": "{\n  \"senderNumber\": \"Sendly\",\n  \"senderName\": \"{{mitto_sender_name}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1784,6 +1860,174 @@
           }
         }
       ]
+    },
+    {
+      "name": "🔧 Admin Templates",
+      "description": "Admin template management (requires store context)",
+      "item": [
+        {
+          "name": "List Admin Templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "{{shopDomain}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/templates",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "templates"]
+            },
+            "description": "Get all templates (admin view)"
+          }
+        },
+        {
+          "name": "Create Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "{{shopDomain}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Welcome Message\",\n  \"category\": \"welcome\",\n  \"content\": \"Welcome to our store! Get 10% off your first order with code WELCOME10\",\n  \"previewImage\": null,\n  \"tags\": [\"welcome\", \"discount\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/templates",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "templates"]
+            },
+            "description": "Create a new template (admin only)"
+          }
+        },
+        {
+          "name": "Get Template Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "{{shopDomain}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/templates/:id/stats",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "templates", ":id", "stats"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "template_123",
+                  "description": "Template ID"
+                }
+              ]
+            },
+            "description": "Get template usage statistics"
+          }
+        },
+        {
+          "name": "Update Template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "{{shopDomain}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Welcome Message\",\n  \"content\": \"Updated content here\",\n  \"tags\": [\"welcome\", \"updated\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/templates/:id",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "templates", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "template_123",
+                  "description": "Template ID"
+                }
+              ]
+            },
+            "description": "Update a template (admin only)"
+          }
+        },
+        {
+          "name": "Delete Template",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "{{shopDomain}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/templates/:id",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "templates", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "template_123",
+                  "description": "Template ID"
+                }
+              ]
+            },
+            "description": "Delete a template (admin only)"
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-set X-Shopify-Shop-Domain header for all requests",
+          "if (!pm.request.headers.has('X-Shopify-Shop-Domain')) {",
+          "    pm.request.headers.add({",
+          "        key: 'X-Shopify-Shop-Domain',",
+          "        value: pm.environment.get('shopDomain')",
+          "    });",
+          "}"
+        ]
+      }
     }
   ]
 }
+

@@ -1,10 +1,29 @@
 import { Queue } from 'bullmq';
-import { queueRedis, createSafeRedisConnection } from '../config/redis.js';
+import { queueRedis } from '../config/redis.js';
+
+// Skip queues in test mode for faster tests
+const skipQueues = process.env.NODE_ENV === 'test' && process.env.SKIP_QUEUES === 'true';
+
+// Mock Queue class for tests
+class MockQueue {
+  constructor(name, options) {
+    this.name = name;
+    this.options = options;
+  }
+  async add() { return { id: 'mock-job' }; }
+  async getJob() { return null; }
+  async getJobs() { return []; }
+  async getWaiting() { return []; }
+  async clean() { return []; }
+  async close() { return Promise.resolve(); }
+  on() { return this; }
+  once() { return this; }
+}
 
 // SMS Queue configuration
 // Optimized for large-scale SMS sending (100k+ recipients)
-export const smsQueue = new Queue('sms-send', {
-  connection: createSafeRedisConnection() || queueRedis,
+export const smsQueue = skipQueues ? new MockQueue('sms-send', {}) : new Queue('sms-send', {
+  connection: queueRedis,
   defaultJobOptions: {
     removeOnComplete: 500, // Keep more completed jobs for monitoring
     removeOnFail: 100, // Keep more failed jobs for retry
@@ -17,8 +36,8 @@ export const smsQueue = new Queue('sms-send', {
 });
 
 // Campaign Queue for bulk operations
-export const campaignQueue = new Queue('campaign-send', {
-  connection: createSafeRedisConnection() || queueRedis,
+export const campaignQueue = skipQueues ? new MockQueue('campaign-send', {}) : new Queue('campaign-send', {
+  connection: queueRedis,
   defaultJobOptions: {
     removeOnComplete: 50,
     removeOnFail: 25,
@@ -31,8 +50,8 @@ export const campaignQueue = new Queue('campaign-send', {
 });
 
 // Automation Queue for triggered messages
-export const automationQueue = new Queue('automation-trigger', {
-  connection: createSafeRedisConnection() || queueRedis,
+export const automationQueue = skipQueues ? new MockQueue('automation-trigger', {}) : new Queue('automation-trigger', {
+  connection: queueRedis,
   defaultJobOptions: {
     removeOnComplete: 200,
     removeOnFail: 100,

@@ -164,7 +164,8 @@ app.use('/audiences', resolveStore, requireStore, audiencesRoutes);
 app.use('/shopify', resolveStore, requireStore, shopifyRoutes);
 
 // Public routes (no store context required)
-app.use('/templates', templatesRoutes); // Public templates (trackTemplateUsage handles store context internally)
+// Note: /templates/:id/track requires store context, so apply resolveStore
+app.use('/templates', resolveStore, templatesRoutes);
 
 // Tracking routes (require store context for security)
 app.use('/tracking', resolveStore, requireStore, trackingRoutes); // ✅ Tracking endpoints now require store context

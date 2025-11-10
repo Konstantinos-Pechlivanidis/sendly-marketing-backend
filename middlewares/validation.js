@@ -2,8 +2,14 @@ import { ValidationError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Validation Middleware
- * Validates request data against Zod schemas
+ * Validation Middleware (Zod-based)
+ *
+ * This middleware validates request data against Zod schemas.
+ * Provides better type safety and schema composition compared to express-validator.
+ *
+ * Used with Zod schemas defined in schemas/ directory (billing.schema.js, campaigns.schema.js, etc.)
+ *
+ * For legacy routes using express-validator, see middlewares/validate.js
  */
 
 /**

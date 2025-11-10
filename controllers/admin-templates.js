@@ -193,7 +193,7 @@ export async function getAllTemplatesAdmin(req, res, _next) {
 }
 
 /**
- * Get template usage statistics
+ * Get template usage statistics with fake metrics for development
  */
 export async function getTemplateStats(req, res, _next) {
   try {
@@ -223,16 +223,35 @@ export async function getTemplateStats(req, res, _next) {
     const totalUsage = template.usage.reduce((sum, usage) => sum + usage.usedCount, 0);
     const uniqueShops = template.usage.length;
 
+    // Generate fake metrics for development (realistic ranges)
+    const hasUrls = template.content.includes('{{') &&
+                    (template.content.includes('Url}}') || template.content.includes('url}}'));
+
+    const fakeMetrics = {
+      deliveryRate: (92 + Math.random() * 6).toFixed(2), // 92-98%
+      clickThroughRate: hasUrls ? (8 + Math.random() * 7).toFixed(2) : null, // 8-15% if URLs present
+      replyRate: (2 + Math.random() * 3).toFixed(2), // 2-5%
+      conversions: Math.floor(5 + Math.random() * 16), // 5-20 conversions
+    };
+
     return sendSuccess(res, {
       template: {
         id: template.id,
         title: template.title,
         category: template.category,
+        content: template.content,
       },
       stats: {
-        totalUsage,
+        timesUsed: totalUsage,
         uniqueShops,
         usage: template.usage,
+      },
+      metrics: {
+        deliveryRate: `${fakeMetrics.deliveryRate}%`,
+        clickThroughRate: fakeMetrics.clickThroughRate ? `${fakeMetrics.clickThroughRate}%` : 'N/A',
+        replyRate: `${fakeMetrics.replyRate}%`,
+        conversions: fakeMetrics.conversions,
+        note: 'These are simulated metrics for development purposes',
       },
     });
   } catch (error) {

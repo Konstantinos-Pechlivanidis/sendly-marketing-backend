@@ -230,27 +230,31 @@ export async function getAutomationStats(req, res, _next) {
     // ✅ Security: Get storeId from context
     const shopId = getStoreId(req);
 
-    const stats = await prisma.userAutomation.aggregate({
-      where: { shopId },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        isActive: true,
-      },
-    });
+    const [total, enabled, disabled] = await Promise.all([
+      prisma.userAutomation.count({
+        where: { shopId },
+      }),
+      prisma.userAutomation.count({
+        where: { shopId, isActive: true },
+      }),
+      prisma.userAutomation.count({
+        where: { shopId, isActive: false },
+      }),
+    ]);
 
-    const activeCount = await prisma.userAutomation.count({
+    // Get total messages sent by automations
+    const totalSent = await prisma.messageLog.count({
       where: {
         shopId,
-        isActive: true,
+        campaignId: null, // Automation messages don't have campaignId
       },
     });
 
     return sendSuccess(res, {
-      totalAutomations: stats._count.id,
-      activeAutomations: activeCount,
-      inactiveAutomations: stats._count.id - activeCount,
+      total,
+      enabled,
+      disabled,
+      totalSent,
     });
   } catch (error) {
     logger.error('Failed to fetch automation statistics', {

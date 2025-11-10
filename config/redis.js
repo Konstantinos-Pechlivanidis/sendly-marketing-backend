@@ -14,9 +14,9 @@ export const redisConfig = {
   enableReadyCheck: false,
   lazyConnect: true,
 
-  // Timeout settings
-  connectTimeout: 10000,
-  commandTimeout: 5000,
+  // Timeout settings (increased for cloud connections)
+  connectTimeout: 30000,
+  commandTimeout: 10000,
 
   // Retry settings
   retryDelayOnClusterDown: 300,
@@ -61,6 +61,20 @@ export const createRedisConnection = (config = {}) => {
       port: parseInt(process.env.REDIS_PORT, 10),
       username: process.env.REDIS_USERNAME || 'default',
       password: process.env.REDIS_PASSWORD,
+      // Redis Cloud requires TLS
+      tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
+      // Increase timeouts for cloud connections
+      connectTimeout: 30000,
+      commandTimeout: 10000,
+      // Keep alive for cloud connections
+      keepAlive: 30000,
+      // Retry settings
+      retryStrategy: (times) => {
+        if (times > 3) {
+          return null; // Stop retrying after 3 attempts
+        }
+        return Math.min(times * 200, 2000); // Exponential backoff
+      },
       ...finalConfig,
     });
   }
@@ -68,20 +82,42 @@ export const createRedisConnection = (config = {}) => {
   return new IORedis(finalConfig);
 };
 
+// Skip Redis in test mode for faster tests
+const skipRedis = process.env.NODE_ENV === 'test' && process.env.SKIP_REDIS === 'true';
+
+// Mock Redis class for tests
+class MockRedis {
+  constructor() {
+    this.status = 'ready';
+    this.data = new Map();
+  }
+  async connect() { return Promise.resolve(); }
+  async disconnect() { return Promise.resolve(); }
+  async get() { return null; }
+  async set() { return 'OK'; }
+  async del() { return 1; }
+  async exists() { return 0; }
+  async keys() { return []; }
+  async flushdb() { return 'OK'; }
+  on() { return this; }
+  once() { return this; }
+  removeListener() { return this; }
+}
+
 // Redis connection for queues
-export const queueRedis = createRedisConnection({
+export const queueRedis = skipRedis ? new MockRedis() : createRedisConnection({
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
 });
 
 // Redis connection for caching
-export const cacheRedis = createRedisConnection({
+export const cacheRedis = skipRedis ? new MockRedis() : createRedisConnection({
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
 });
 
 // Redis connection for sessions (if needed)
-export const sessionRedis = createRedisConnection({
+export const sessionRedis = skipRedis ? new MockRedis() : createRedisConnection({
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
 });

@@ -3,10 +3,25 @@ import { queueRedis } from '../config/redis.js';
 import { handleMittoSend } from './jobs/mittoSend.js';
 import { logger } from '../utils/logger.js';
 
+// Skip workers in test mode for faster tests
+const skipWorkers = process.env.NODE_ENV === 'test' && process.env.SKIP_QUEUES === 'true';
+
+// Mock Worker class for tests
+class MockWorker {
+  constructor(name, processor, options) {
+    this.name = name;
+    this.processor = processor;
+    this.options = options;
+  }
+  async close() { return Promise.resolve(); }
+  on() { return this; }
+  once() { return this; }
+}
+
 // SMS Worker
 // Optimized for high-volume SMS sending (500k+ SMS/day)
 // Concurrency and rate limits adjusted for Black Friday peak loads
-export const smsWorker = new Worker(
+export const smsWorker = skipWorkers ? new MockWorker('sms-send', () => {}, {}) : new Worker(
   'sms-send',
   async (job) => {
     logger.info(`Processing SMS job ${job.id}`, { jobData: job.data });
@@ -28,7 +43,7 @@ export const smsWorker = new Worker(
 );
 
 // Campaign Worker
-export const campaignWorker = new Worker(
+export const campaignWorker = skipWorkers ? new MockWorker('campaign-send', () => {}, {}) : new Worker(
   'campaign-send',
   async (job) => {
     logger.info(`Processing campaign job ${job.id}`, { jobData: job.data });
@@ -44,7 +59,7 @@ export const campaignWorker = new Worker(
 );
 
 // Automation Worker
-export const automationWorker = new Worker(
+export const automationWorker = skipWorkers ? new MockWorker('automation-trigger', () => {}, {}) : new Worker(
   'automation-trigger',
   async (job) => {
     logger.info(`Processing automation job ${job.id}`, { jobData: job.data });

@@ -35,7 +35,7 @@ export const createCampaignSchema = z.object({
     .min(1, 'Campaign message is required')
     .max(1600, 'Message is too long (max 1600 characters)'),
   audience: audienceSchema.default('all'),
-  discountId: z.string().optional(),
+  discountId: z.string().optional().nullable(), // Optional - campaign can be created without discount
   scheduleType: scheduleTypeSchema.default('immediate'),
   scheduleAt: z.string().datetime().optional(),
   recurringDays: z.number().int().positive().max(365).optional(),
