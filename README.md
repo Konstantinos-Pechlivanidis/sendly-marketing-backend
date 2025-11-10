@@ -44,6 +44,7 @@ npm start
 
 ## 📚 Documentation
 
+- **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - 📖 **Complete API documentation with architecture**
 - **[RUN_THIS_FIRST.md](./RUN_THIS_FIRST.md)** - 🚀 Start here! Step-by-step setup
 - **[ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md)** - Complete environment variables guide
 - **[REDIS_SETUP.md](./REDIS_SETUP.md)** - Redis Cloud configuration (TLS required!)
