@@ -68,7 +68,7 @@ export class QueueError extends AppError {
 }
 
 // Error response formatter
-export const formatErrorResponse = (error, req) => {
+export const formatErrorResponse = (error, req = {}) => {
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   const response = {
@@ -76,8 +76,8 @@ export const formatErrorResponse = (error, req) => {
     error: error.code || 'server_error',
     message: error.message || 'Internal server error',
     timestamp: error.timestamp || new Date().toISOString(),
-    path: req.originalUrl,
-    method: req.method,
+    path: req?.originalUrl || req?.url || 'unknown',
+    method: req?.method || 'unknown',
   };
 
   // Add additional details in development
@@ -87,7 +87,7 @@ export const formatErrorResponse = (error, req) => {
   }
 
   // Add request ID if available
-  if (req.id) {
+  if (req?.id) {
     response.requestId = req.id;
   }
 
@@ -102,7 +102,7 @@ export const asyncHandler = (fn) => {
 };
 
 // Global error handler
-export const globalErrorHandler = async (error, req, res, _next) => {
+export const globalErrorHandler = async (error, req = {}, res, _next) => {
   let err = error;
 
   // Convert non-AppError instances to AppError
@@ -133,11 +133,11 @@ export const globalErrorHandler = async (error, req, res, _next) => {
       code: err.code,
       statusCode: err.statusCode,
       stack: err.stack,
-      requestId: req.id,
-      path: req.originalUrl,
-      method: req.method,
-      userAgent: req.get('User-Agent'),
-      ip: req.ip,
+      requestId: req?.id,
+      path: req?.originalUrl || req?.url,
+      method: req?.method,
+      userAgent: req?.get?.('User-Agent'),
+      ip: req?.ip,
     });
   } catch (loggerError) {
     // Fallback to console if logger import fails
@@ -147,11 +147,11 @@ export const globalErrorHandler = async (error, req, res, _next) => {
       code: err.code,
       statusCode: err.statusCode,
       stack: err.stack,
-      requestId: req.id,
-      path: req.originalUrl,
-      method: req.method,
-      userAgent: req.get('User-Agent'),
-      ip: req.ip,
+      requestId: req?.id,
+      path: req?.originalUrl || req?.url,
+      method: req?.method,
+      userAgent: req?.get?.('User-Agent'),
+      ip: req?.ip,
       loggerError: loggerError.message,
     });
   }

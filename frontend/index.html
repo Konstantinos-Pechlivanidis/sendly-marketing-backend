@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sendly SMS Marketing - Login</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-card">
+            <div class="logo">
+                <h1>📱 Sendly</h1>
+                <p>SMS Marketing for Shopify</p>
+            </div>
+            
+            <div id="error-message" class="error-message" style="display: none;"></div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="shop-domain">Shop Domain</label>
+                    <input 
+                        type="text" 
+                        id="shop-domain" 
+                        name="shopDomain" 
+                        placeholder="your-store.myshopify.com"
+                        required
+                        autocomplete="off"
+                    />
+                    <small>Enter your Shopify store domain</small>
+                </div>
+                
+                <button type="submit" id="login-btn" class="btn btn-primary">
+                    <span id="btn-text">Login with Shopify</span>
+                    <span id="btn-loader" class="loader" style="display: none;"></span>
+                </button>
+            </form>
+            
+            <div class="info">
+                <p>Don't have a Shopify store? <a href="https://www.shopify.com" target="_blank">Create one</a></p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="auth.js"></script>
+</body>
+</html>
+

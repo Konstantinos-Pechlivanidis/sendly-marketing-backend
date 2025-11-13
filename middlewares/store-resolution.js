@@ -1,6 +1,7 @@
 import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
+import { verifyAppToken, verifyShopifySessionToken, generateAppToken } from '../services/auth.js';
 
 /**
  * Store Resolution Middleware - Single Source of Truth
@@ -9,10 +10,10 @@ import { ValidationError } from '../utils/errors.js';
  * all subsequent operations are scoped to the correct store (tenant).
  *
  * Sources (in order of precedence):
- * 1. Shopify session/JWT with shop domain
- * 2. App installation context
- * 3. Admin bearer token mapped to specific store
- * 4. Development mode fallback
+ * 1. JWT Token (Authorization: Bearer <token>) - App JWT or Shopify session token
+ * 2. Shopify headers with shop domain
+ * 3. App installation context
+ * 4. Explicit store ID in headers (for internal services)
  */
 
 export async function resolveStore(req, res, next) {
@@ -21,166 +22,159 @@ export async function resolveStore(req, res, next) {
     let shopDomain = null;
     let store = null;
 
-    // Method 1: Shopify session/JWT (primary method)
-    // Check multiple possible sources for shop domain
-    // Note: Express converts headers to lowercase, so we only check lowercase
-    const possibleShopDomain =
-      req.headers['x-shopify-shop-domain'] ||
-      req.headers['x-shopify-shop'] ||
-      req.headers['x-shopify-shop-name'] ||
-      req.query.shop ||
-      req.query.shop_domain ||
-      req.query.shop_name ||
-      req.body?.shop ||
-      req.body?.shop_domain ||
-      req.body?.shop_name;
+    // Method 1: JWT Token Authentication (PRIORITY METHOD)
+    // Check Authorization header for Bearer token
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      const token = req.headers.authorization.replace('Bearer ', '');
 
-    // Method 1.5: Extract shop domain from URL path (for embedded Shopify apps)
-    // URL pattern: /store/{shop-domain}/apps/{app-name}/app
-    let shopDomainFromPath = null;
-    if (!possibleShopDomain && req.url) {
-      const pathMatch = req.url.match(/\/store\/([^\\/]+)\//);
-      if (pathMatch && pathMatch[1]) {
-        shopDomainFromPath = pathMatch[1];
-        // Ensure it has .myshopify.com suffix
-        if (!shopDomainFromPath.includes('.')) {
-          shopDomainFromPath = `${shopDomainFromPath}.myshopify.com`;
+      try {
+        // Try to verify as our app JWT token first
+        const decoded = verifyAppToken(token);
+
+        if (decoded.storeId) {
+          storeId = decoded.storeId;
+          store = await prisma.shop.findUnique({
+            where: { id: storeId },
+            include: { settings: true },
+          });
+
+          if (store) {
+            shopDomain = store.shopDomain;
+            logger.debug('Store resolved from app JWT token', { storeId, shopDomain });
+          }
+        }
+      } catch (jwtError) {
+        // Not our app token, might be Shopify session token from App Bridge
+        try {
+          const shopifySession = await verifyShopifySessionToken(token);
+
+          // Generate app token and get store
+          const { store: storeFromToken } = await generateAppToken(shopifySession.shop);
+          storeId = storeFromToken.id;
+          shopDomain = shopifySession.shop;
+
+          store = await prisma.shop.findUnique({
+            where: { id: storeId },
+            include: { settings: true },
+          });
+
+          logger.debug('Store resolved from Shopify session token', { storeId, shopDomain });
+        } catch (shopifyError) {
+          // Neither token type worked, continue to other methods
+          logger.debug('Token verification failed, trying other methods', {
+            error: shopifyError.message,
+          });
         }
       }
     }
 
-    if (possibleShopDomain) {
-      shopDomain = possibleShopDomain;
+    // Method 2: Shopify Headers (backward compatible)
+    // Check multiple possible sources for shop domain
+    // Note: Express converts headers to lowercase, so we only check lowercase
+    if (!store) {
+      const possibleShopDomain =
+        req.headers['x-shopify-shop-domain'] ||
+        req.headers['x-shopify-shop'] ||
+        req.headers['x-shopify-shop-name'] ||
+        req.query.shop ||
+        req.query.shop_domain ||
+        req.query.shop_name ||
+        req.body?.shop ||
+        req.body?.shop_domain ||
+        req.body?.shop_name;
 
-      // Normalize shop domain
-      if (shopDomain && !shopDomain.includes('.')) {
-        shopDomain = `${shopDomain}.myshopify.com`;
+      // Method 2.1: Extract shop domain from URL path (for embedded Shopify apps)
+      // URL pattern: /store/{shop-domain}/apps/{app-name}/app
+      let shopDomainFromPath = null;
+      if (!possibleShopDomain && req.url) {
+        const pathMatch = req.url.match(/\/store\/([^\\/]+)\//);
+        if (pathMatch && pathMatch[1]) {
+          shopDomainFromPath = pathMatch[1];
+          // Ensure it has .myshopify.com suffix
+          if (!shopDomainFromPath.includes('.')) {
+            shopDomainFromPath = `${shopDomainFromPath}.myshopify.com`;
+          }
+        }
       }
-    } else if (shopDomainFromPath) {
-      shopDomain = shopDomainFromPath;
-    } else {
-      // Try to extract from Shopify App Bridge session or JWT
-      const shopifySession = req.session?.shopify || req.session?.shop;
-      if (shopifySession) {
-        shopDomain = shopifySession.shop || shopifySession.shopDomain;
+
+      if (possibleShopDomain) {
+        shopDomain = possibleShopDomain;
+
+        // Normalize shop domain
         if (shopDomain && !shopDomain.includes('.')) {
           shopDomain = `${shopDomain}.myshopify.com`;
         }
-      }
-    }
-
-    // Final validation - ensure shopDomain is a valid string
-    if (!shopDomain || typeof shopDomain !== 'string') {
-      // No shop domain provided - use development fallback for testing ONLY in development mode
-      logger.warn('No shop domain provided in headers, query, or body', {
-        headers: Object.keys(req.headers).filter(h => h.toLowerCase().includes('shop')),
-        headerValues: {
-          'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
-          'x-shopify-shop': req.headers['x-shopify-shop'],
-          'x-shopify-shop-name': req.headers['x-shopify-shop-name'],
-        },
-        query: req.query,
-        body: req.body ? Object.keys(req.body) : 'no body',
-        url: req.url,
-        possibleShopDomain,
-        nodeEnv: process.env.NODE_ENV,
-      });
-
-      // For development mode ONLY, use a default store
-      // In test/production, this should fail
-      if (process.env.NODE_ENV === 'development') {
-        shopDomain = 'sms-blossom-dev.myshopify.com';
-        logger.info('Using development fallback store', { shopDomain });
-      }
-    }
-
-    // Ensure shopDomain is a valid string after all attempts
-    if (!shopDomain || typeof shopDomain !== 'string') {
-      logger.error('Invalid shopDomain after all attempts', {
-        shopDomain,
-        type: typeof shopDomain,
-        headers: Object.keys(req.headers).filter(h => h.toLowerCase().includes('shop')),
-        headerValues: {
-          'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
-          'x-shopify-shop': req.headers['x-shopify-shop'],
-        },
-      });
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid shop domain',
-        message: 'Unable to determine shop domain from request. Please provide X-Shopify-Shop-Domain header.',
-        code: 'INVALID_SHOP_DOMAIN',
-      });
-    }
-
-    // Double-check shopDomain is valid before querying
-    if (!shopDomain || typeof shopDomain !== 'string') {
-      logger.error('shopDomain is invalid before Prisma query', {
-        shopDomain,
-        type: typeof shopDomain,
-        possibleShopDomain,
-      });
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid shop domain',
-        message: 'Unable to determine shop domain from request. Please provide X-Shopify-Shop-Domain header.',
-        code: 'INVALID_SHOP_DOMAIN',
-      });
-    }
-
-    try {
-      store = await prisma.shop.findUnique({
-        where: { shopDomain },
-        include: {
-          settings: true,
-        },
-      });
-
-      if (store) {
-        storeId = store.id;
+      } else if (shopDomainFromPath) {
+        shopDomain = shopDomainFromPath;
       } else {
-        // Auto-create store if it doesn't exist
-        logger.info('Auto-creating new store', { shopDomain });
+        // Try to extract from Shopify App Bridge session or JWT
+        const shopifySession = req.session?.shopify || req.session?.shop;
+        if (shopifySession) {
+          shopDomain = shopifySession.shop || shopifySession.shopDomain;
+          if (shopDomain && !shopDomain.includes('.')) {
+            shopDomain = `${shopDomain}.myshopify.com`;
+          }
+        }
+      }
 
-        store = await prisma.shop.create({
-          data: {
-            shopDomain,
-            shopName: shopDomain.replace('.myshopify.com', ''),
-            accessToken: req.headers['x-shopify-access-token'] || 'pending',
-            credits: 100, // Give some initial credits
-            currency: 'EUR',
-            status: 'active',
-            settings: {
-              create: {
-                currency: 'EUR',
-                timezone: 'Europe/Athens',
-                senderNumber: process.env.MITTO_SENDER_NAME || 'Sendly',
-                senderName: process.env.MITTO_SENDER_NAME || 'Sendly',
-              },
-            },
+      // Final validation - ensure shopDomain is a valid string
+      if (!shopDomain || typeof shopDomain !== 'string') {
+        // No shop domain provided - shop domain is required in production
+        logger.warn('No shop domain provided in headers, query, or body', {
+          headers: Object.keys(req.headers).filter(h => h.toLowerCase().includes('shop')),
+          headerValues: {
+            'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+            'x-shopify-shop': req.headers['x-shopify-shop'],
+            'x-shopify-shop-name': req.headers['x-shopify-shop-name'],
           },
-          include: {
-            settings: true,
-          },
+          query: req.query,
+          body: req.body ? Object.keys(req.body) : 'no body',
+          url: req.url,
+          possibleShopDomain,
+          nodeEnv: process.env.NODE_ENV,
         });
 
-        storeId = store.id;
+        // In production, shop domain is required - fail if not provided
+        logger.error('Shop domain is required in production mode');
       }
-    } catch (dbError) {
-      logger.error('Database error during store resolution', {
-        shopDomain,
-        error: dbError.message,
-      });
-      throw dbError;
-    }
 
-    // Method 2: Admin bearer token (for admin operations) - DEVELOPMENT ONLY
-    if (!store && process.env.NODE_ENV === 'development' && req.headers.authorization) {
-      const token = req.headers.authorization.replace('Bearer ', '');
+      // Ensure shopDomain is a valid string after all attempts
+      if (!shopDomain || typeof shopDomain !== 'string') {
+        logger.error('Invalid shopDomain after all attempts', {
+          shopDomain,
+          type: typeof shopDomain,
+          headers: Object.keys(req.headers).filter(h => h.toLowerCase().includes('shop')),
+          headerValues: {
+            'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+            'x-shopify-shop': req.headers['x-shopify-shop'],
+          },
+        });
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid shop domain',
+          message: 'Unable to determine shop domain from request. Please provide X-Shopify-Shop-Domain header or Bearer token.',
+          code: 'INVALID_SHOP_DOMAIN',
+        });
+      }
 
-      if (token === process.env.ADMIN_TOKEN) {
-        // For development, use the first available store
-        store = await prisma.shop.findFirst({
+      // Double-check shopDomain is valid before querying
+      if (!shopDomain || typeof shopDomain !== 'string') {
+        logger.error('shopDomain is invalid before Prisma query', {
+          shopDomain,
+          type: typeof shopDomain,
+          possibleShopDomain,
+        });
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid shop domain',
+          message: 'Unable to determine shop domain from request. Please provide X-Shopify-Shop-Domain header or Bearer token.',
+          code: 'INVALID_SHOP_DOMAIN',
+        });
+      }
+
+      try {
+        store = await prisma.shop.findUnique({
+          where: { shopDomain },
           include: {
             settings: true,
           },
@@ -188,26 +182,46 @@ export async function resolveStore(req, res, next) {
 
         if (store) {
           storeId = store.id;
-          shopDomain = store.shopDomain;
+        } else {
+          // Auto-create store if it doesn't exist
+          logger.info('Auto-creating new store', { shopDomain });
+
+          store = await prisma.shop.create({
+            data: {
+              shopDomain,
+              shopName: shopDomain.replace('.myshopify.com', ''),
+              accessToken: req.headers['x-shopify-access-token'] || 'pending',
+              credits: 100, // Give some initial credits
+              currency: 'EUR',
+              status: 'active',
+              settings: {
+                create: {
+                  currency: 'EUR',
+                  timezone: 'Europe/Athens',
+                  senderNumber: process.env.MITTO_SENDER_NAME || 'Sendly',
+                  senderName: process.env.MITTO_SENDER_NAME || 'Sendly',
+                },
+              },
+            },
+            include: {
+              settings: true,
+            },
+          });
+
+          storeId = store.id;
         }
+      } catch (dbError) {
+        logger.error('Database error during store resolution', {
+          shopDomain,
+          error: dbError.message,
+        });
+        throw dbError;
       }
     }
 
-    // Method 3: Development mode fallback - DEVELOPMENT ONLY
-    if (!store && process.env.NODE_ENV === 'development') {
-      store = await prisma.shop.findFirst({
-        include: {
-          settings: true,
-        },
-      });
+    // Development-only methods removed for production
 
-      if (store) {
-        storeId = store.id;
-        shopDomain = store.shopDomain;
-      }
-    }
-
-    // Method 4: Explicit store ID in headers (for internal services)
+    // Method 5: Explicit store ID in headers (for internal services)
     if (!store && req.headers['x-store-id']) {
       storeId = req.headers['x-store-id'];
       store = await prisma.shop.findUnique({

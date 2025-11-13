@@ -23,8 +23,7 @@ npm install
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env with your configuration
-# See ENVIRONMENT_SETUP.md for detailed guide
+# Edit .env with your production configuration
 
 # Generate Prisma client
 npm run db:generate
@@ -42,20 +41,7 @@ npm run setup:shop
 npm start
 ```
 
-## 📚 Documentation
-
-- **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - 📖 **Complete API documentation with architecture**
-- **[RUN_THIS_FIRST.md](./RUN_THIS_FIRST.md)** - 🚀 Start here! Step-by-step setup
-- **[ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md)** - Complete environment variables guide
-- **[REDIS_SETUP.md](./REDIS_SETUP.md)** - Redis Cloud configuration (TLS required!)
-- **[SHOPIFY_ACCESS_TOKEN_SETUP.md](./SHOPIFY_ACCESS_TOKEN_SETUP.md)** - Shopify API token setup
-- **[POSTMAN_SETUP.md](./POSTMAN_SETUP.md)** - API testing with Postman
-- **[FIXES_SUMMARY.md](./FIXES_SUMMARY.md)** - Recent fixes and solutions
-- **[REDIS_FIX_SUMMARY.md](./REDIS_FIX_SUMMARY.md)** - Redis connection troubleshooting
-
 ## 🔧 Environment Variables
-
-See **[ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md)** for detailed configuration guide.
 
 **Required:**
 - `DATABASE_URL` - PostgreSQL connection string

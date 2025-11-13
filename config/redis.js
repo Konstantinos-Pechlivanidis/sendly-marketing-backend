@@ -1,85 +1,81 @@
+import { createClient } from 'redis';
 import IORedis from 'ioredis';
+import { logger } from '../utils/logger.js';
 
-// Production Redis configuration
-export const redisConfig = {
-  // Connection settings
-  host: process.env.REDIS_HOST || 'localhost',
-  port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASSWORD,
-  db: process.env.REDIS_DB || 0,
+// Redis configuration from environment variables
+const getRedisConfig = () => {
+  const useTLS = process.env.REDIS_TLS === 'true';
+  const baseConfig = {
+    username: process.env.REDIS_USERNAME || 'default',
+    password: process.env.REDIS_PASSWORD,
+    socket: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    },
+  };
 
-  // Connection pool settings
-  maxRetriesPerRequest: null,
-  retryDelayOnFailover: 100,
-  enableReadyCheck: false,
-  lazyConnect: true,
+  // TLS configuration for Redis Cloud
+  // For Redis Cloud, TLS should be enabled with proper configuration
+  if (useTLS) {
+    baseConfig.socket.tls = {
+      rejectUnauthorized: false, // Redis Cloud uses self-signed certificates
+      servername: process.env.REDIS_HOST || 'localhost', // Required for TLS SNI
+    };
+  }
 
-  // Timeout settings (increased for cloud connections)
-  connectTimeout: 30000,
-  commandTimeout: 10000,
-
-  // Retry settings
-  retryDelayOnClusterDown: 300,
-
-  // Keep alive settings
-  keepAlive: 30000,
-
-  // Cluster settings (if using Redis Cluster)
-  enableOfflineQueue: false,
-
-  // Memory optimization
-  maxMemoryPolicy: 'allkeys-lru',
-
-  // Logging
-  enableAutoPipelining: true,
+  return baseConfig;
 };
 
-// Create Redis connection
-export const createRedisConnection = (config = {}) => {
-  const finalConfig = { ...redisConfig, ...config };
+// Create Redis connection using new redis client (for caching)
+const createRedisClient = async () => {
+  const config = getRedisConfig();
 
-  // Handle Redis URL format (supports both URL string and connection object)
-  if (process.env.REDIS_URL) {
-    return new IORedis(process.env.REDIS_URL, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-      lazyConnect: true,
-      connectTimeout: 10000,
-      commandTimeout: 5000,
-      retryDelayOnFailover: 100,
-      enableOfflineQueue: false,
-      // Support for Redis Cloud with username/password
-      username: process.env.REDIS_USERNAME,
-      password: process.env.REDIS_PASSWORD,
+  const client = createClient({
+    username: config.username,
+    password: config.password,
+    socket: config.socket,
+  });
+
+  // Error handling
+  client.on('error', (err) => {
+    logger.error('Redis Client Error', { error: err.message });
+  });
+
+  client.on('connect', () => {
+    logger.info('Redis client connecting', {
+      host: config.socket.host,
+      port: config.socket.port,
     });
+  });
+
+  client.on('ready', () => {
+    logger.info('Redis client ready', {
+      host: config.socket.host,
+      port: config.socket.port,
+    });
+  });
+
+  client.on('reconnecting', () => {
+    logger.info('Redis client reconnecting');
+  });
+
+  client.on('end', () => {
+    logger.info('Redis client connection ended');
+  });
+
+  // Connect to Redis
+  try {
+    await client.connect();
+    logger.info('Redis client connected successfully', {
+      host: config.socket.host,
+      port: config.socket.port,
+    });
+  } catch (error) {
+    logger.error('Redis connection failed', { error: error.message });
+    throw error;
   }
 
-  // If REDIS_HOST and REDIS_PORT are provided, use object format
-  if (process.env.REDIS_HOST && process.env.REDIS_PORT) {
-    return new IORedis({
-      host: process.env.REDIS_HOST,
-      port: parseInt(process.env.REDIS_PORT, 10),
-      username: process.env.REDIS_USERNAME || 'default',
-      password: process.env.REDIS_PASSWORD,
-      // Redis Cloud requires TLS
-      tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
-      // Increase timeouts for cloud connections
-      connectTimeout: 30000,
-      commandTimeout: 10000,
-      // Keep alive for cloud connections
-      keepAlive: 30000,
-      // Retry settings
-      retryStrategy: (times) => {
-        if (times > 3) {
-          return null; // Stop retrying after 3 attempts
-        }
-        return Math.min(times * 200, 2000); // Exponential backoff
-      },
-      ...finalConfig,
-    });
-  }
-
-  return new IORedis(finalConfig);
+  return client;
 };
 
 // Skip Redis in test mode for faster tests
@@ -91,60 +87,243 @@ class MockRedis {
     this.status = 'ready';
     this.data = new Map();
   }
-  async connect() { return Promise.resolve(); }
-  async disconnect() { return Promise.resolve(); }
-  async get() { return null; }
-  async set() { return 'OK'; }
-  async del() { return 1; }
-  async exists() { return 0; }
-  async keys() { return []; }
-  async flushdb() { return 'OK'; }
-  on() { return this; }
-  once() { return this; }
-  removeListener() { return this; }
+
+  async connect() {
+    return Promise.resolve();
+  }
+
+  async disconnect() {
+    return Promise.resolve();
+  }
+
+  async get(key) {
+    return this.data.get(key) || null;
+  }
+
+  async set(key, value) {
+    this.data.set(key, value);
+    return 'OK';
+  }
+
+  async del(key) {
+    return this.data.delete(key) ? 1 : 0;
+  }
+
+  async exists(key) {
+    return this.data.has(key) ? 1 : 0;
+  }
+
+  async keys(_pattern) {
+    return Array.from(this.data.keys());
+  }
+
+  async flushdb() {
+    this.data.clear();
+    return 'OK';
+  }
+
+  async ping() {
+    return 'PONG';
+  }
+
+  async quit() {
+    return Promise.resolve();
+  }
+
+  on() {
+    return this;
+  }
+
+  once() {
+    return this;
+  }
+
+  removeListener() {
+    return this;
+  }
 }
 
-// Redis connection for queues
-export const queueRedis = skipRedis ? new MockRedis() : createRedisConnection({
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-});
+// Redis connections
+// Queue Redis uses ioredis (required by BullMQ)
+export const queueRedis = skipRedis
+  ? new MockRedis()
+  : new IORedis({
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    username: process.env.REDIS_USERNAME || 'default',
+    password: process.env.REDIS_PASSWORD,
+    // TLS configuration for Redis Cloud
+    // Note: For Redis Cloud, TLS is required and should be configured properly
+    ...(process.env.REDIS_TLS === 'true' ? {
+      tls: {
+        rejectUnauthorized: false, // Redis Cloud uses self-signed certificates
+        servername: process.env.REDIS_HOST || 'localhost', // Required for TLS SNI
+      },
+    } : {}),
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+    lazyConnect: true,
+    connectTimeout: 10000,
+    retryStrategy: (times) => {
+      if (times > 3) {
+        return null;
+      }
+      return Math.min(times * 200, 2000);
+    },
+  });
 
-// Redis connection for caching
-export const cacheRedis = skipRedis ? new MockRedis() : createRedisConnection({
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
-});
+// Cache Redis (new redis client - lazy initialization)
+let cacheRedisInstance = null;
+let cacheRedisPromise = null;
 
-// Redis connection for sessions (if needed)
-export const sessionRedis = skipRedis ? new MockRedis() : createRedisConnection({
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
-});
+export const cacheRedis = skipRedis
+  ? new MockRedis()
+  : {
+    async connect() {
+      if (!cacheRedisInstance) {
+        if (!cacheRedisPromise) {
+          cacheRedisPromise = createRedisClient();
+        }
+        cacheRedisInstance = await cacheRedisPromise;
+      }
+      return cacheRedisInstance;
+    },
+    async get(key) {
+      const client = await this.connect();
+      return client.get(key);
+    },
+    async set(key, value, options) {
+      const client = await this.connect();
+      if (options && typeof options === 'object') {
+        return client.set(key, value, options);
+      }
+      return client.set(key, value);
+    },
+    async setex(key, seconds, value) {
+      const client = await this.connect();
+      return client.setEx(key, seconds, value);
+    },
+    async del(key) {
+      const client = await this.connect();
+      return client.del(key);
+    },
+    async exists(key) {
+      const client = await this.connect();
+      return client.exists(key);
+    },
+    async keys(_pattern) {
+      const client = await this.connect();
+      return client.keys(_pattern);
+    },
+    async flushdb() {
+      const client = await this.connect();
+      return client.flushDb();
+    },
+    async ping() {
+      const client = await this.connect();
+      return client.ping();
+    },
+    get status() {
+      return cacheRedisInstance?.isReady ? 'ready' : 'connecting';
+    },
+    on() {
+      return this;
+    },
+    once() {
+      return this;
+    },
+    removeListener() {
+      return this;
+    },
+  };
 
-// Fallback Redis connections with error handling
-export const createSafeRedisConnection = async (config = {}) => {
-  try {
-    const connection = createRedisConnection(config);
-    return connection;
-  } catch (error) {
-    const { logger } = await import('../utils/logger.js').catch(() => ({ logger: console }));
-    logger.warn('Redis connection failed, using fallback', { error: error.message });
-    return null;
-  }
-};
+// Session Redis (new redis client - lazy initialization)
+let sessionRedisInstance = null;
+let sessionRedisPromise = null;
+
+export const sessionRedis = skipRedis
+  ? new MockRedis()
+  : {
+    async connect() {
+      if (!sessionRedisInstance) {
+        if (!sessionRedisPromise) {
+          sessionRedisPromise = createRedisClient();
+        }
+        sessionRedisInstance = await sessionRedisPromise;
+      }
+      return sessionRedisInstance;
+    },
+    async get(key) {
+      const client = await this.connect();
+      return client.get(key);
+    },
+    async set(key, value, options) {
+      const client = await this.connect();
+      if (options && typeof options === 'object') {
+        return client.set(key, value, options);
+      }
+      return client.set(key, value);
+    },
+    async setex(key, seconds, value) {
+      const client = await this.connect();
+      return client.setEx(key, seconds, value);
+    },
+    async del(key) {
+      const client = await this.connect();
+      return client.del(key);
+    },
+    async exists(key) {
+      const client = await this.connect();
+      return client.exists(key);
+    },
+    async keys(_pattern) {
+      const client = await this.connect();
+      return client.keys(_pattern);
+    },
+    async flushdb() {
+      const client = await this.connect();
+      return client.flushDb();
+    },
+    async ping() {
+      const client = await this.connect();
+      return client.ping();
+    },
+    get status() {
+      return sessionRedisInstance?.isReady ? 'ready' : 'connecting';
+    },
+    on() {
+      return this;
+    },
+    once() {
+      return this;
+    },
+    removeListener() {
+      return this;
+    },
+  };
 
 // Health check function
 export const checkRedisHealth = async (redis) => {
   try {
     const start = Date.now();
-    await redis.ping();
+    let result;
+
+    // Handle both ioredis and new redis client
+    if (typeof redis.ping === 'function') {
+      result = await redis.ping();
+    } else if (redis.connect && typeof redis.connect === 'function') {
+      const client = await redis.connect();
+      result = await client.ping();
+    } else {
+      result = await redis.ping();
+    }
+
     const latency = Date.now() - start;
 
     return {
       status: 'healthy',
       latency: `${latency}ms`,
-      connected: redis.status === 'ready',
+      connected: result === 'PONG' || result === true,
     };
   } catch (error) {
     return {
@@ -158,68 +337,23 @@ export const checkRedisHealth = async (redis) => {
 // Graceful shutdown
 export const closeRedisConnections = async () => {
   try {
-    // Import logger dynamically to avoid circular dependencies
-    const { logger } = await import('../utils/logger.js');
+    const promises = [];
 
-    await Promise.all([
-      queueRedis.quit(),
-      cacheRedis.quit(),
-      sessionRedis.quit(),
-    ]);
+    if (queueRedis && typeof queueRedis.quit === 'function') {
+      promises.push(queueRedis.quit());
+    }
+
+    if (cacheRedisInstance && typeof cacheRedisInstance.disconnect === 'function') {
+      promises.push(cacheRedisInstance.disconnect());
+    }
+
+    if (sessionRedisInstance && typeof sessionRedisInstance.disconnect === 'function') {
+      promises.push(sessionRedisInstance.disconnect());
+    }
+
+    await Promise.all(promises);
     logger.info('Redis connections closed gracefully');
   } catch (error) {
-    // Fallback to console if logger import fails
-    const { logger } = await import('../utils/logger.js').catch(() => ({ logger: console }));
     logger.error('Error closing Redis connections', { error: error.message });
   }
 };
-
-// Error handling
-const handleRedisError = (redis, name) => {
-  // Use lazy logger import to avoid circular dependencies
-  let logger = null;
-  const getLogger = async () => {
-    if (!logger) {
-      try {
-        const loggerModule = await import('../utils/logger.js');
-        logger = loggerModule.logger;
-      } catch {
-        logger = console; // Fallback to console
-      }
-    }
-    return logger;
-  };
-
-  redis.on('error', async (error) => {
-    const log = await getLogger();
-    log.error(`Redis ${name} error`, { error: error.message, name });
-  });
-
-  redis.on('connect', async () => {
-    const log = await getLogger();
-    log.info(`Redis ${name} connected`, { name });
-  });
-
-  redis.on('ready', async () => {
-    const log = await getLogger();
-    log.info(`Redis ${name} ready`, { name });
-  });
-
-  redis.on('close', async () => {
-    const log = await getLogger();
-    log.info(`Redis ${name} connection closed`, { name });
-  });
-
-  redis.on('reconnecting', async () => {
-    const log = await getLogger();
-    log.info(`Redis ${name} reconnecting`, { name });
-  });
-};
-
-// Set up error handling for all connections
-handleRedisError(queueRedis, 'Queue');
-handleRedisError(cacheRedis, 'Cache');
-handleRedisError(sessionRedis, 'Session');
-
-// Note: Graceful shutdown is handled in index.js
-// This ensures proper cleanup order (HTTP server -> Redis -> Prisma)

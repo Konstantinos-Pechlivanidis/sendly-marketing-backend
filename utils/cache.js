@@ -21,14 +21,8 @@ class CacheManager {
       const { cacheRedis } = await import('../config/redis.js');
       this.redis = cacheRedis;
 
-      this.redis.on('error', (err) => {
-        logger.error('Redis connection error', { error: err.message });
-      });
-
-      // Connect if not already connected
-      if (this.redis.status !== 'ready' && this.redis.status !== 'connecting') {
-        await this.redis.connect();
-      }
+      // Connect to Redis (lazy initialization)
+      await this.redis.connect();
       logger.info('Redis cache initialized');
     } catch (error) {
       logger.warn('Redis connection failed, falling back to memory cache', { error: error.message });

@@ -36,6 +36,7 @@ import stripeWebhookRoutes from './routes/stripe-webhooks.js';
 import audiencesRoutes from './routes/audiences.js';
 import shopifyRoutes from './routes/shopify.js';
 import docsRoutes from './routes/docs.js';
+import authRoutes from './routes/auth.js';
 // import { setDevShop } from './middlewares/dev-shop.js'; // Not used in current implementation
 import { resolveStore, requireStore } from './middlewares/store-resolution.js';
 
@@ -94,11 +95,7 @@ app.use(
       // Allow all myshopify.com subdomains
       const isShopifyDomain = origin.match(/^https:\/\/[a-zA-Z0-9-]+\.myshopify\.com$/);
 
-      // Allow Cloudflare tunnel domains in development
-      const isCloudflareTunnel = process.env.NODE_ENV === 'development' &&
-        origin.match(/^https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com$/);
-
-      if (allowedOrigins.includes(origin) || isShopifyDomain || isCloudflareTunnel) {
+      if (allowedOrigins.includes(origin) || isShopifyDomain) {
         callback(null, true);
       } else {
         logger.warn(`CORS blocked origin: ${origin}`);
@@ -151,6 +148,10 @@ app.use(
 app.use('/', mittoRoutes); // Mitto webhooks (no auth)
 app.use('/', coreRoutes); // health, webhooks, auth helpers
 if (process.env.NODE_ENV !== 'production') app.use('/', docsRoutes); // Swagger UI (dev only)
+
+// Authentication routes (no store context required - handles authentication)
+app.use('/auth', authRoutes);
+
 // Store-scoped routes (require store context)
 app.use('/dashboard', resolveStore, requireStore, dashboardRoutes);
 app.use('/contacts', resolveStore, requireStore, contactsRoutes);

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sendly Backend API - Complete",
-    "description": "Complete API collection for Sendly Marketing Backend - SMS marketing platform for Shopify stores\n\n**Setup Instructions:**\n1. Import this collection\n2. Import `Sendly_Dev_Store.postman_environment.json`\n3. Select the \"Sendly Dev Store\" environment\n4. Update `shopify_access_token` with your full access token from Debug Information\n\n**Authentication:**\n- All store-scoped endpoints require `X-Shopify-Shop-Domain` header\n- Header is automatically set via collection variable\n- Base URL: {{base_url}}\n\n**Dev Store:**\n- Shop Domain: {{shopDomain}}\n- Access Token: {{shopify_access_token}}",
+    "description": "Complete API collection for Sendly Marketing Backend - SMS marketing platform for Shopify stores\n\n**Setup Instructions:**\n1. Import this collection\n2. Import `Sendly_Dev_Store.postman_environment.json`\n3. Select the \"Sendly Dev Store\" environment\n4. Update `shopify_access_token` with your full access token from Debug Information\n\n**Authentication:**\n- **JWT Token Authentication** (Recommended): Use `Authorization: Bearer <token>` header\n  - Get token via `/auth/shopify-token` (Shopify Extension) or `/auth/shopify` (Web App OAuth)\n  - Token auto-saved to `jwt_token` collection variable\n  - All store-scoped endpoints support JWT tokens\n- **Header-based Authentication** (Legacy): Use `X-Shopify-Shop-Domain` header\n  - Header is automatically set via collection variable\n  - Still supported for backward compatibility\n\n**Base URL:** {{base_url}}\n\n**Dev Store:**\n- Shop Domain: {{shopDomain}}\n- Access Token: {{shopify_access_token}}\n- JWT Token: {{jwt_token}} (auto-saved after authentication)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "sendly-api"
   },
@@ -14,6 +14,11 @@
     {
       "key": "shopDomain",
       "value": "{{shopDomain}}",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
       "type": "string"
     }
   ],
@@ -92,6 +97,213 @@
               ]
             },
             "description": "Get application metrics (JSON or Prometheus format)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔐 Authentication",
+      "description": "JWT-based authentication endpoints for multi-platform support",
+      "item": [
+        {
+          "name": "Exchange Shopify Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionToken\": \"your_shopify_app_bridge_session_token_here\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/shopify-token",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "shopify-token"]
+            },
+            "description": "Exchange Shopify App Bridge session token for app JWT token. Used by Shopify Extension.\n\n**Response:**\n- `token`: JWT token to use for all subsequent API calls\n- `store`: Store information\n- `expiresIn`: Token expiration (30d)\n\n**Note:** Save the token from response to `jwt_token` collection variable for use in other requests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Auto-save JWT token to collection variable",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "        pm.collectionVariables.set('jwt_token', jsonData.data.token);",
+                  "        console.log('JWT token saved to collection variable');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Initiate OAuth Flow",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/shopify?shop={{shopDomain}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "shopify"],
+              "query": [
+                {
+                  "key": "shop",
+                  "value": "{{shopDomain}}",
+                  "description": "Shop domain (e.g., mystore.myshopify.com)"
+                }
+              ]
+            },
+            "description": "Initiate Shopify OAuth flow for Web App. This will redirect to Shopify authorization page.\n\n**Note:** In Postman, you'll see a redirect response. In a real browser, this redirects to Shopify OAuth page.\n\n**Flow:**\n1. User authorizes app in Shopify\n2. Shopify redirects to `/auth/callback`\n3. Backend generates JWT token\n4. Redirects to web app with token"
+          }
+        },
+        {
+          "name": "Verify Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify"]
+            },
+            "description": "Verify JWT token validity and get store information.\n\n**Headers:**\n- `Authorization: Bearer <token>`\n\n**Response:**\n- `valid`: Boolean indicating token validity\n- `store`: Store information (id, shopDomain, credits, currency)\n- `token`: Token metadata (storeId, source, exp)"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh expired JWT token. Generates a new token with extended expiration.\n\n**Headers:**\n- `Authorization: Bearer <token>` (can be expired)\n\n**Response:**\n- `token`: New JWT token\n- `expiresIn`: Token expiration (30d)\n\n**Note:** Auto-saves new token to collection variable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Auto-save refreshed JWT token to collection variable",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "        pm.collectionVariables.set('jwt_token', jsonData.data.token);",
+                  "        console.log('Refreshed JWT token saved to collection variable');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generate Test Token (Dev Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopDomain\": \"{{shopDomain}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/test-token",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "test-token"]
+            },
+            "description": "Generate test JWT token directly from shop domain (DEVELOPMENT ONLY).\n\n**Use this for testing when you don't have a Shopify session token.**\n\n**Body:**\n- `shopDomain`: Shop domain (e.g., mystore.myshopify.com)\n\n**Response:**\n- `token`: JWT token\n- `store`: Store information\n\n**Note:**\n- Only works in development mode (NODE_ENV !== 'production')\n- Bypasses Shopify session token verification\n- Token is auto-saved to `jwt_token` variable"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Auto-save test JWT token to collection variable",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "        pm.collectionVariables.set('jwt_token', jsonData.data.token);",
+                  "        console.log('Test JWT token saved to collection variable');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Test API with JWT Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/billing/balance",
+              "host": ["{{base_url}}"],
+              "path": ["billing", "balance"]
+            },
+            "description": "Test API endpoint using JWT token authentication.\n\n**Usage:**\n1. First call \"Generate Test Token\" (dev) or \"Exchange Shopify Token\" to get a token\n2. Token is automatically saved to `jwt_token` variable\n3. This request uses the token instead of `X-Shopify-Shop-Domain` header\n\n**Note:** All store-scoped endpoints support both:\n- Header-based auth: `X-Shopify-Shop-Domain`\n- JWT token auth: `Authorization: Bearer <token>`"
           }
         }
       ]

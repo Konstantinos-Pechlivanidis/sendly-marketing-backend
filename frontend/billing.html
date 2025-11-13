@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sendly - Billing</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h2>📱 Sendly</h2>
+            </div>
+            <div class="nav-menu">
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="#" class="nav-link">Campaigns</a>
+                <a href="#" class="nav-link">Contacts</a>
+                <a href="billing.html" class="nav-link active">Billing</a>
+                <button id="logout-btn" class="btn btn-secondary">Logout</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="dashboard-header">
+            <h1>Billing & Credits</h1>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+        
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        
+        <div id="billing-content">
+            <div class="balance-card">
+                <h2>Current Balance</h2>
+                <div class="balance-amount" id="balance-amount">-</div>
+            </div>
+            
+            <div class="packages-section">
+                <h2>Buy Credits</h2>
+                <div id="packages-grid" class="packages-grid">
+                    <!-- Packages will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="billing.js"></script>
+</body>
+</html>
+
