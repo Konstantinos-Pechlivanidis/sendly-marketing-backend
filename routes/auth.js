@@ -104,9 +104,11 @@ r.get('/shopify', async (req, res, next) => {
     logger.info('OAuth flow initiated', {
       shopDomain,
       callbackUrl,
+      encodedRedirectUri,
       hostName,
       protocol,
       HOST: process.env.HOST,
+      message: `⚠️ IMPORTANT: Add this exact URL to Shopify Partners Dashboard: ${callbackUrl}`,
     });
 
     // Redirect to Shopify OAuth page

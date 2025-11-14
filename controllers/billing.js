@@ -32,7 +32,34 @@ export async function getBalance(req, res, next) {
 }
 
 /**
- * Get available credit packages
+ * Get available credit packages (public - no authentication required)
+ * @route GET /public/packages
+ */
+export async function getPublicPackages(req, res, next) {
+  try {
+    // Get currency from query param or default to EUR
+    const currency = req.query.currency || 'EUR';
+    
+    // Validate currency
+    const validCurrencies = ['EUR', 'USD'];
+    const finalCurrency = validCurrencies.includes(currency.toUpperCase()) 
+      ? currency.toUpperCase() 
+      : 'EUR';
+    
+    const packages = billingService.getPackages(finalCurrency);
+
+    return sendSuccess(res, { packages, currency: finalCurrency });
+  } catch (error) {
+    logger.error('Get public packages error', {
+      error: error.message,
+      stack: error.stack,
+    });
+    next(error);
+  }
+}
+
+/**
+ * Get available credit packages (authenticated - with store context)
  * @route GET /billing/packages
  */
 export async function getPackages(req, res, next) {
@@ -48,7 +75,7 @@ export async function getPackages(req, res, next) {
     const currency = shop?.currency || 'EUR';
     const packages = billingService.getPackages(currency);
 
-    return sendSuccess(res, { packages });
+    return sendSuccess(res, { packages, currency });
   } catch (error) {
     logger.error('Get packages error', {
       error: error.message,

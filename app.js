@@ -37,6 +37,7 @@ import audiencesRoutes from './routes/audiences.js';
 import shopifyRoutes from './routes/shopify.js';
 import docsRoutes from './routes/docs.js';
 import authRoutes from './routes/auth.js';
+import unsubscribeRoutes from './routes/unsubscribe.js';
 // import { setDevShop } from './middlewares/dev-shop.js'; // Not used in current implementation
 import { resolveStore, requireStore } from './middlewares/store-resolution.js';
 
@@ -167,6 +168,7 @@ app.use('/shopify', resolveStore, requireStore, shopifyRoutes);
 // Public routes (no store context required)
 // Note: /templates/:id/track requires store context, so apply resolveStore
 app.use('/templates', resolveStore, templatesRoutes);
+app.use('/unsubscribe', unsubscribeRoutes); // Unsubscribe (public, no auth required)
 
 // Tracking routes (require store context for security)
 app.use('/tracking', resolveStore, requireStore, trackingRoutes); // ✅ Tracking endpoints now require store context

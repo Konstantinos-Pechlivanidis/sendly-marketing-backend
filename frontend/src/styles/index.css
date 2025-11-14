@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border-subtle;
+  }
+  
+  body {
+    @apply bg-bg-dark text-primary-light font-sans antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+  }
+}
+
+@layer utilities {
+  /* Glass Morphism Effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(148, 169, 180, 0.30);
+    box-shadow: 0 8px 32px 0 rgba(2, 2, 2, 0.37);
+  }
+  
+  .glass-dark {
+    background: rgba(2, 2, 2, 0.30);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  
+  .glass-ice {
+    background: rgba(153, 181, 215, 0.20);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  
+  .glass-fuchsia {
+    background: rgba(192, 157, 174, 0.22);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  
+  /* Gradient Text */
+  .gradient-text {
+    background: linear-gradient(
+      to right,
+      #99B5D7,
+      #C09DAE,
+      #6686A9
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Smooth transitions */
+  .transition-glass {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  .transition-button {
+    transition: all 0.2s ease-out;
+  }
+  
+  /* Focus ring */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-ice-accent focus:ring-offset-2 focus:ring-offset-bg-dark;
+  }
+}
+

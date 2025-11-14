@@ -4,6 +4,22 @@ import dashboardService from '../services/dashboard.js';
 import { sendSuccess } from '../utils/response.js';
 
 /**
+ * Get main dashboard data
+ * @route GET /dashboard
+ */
+export async function dashboard(req, res, next) {
+  try {
+    const storeId = getStoreId(req);
+    const data = await dashboardService.getDashboard(storeId);
+
+    return sendSuccess(res, data);
+  } catch (error) {
+    logger.error('Dashboard error', { error: error.message, storeId: getStoreId(req) });
+    next(error);
+  }
+}
+
+/**
  * Get dashboard overview
  * @route GET /dashboard/overview
  */

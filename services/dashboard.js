@@ -7,6 +7,58 @@ import { logger } from '../utils/logger.js';
  */
 
 /**
+ * Get main dashboard data (simplified for dashboard page)
+ * @param {string} storeId - The store ID
+ * @returns {Promise<Object>} Dashboard data
+ */
+export async function getDashboard(storeId) {
+  logger.info('Fetching dashboard data', { storeId });
+
+  const shop = await prisma.shop.findUnique({
+    where: { id: storeId },
+    select: { id: true, credits: true, currency: true },
+  });
+
+  if (!shop) {
+    logger.warn('Shop not found for dashboard', { storeId });
+    return {
+      credits: 0,
+      totalCampaigns: 0,
+      totalContacts: 0,
+      totalMessagesSent: 0,
+    };
+  }
+
+  // Fetch stats in parallel
+  const [totalCampaigns, totalContacts, totalMessagesSent] = await Promise.all([
+    prisma.campaign.count({
+      where: { shopId: shop.id },
+    }),
+    prisma.contact.count({
+      where: { shopId: shop.id },
+    }),
+    prisma.messageLog.count({
+      where: { shopId: shop.id, direction: 'outbound' },
+    }),
+  ]);
+
+  logger.info('Dashboard data fetched successfully', {
+    storeId,
+    credits: shop.credits,
+    totalCampaigns,
+    totalContacts,
+    totalMessagesSent,
+  });
+
+  return {
+    credits: shop.credits || 0,
+    totalCampaigns,
+    totalContacts,
+    totalMessagesSent,
+  };
+}
+
+/**
  * Get comprehensive dashboard overview
  * @param {string} storeId - The store ID
  * @returns {Promise<Object>} Dashboard overview data
@@ -176,6 +228,7 @@ async function getRecentTransactions(shopId, limit = 5) {
 }
 
 export default {
+  getDashboard,
   getOverview,
   getQuickStats,
 };

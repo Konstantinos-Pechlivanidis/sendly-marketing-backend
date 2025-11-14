@@ -5,6 +5,8 @@ import axios from 'axios';
 import { logger } from '../utils/logger.js';
 import { metrics } from '../utils/metrics.js';
 import { cacheManager } from '../utils/cache.js';
+import * as billingCtrl from '../controllers/billing.js';
+import * as contactCtrl from '../controllers/contact.js';
 
 const r = Router();
 
@@ -188,5 +190,13 @@ r.get('/metrics', (req, res) => {
     res.json(metrics.getAllMetrics());
   }
 });
+
+// Public pricing packages (no authentication required)
+// Used for public marketing website pricing page
+r.get('/public/packages', billingCtrl.getPublicPackages);
+
+// Public contact form submission (no authentication required)
+// Used for public marketing website contact page
+r.post('/public/contact', contactCtrl.submitContactForm);
 
 export default r;
