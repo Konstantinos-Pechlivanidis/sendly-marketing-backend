@@ -88,16 +88,49 @@ export async function generateAppToken(shopDomain) {
       ? shopDomain
       : `${shopDomain}.myshopify.com`;
 
-    // Find store in database
-    const store = await prisma.shop.findUnique({
-      where: { shopDomain: normalizedDomain },
-      select: {
-        id: true,
-        shopDomain: true,
-        credits: true,
-        currency: true,
-      },
-    });
+    // Find store in database with retry logic
+    let store;
+    let retries = 3;
+    let lastError;
+
+    while (retries > 0) {
+      try {
+        store = await prisma.shop.findUnique({
+          where: { shopDomain: normalizedDomain },
+          select: {
+            id: true,
+            shopDomain: true,
+            credits: true,
+            currency: true,
+          },
+        });
+        break; // Success
+      } catch (dbError) {
+        lastError = dbError;
+        retries--;
+
+        if ((dbError.message?.includes('closed') ||
+             dbError.message?.includes('connection') ||
+             dbError.code === 'P1001' ||
+             dbError.code === 'P1017') && retries > 0) {
+
+          logger.warn('Database connection error in generateAppToken, retrying...', {
+            shopDomain: normalizedDomain,
+            retriesLeft: retries,
+            error: dbError.message,
+          });
+
+          await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+          continue;
+        }
+
+        throw dbError;
+      }
+    }
+
+    if (!store && lastError) {
+      throw lastError;
+    }
 
     if (!store) {
       logger.warn('Store not found for token generation', { shopDomain: normalizedDomain });

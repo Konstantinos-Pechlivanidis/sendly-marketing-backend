@@ -201,49 +201,151 @@ r.get('/callback', async (req, res, _next) => {
       hasAccessToken: !!accessToken,
     });
 
-    // Find or create store
-    let store = await prisma.shop.findUnique({
-      where: { shopDomain },
-    });
+    // Find or create store with retry logic for database connection issues
+    let store;
+    let retries = 3;
+    let lastError;
+    
+    while (retries > 0) {
+      try {
+        store = await prisma.shop.findUnique({
+          where: { shopDomain },
+        });
+        break; // Success, exit retry loop
+      } catch (dbError) {
+        lastError = dbError;
+        retries--;
+        
+        // Check if it's a connection error
+        if (dbError.message?.includes('closed') || 
+            dbError.message?.includes('connection') ||
+            dbError.code === 'P1001' || // Prisma connection error
+            dbError.code === 'P1017') { // Server closed connection
+          
+          logger.warn('Database connection error, retrying...', {
+            shopDomain,
+            retriesLeft: retries,
+            error: dbError.message,
+          });
+          
+          if (retries > 0) {
+            // Wait before retrying (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+            continue;
+          }
+        }
+        
+        // If it's not a connection error or we're out of retries, throw
+        throw dbError;
+      }
+    }
+    
+    if (!store && lastError) {
+      throw lastError;
+    }
 
     if (!store) {
-      // Create new store
-      store = await prisma.shop.create({
-        data: {
-          shopDomain,
-          shopName: shopDomain.replace('.myshopify.com', ''),
-          accessToken,
-          credits: 100, // Initial credits
-          currency: 'EUR',
-          status: 'active',
-          settings: {
-            create: {
+      // Create new store with retry logic
+      retries = 3;
+      lastError = null;
+      
+      while (retries > 0) {
+        try {
+              store = await prisma.shop.create({
+            data: {
+              shopDomain,
+              shopName: shopDomain.replace('.myshopify.com', ''),
+              accessToken,
+              credits: 100, // Initial credits
               currency: 'EUR',
-              timezone: 'Europe/Athens',
-              senderNumber: process.env.MITTO_SENDER_NAME || 'Sendly',
-              senderName: process.env.MITTO_SENDER_NAME || 'Sendly',
+              status: 'active',
+              settings: {
+                create: {
+                  currency: 'EUR',
+                  timezone: 'Europe/Athens',
+                  senderNumber: process.env.MITTO_SENDER_NAME || 'Sendly',
+                  senderName: process.env.MITTO_SENDER_NAME || 'Sendly',
+                },
+              },
             },
-          },
-        },
-        include: { settings: true },
-      });
+            include: { settings: true },
+          });
 
-      logger.info('New store created from OAuth', {
-        storeId: store.id,
-        shopDomain: store.shopDomain,
-      });
+          logger.info('New store created from OAuth', {
+            storeId: store.id,
+            shopDomain: store.shopDomain,
+          });
+          break; // Success
+        } catch (dbError) {
+          lastError = dbError;
+          retries--;
+          
+          if ((dbError.message?.includes('closed') || 
+               dbError.message?.includes('connection') ||
+               dbError.code === 'P1001' ||
+               dbError.code === 'P1017') && retries > 0) {
+            
+            logger.warn('Database connection error during store creation, retrying...', {
+              shopDomain,
+              retriesLeft: retries,
+              error: dbError.message,
+            });
+            
+            await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+            continue;
+          }
+          
+          throw dbError;
+        }
+      }
+      
+      if (!store && lastError) {
+        throw lastError;
+      }
     } else {
-      // Update access token
-      store = await prisma.shop.update({
-        where: { id: store.id },
-        data: { accessToken },
-        include: { settings: true },
-      });
+      // Update access token with retry logic
+      retries = 3;
+      lastError = null;
+      
+      while (retries > 0) {
+        try {
+          store = await prisma.shop.update({
+            where: { id: store.id },
+            data: { accessToken },
+            include: { settings: true },
+          });
 
-      logger.info('Store access token updated', {
-        storeId: store.id,
-        shopDomain: store.shopDomain,
-      });
+          logger.info('Store access token updated', {
+            storeId: store.id,
+            shopDomain: store.shopDomain,
+          });
+          break; // Success
+        } catch (dbError) {
+          lastError = dbError;
+          retries--;
+          
+          if ((dbError.message?.includes('closed') || 
+               dbError.message?.includes('connection') ||
+               dbError.code === 'P1001' ||
+               dbError.code === 'P1017') && retries > 0) {
+            
+            logger.warn('Database connection error during token update, retrying...', {
+              shopDomain,
+              retriesLeft: retries,
+              error: dbError.message,
+            });
+            
+            await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+            continue;
+          }
+          
+          throw dbError;
+        }
+      }
+      
+      if (!store && lastError) {
+        throw lastError;
+      }
     }
 
     // Generate App JWT token
@@ -262,12 +364,27 @@ r.get('/callback', async (req, res, _next) => {
   } catch (error) {
     logger.error('OAuth callback error', {
       error: error.message,
+      errorStack: error.stack,
       shop: req.query.shop,
+      errorCode: error.code,
     });
+
+    // Provide user-friendly error message
+    let userMessage = error.message;
+    
+    // Handle specific database connection errors
+    if (error.message?.includes('closed') || 
+        error.message?.includes('connection') ||
+        error.code === 'P1001' ||
+        error.code === 'P1017') {
+      userMessage = 'Database connection error. Please try again in a moment.';
+    } else if (error.message?.includes('Store not found')) {
+      userMessage = 'Store not found. Please ensure your Shopify store is properly configured.';
+    }
 
     // Redirect to web app with error
     const webAppUrl = process.env.WEB_APP_URL || 'https://sendly-marketing-frontend.onrender.com';
-    res.redirect(`${webAppUrl}/login?error=${encodeURIComponent(error.message)}`);
+    res.redirect(`${webAppUrl}/login?error=${encodeURIComponent(userMessage)}`);
   }
 });
 
