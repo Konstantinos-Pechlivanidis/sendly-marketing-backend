@@ -115,7 +115,7 @@ export async function createUserAutomation(req, res, next) {
 /**
  * Get all automations for the current user
  */
-export async function getUserAutomations(req, res, _next) {
+export async function getUserAutomations(req, res, next) {
   try {
     // ✅ Security: Get storeId from context
     const shopId = getStoreId(req);
@@ -160,16 +160,20 @@ export async function getUserAutomations(req, res, _next) {
   } catch (error) {
     logger.error('Failed to fetch user automations', {
       error: error.message,
-      shopId: req.ctx?.store?.id,
+      stack: error.stack,
+      shopId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 
 /**
  * Update user automation (message content or active status)
  */
-export async function updateUserAutomation(req, res, _next) {
+export async function updateUserAutomation(req, res, next) {
   try {
     const { id } = req.params;
     // Accept both frontend-friendly format and backend format
@@ -259,17 +263,22 @@ export async function updateUserAutomation(req, res, _next) {
   } catch (error) {
     logger.error('Failed to update user automation', {
       error: error.message,
+      stack: error.stack,
       userAutomationId: req.params.id,
-      shopId: req.ctx?.store?.id,
+      shopId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+      body: req.body,
     });
-    throw error;
+    next(error);
   }
 }
 
 /**
  * Get system default automations (admin only)
  */
-export async function getSystemDefaults(req, res, _next) {
+export async function getSystemDefaults(req, res, next) {
   try {
     const systemAutomations = await prisma.automation.findMany({
       where: { isSystemDefault: true },
@@ -290,15 +299,19 @@ export async function getSystemDefaults(req, res, _next) {
   } catch (error) {
     logger.error('Failed to fetch system default automations', {
       error: error.message,
+      stack: error.stack,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 
 /**
  * Sync new system defaults to all users (admin only)
  */
-export async function syncSystemDefaults(req, res, _next) {
+export async function syncSystemDefaults(req, res, next) {
   try {
     // Get all shops
     const shops = await prisma.shop.findMany({
@@ -353,15 +366,19 @@ export async function syncSystemDefaults(req, res, _next) {
   } catch (error) {
     logger.error('Failed to sync system defaults', {
       error: error.message,
+      stack: error.stack,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 
 /**
  * Get automation statistics for a user
  */
-export async function getAutomationStats(req, res, _next) {
+export async function getAutomationStats(req, res, next) {
   try {
     // ✅ Security: Get storeId from context
     const shopId = getStoreId(req);
@@ -395,9 +412,13 @@ export async function getAutomationStats(req, res, _next) {
   } catch (error) {
     logger.error('Failed to fetch automation statistics', {
       error: error.message,
-      shopId: req.ctx?.store?.id,
+      stack: error.stack,
+      shopId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 

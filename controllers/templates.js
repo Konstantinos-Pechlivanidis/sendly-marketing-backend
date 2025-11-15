@@ -7,7 +7,7 @@ import { NotFoundError, ValidationError } from '../utils/errors.js';
 /**
  * Get all public templates with optional category filter
  */
-export async function getAllTemplates(req, res, _next) {
+export async function getAllTemplates(req, res, next) {
   try {
     const { category, search, limit = 50, offset = 0 } = req.query;
 
@@ -59,7 +59,7 @@ export async function getAllTemplates(req, res, _next) {
     ]);
 
     // Get usage counts for each template if shopId is available
-    let usageCounts = {};
+    const usageCounts = {};
     if (shopId) {
       const templateIds = templates.map(t => t.id);
       const usages = await prisma.templateUsage.findMany({
@@ -114,16 +114,20 @@ export async function getAllTemplates(req, res, _next) {
   } catch (error) {
     logger.error('Failed to fetch templates', {
       error: error.message,
+      stack: error.stack,
       query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 
 /**
  * Get a single template by ID
  */
-export async function getTemplateById(req, res, _next) {
+export async function getTemplateById(req, res, next) {
   try {
     const { id } = req.params;
 
@@ -152,16 +156,20 @@ export async function getTemplateById(req, res, _next) {
   } catch (error) {
     logger.error('Failed to fetch template', {
       error: error.message,
+      stack: error.stack,
       templateId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 
 /**
  * Get template categories
  */
-export async function getTemplateCategories(req, res, _next) {
+export async function getTemplateCategories(req, res, next) {
   try {
     const categories = await prisma.template.findMany({
       where: { isPublic: true },
@@ -174,15 +182,19 @@ export async function getTemplateCategories(req, res, _next) {
   } catch (error) {
     logger.error('Failed to fetch template categories', {
       error: error.message,
+      stack: error.stack,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 
 /**
  * Track template usage (for analytics)
  */
-export async function trackTemplateUsage(req, res, _next) {
+export async function trackTemplateUsage(req, res, next) {
   try {
     const { templateId } = req.params;
 
@@ -235,10 +247,14 @@ export async function trackTemplateUsage(req, res, _next) {
   } catch (error) {
     logger.error('Failed to track template usage', {
       error: error.message,
+      stack: error.stack,
       templateId: req.params.templateId,
       shopId: req.shop?.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 

@@ -15,47 +15,145 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold;
   }
+  
+  /* Light mode for logged-in pages */
+  body.app-light-mode {
+    background-color: #F5F7FA;
+    color: #14161C;
+  }
+  
+  body.app-light-mode * {
+    border-color: #D1D7E0;
+  }
+  
+  body.app-light-mode h1, 
+  body.app-light-mode h2, 
+  body.app-light-mode h3, 
+  body.app-light-mode h4, 
+  body.app-light-mode h5, 
+  body.app-light-mode h6 {
+    color: #14161C;
+  }
 }
 
 @layer utilities {
-  /* Glass Morphism Effect */
+  /* Dark Mode - Glass Morphism Effect (default for public pages) */
   .glass {
-    background: rgba(255, 255, 255, 0.10);
+    background: rgba(2, 2, 2, 0.30);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(148, 169, 180, 0.30);
-    box-shadow: 0 8px 32px 0 rgba(2, 2, 2, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.30), 0 1px 4px rgba(0, 0, 0, 0.20);
   }
   
+  .glass-light {
+    background: rgba(2, 2, 2, 0.30);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.30), 0 1px 4px rgba(0, 0, 0, 0.20);
+  }
+  
+  .glass-ice {
+    background: rgba(2, 2, 2, 0.35);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(153, 181, 215, 0.20);
+    box-shadow: 0 4px 16px rgba(153, 181, 215, 0.15), 0 1px 4px rgba(153, 181, 215, 0.10);
+  }
+  
+  .glass-fuchsia {
+    background: rgba(2, 2, 2, 0.35);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(192, 157, 174, 0.20);
+    box-shadow: 0 4px 16px rgba(192, 157, 174, 0.15), 0 1px 4px rgba(192, 157, 174, 0.10);
+  }
+  
+  /* Light Mode - Glass Morphism Effect (only for logged-in pages) */
+  body.app-light-mode .glass {
+    background: rgba(255, 255, 255, 0.80);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(209, 215, 224, 0.50);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  }
+  
+  body.app-light-mode .glass-light {
+    background: rgba(255, 255, 255, 0.80);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(209, 215, 224, 0.50);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  }
+  
+  body.app-light-mode .glass-ice {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(78, 143, 184, 0.20);
+    box-shadow: 0 4px 16px rgba(78, 143, 184, 0.12), 0 1px 4px rgba(78, 143, 184, 0.06);
+  }
+  
+  body.app-light-mode .glass-fuchsia {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(140, 84, 103, 0.20);
+    box-shadow: 0 4px 16px rgba(140, 84, 103, 0.12), 0 1px 4px rgba(140, 84, 103, 0.06);
+  }
+  
+  /* Dark Mode - Glass Morphism Effect (legacy for public pages) */
   .glass-dark {
     background: rgba(2, 2, 2, 0.30);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
   }
   
-  .glass-ice {
-    background: rgba(153, 181, 215, 0.20);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-  }
-  
-  .glass-fuchsia {
-    background: rgba(192, 157, 174, 0.22);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-  }
-  
-  /* Gradient Text */
+  /* Gradient Text - Dark Mode (default for public pages) */
   .gradient-text {
     background: linear-gradient(
       to right,
       #99B5D7,
       #C09DAE,
-      #6686A9
+      #99B5D7
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+  
+  /* Gradient Text - Light Mode (only for logged-in pages) */
+  body.app-light-mode .gradient-text {
+    background: linear-gradient(
+      to right,
+      #4E8FB8,
+      #8C5467,
+      #35546A
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Hero Gradient Background - Dark Mode (default for public pages) */
+  .hero-gradient {
+    background: linear-gradient(
+      135deg,
+      rgba(2, 2, 2, 0.95) 0%,
+      rgba(20, 22, 28, 0.90) 50%,
+      rgba(2, 2, 2, 0.95) 100%
+    );
+  }
+  
+  /* Hero Gradient Background - Light Mode (only for logged-in pages) */
+  body.app-light-mode .hero-gradient {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.98) 0%,
+      rgba(165, 196, 212, 0.15) 50%,
+      rgba(244, 229, 236, 0.10) 100%
+    );
   }
   
   /* Smooth transitions */
@@ -67,9 +165,224 @@
     transition: all 0.2s ease-out;
   }
   
-  /* Focus ring */
+  /* iOS 26 Spring Animations */
+  .spring-animation {
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  .spring-smooth {
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Page transitions */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .page-enter {
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Micro-interactions */
+  .hover-lift {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease-out;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+  
+  .active-scale {
+    transition: transform 0.1s ease-out;
+  }
+  
+  .active-scale:active {
+    transform: scale(0.97);
+  }
+  
+  /* Ripple effect for buttons */
+  @keyframes ripple {
+    0% {
+      transform: scale(0);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+  
+  .ripple-effect {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .ripple-effect::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+  
+  .ripple-effect:active::after {
+    width: 300px;
+    height: 300px;
+    animation: ripple 0.6s ease-out;
+  }
+  
+  /* Focus ring - Dark Mode (default for public pages) */
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-ice-accent focus:ring-offset-2 focus:ring-offset-bg-dark;
+    @apply focus:outline-none;
+  }
+  
+  .focus-ring:focus {
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) #020202;
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) #99B5D7;
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+  }
+  
+  /* Focus ring - Light Mode (only for logged-in pages) */
+  body.app-light-mode .focus-ring:focus {
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) #F5F7FA;
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) #4E8FB8;
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+  }
+  
+  /* GlassButton - Dark Mode (default for public pages) */
+  .glass-button-primary {
+    background-color: #99B5D7;
+    color: #020202;
+  }
+  
+  .glass-button-primary:hover {
+    background-color: #7A9FC4;
+  }
+  
+  .glass-button-ghost {
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    color: #E5E5E5;
+  }
+  
+  .glass-button-ghost:hover {
+    border-color: #99B5D7;
+    color: #99B5D7;
+  }
+  
+  .glass-button-fuchsia {
+    background-color: #C09DAE;
+    color: #020202;
+  }
+  
+  .glass-button-fuchsia:hover {
+    background-color: #B08A9D;
+  }
+  
+  /* GlassButton - Light Mode (only for logged-in pages) */
+  body.app-light-mode .glass-button-primary {
+    background-color: #4E8FB8;
+    color: #FFFFFF;
+  }
+  
+  body.app-light-mode .glass-button-primary:hover {
+    background-color: #35546A;
+  }
+  
+  body.app-light-mode .glass-button-ghost {
+    border: 1px solid #D1D7E0;
+    color: #14161C;
+  }
+  
+  body.app-light-mode .glass-button-ghost:hover {
+    border-color: #4E8FB8;
+    color: #4E8FB8;
+  }
+  
+  body.app-light-mode .glass-button-fuchsia {
+    background-color: #8C5467;
+    color: #FFFFFF;
+  }
+  
+  body.app-light-mode .glass-button-fuchsia:hover {
+    background-color: #7A4A5A;
+  }
+  
+  /* GlassCard - Dark Mode (default for public pages) */
+  .glass-card-default {
+    background-color: transparent;
+  }
+  
+  /* GlassCard - Light Mode (only for logged-in pages) */
+  body.app-light-mode .glass-card-default {
+    background-color: #FFFFFF;
+  }
+  
+  /* Shadows - Dark Mode (default for public pages) */
+  .shadow-glow-ice-light {
+    box-shadow: 0 0 16px rgba(153, 181, 215, 0.30);
+  }
+  
+  .shadow-glow-ice-light-lg {
+    box-shadow: 0 0 24px rgba(153, 181, 215, 0.40);
+  }
+  
+  .shadow-glow-fuchsia-light {
+    box-shadow: 0 0 20px rgba(192, 157, 174, 0.35);
+  }
+  
+  /* Shadows - Light Mode (only for logged-in pages) */
+  body.app-light-mode .shadow-glow-ice-light {
+    box-shadow: 0 0 16px rgba(78, 143, 184, 0.25);
+  }
+  
+  body.app-light-mode .shadow-glow-ice-light-lg {
+    box-shadow: 0 0 24px rgba(78, 143, 184, 0.35);
+  }
+  
+  body.app-light-mode .shadow-glow-fuchsia-light {
+    box-shadow: 0 0 20px rgba(140, 84, 103, 0.30);
+  }
+
+  /* GlassBadge - Dark Mode (default for public pages) */
+  .glass-badge-default,
+  .glass-badge-ice {
+    background-color: rgba(153, 181, 215, 0.20);
+    color: #99B5D7;
+    border-color: rgba(153, 181, 215, 0.40);
+  }
+
+  .glass-badge-fuchsia {
+    background-color: rgba(192, 157, 174, 0.20);
+    color: #C09DAE;
+    border-color: rgba(192, 157, 174, 0.40);
+  }
+
+  /* GlassBadge - Light Mode (only for logged-in pages) */
+  body.app-light-mode .glass-badge-default,
+  body.app-light-mode .glass-badge-ice {
+    background-color: rgba(165, 196, 212, 0.40);
+    color: #35546A; /* Darker for better contrast */
+    border-color: rgba(78, 143, 184, 0.30);
+    font-weight: 600;
+  }
+
+  body.app-light-mode .glass-badge-fuchsia {
+    background-color: rgba(244, 229, 236, 0.50);
+    color: #6B3F4F; /* Darker for better contrast */
+    border-color: rgba(140, 84, 103, 0.30);
+    font-weight: 600;
   }
 }
 

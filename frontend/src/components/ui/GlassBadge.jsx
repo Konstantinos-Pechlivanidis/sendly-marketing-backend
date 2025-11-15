@@ -1,17 +1,18 @@
+import { memo } from 'react';
 import { clsx } from 'clsx';
 
-export default function GlassBadge({ 
+const GlassBadge = memo(function GlassBadge({ 
   children, 
   variant = 'default',
   className,
   ...props 
 }) {
-  const baseClasses = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium';
+  const baseClasses = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm border';
   
   const variantClasses = {
-    default: 'bg-glass-ice text-ice-accent',
-    fuchsia: 'bg-glass-fuchsia text-zoom-fuchsia shadow-glow-fuchsia',
-    ice: 'bg-glass-ice text-ice-accent',
+    default: 'glass-badge-default',
+    fuchsia: 'glass-badge-fuchsia',
+    ice: 'glass-badge-ice',
   };
 
   return (
@@ -26,5 +27,9 @@ export default function GlassBadge({
       {children}
     </span>
   );
-}
+});
+
+GlassBadge.displayName = 'GlassBadge';
+
+export default GlassBadge;
 

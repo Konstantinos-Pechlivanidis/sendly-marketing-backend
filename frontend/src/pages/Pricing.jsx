@@ -84,7 +84,7 @@ export default function Pricing() {
         description="Simple, pay-as-you-go pricing. Pay only for SMS credits you use. All features included free."
         path="/pricing"
       />
-      <div className="min-h-screen pt-24 pb-20 px-4">
+      <div className="min-h-screen pt-24 pb-20 px-4 lg:px-8">
         <div className="max-w-[1200px] mx-auto">
           {/* Header */}
           <div className="text-center mb-12">

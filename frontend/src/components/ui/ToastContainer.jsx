@@ -5,7 +5,7 @@ export default function ToastContainer({ toasts, onRemove }) {
 
   return (
     <div 
-      className="fixed top-20 right-4 z-50 flex flex-col gap-2 max-h-[80vh] overflow-y-auto"
+      className="fixed top-20 right-4 z-70 flex flex-col gap-2 max-h-[80vh] overflow-y-auto"
       role="region"
       aria-label="Notifications"
       aria-live="polite"

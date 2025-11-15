@@ -181,7 +181,7 @@ export const validateContentType = (req, res, next) => {
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
     const contentType = req.headers['content-type'];
     const contentLength = parseInt(req.headers['content-length'] || '0', 10);
-    
+
     // Allow specific routes that don't require a body
     const noBodyRoutes = [
       '/campaigns/:id/send',
@@ -190,14 +190,14 @@ export const validateContentType = (req, res, next) => {
       '/templates/:id/track',
       '/automations/sync',
     ];
-    
+
     // Check if this is a no-body route
     const isNoBodyRoute = noBodyRoutes.some(route => {
       const routePattern = route.replace(/:id/g, '[^/]+');
       const regex = new RegExp(`^${routePattern.replace(/\//g, '\\/')}$`);
       return regex.test(req.path);
     });
-    
+
     // Allow requests without body or with empty body (Content-Length: 0 or 2 for "{}")
     // Some endpoints like /campaigns/:id/send don't require a body
     if (isNoBodyRoute || contentLength === 0 || contentLength <= 2) {

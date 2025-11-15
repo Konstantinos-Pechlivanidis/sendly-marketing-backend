@@ -8,7 +8,7 @@ import * as settingsService from '../services/settings.js';
 /**
  * Get current user settings
  */
-export async function getSettings(req, res, _next) {
+export async function getSettings(req, res, next) {
   try {
     const shopId = getStoreId(req);
 
@@ -63,7 +63,7 @@ export async function getSettings(req, res, _next) {
     // Return flat structure for easier frontend access
     // Frontend expects: senderId (senderNumber or senderName), timezone, currency, etc.
     const settings = shop.settings || {};
-    
+
     return sendSuccess(res, {
       // Shop info
       shopId: shop.id,
@@ -85,16 +85,20 @@ export async function getSettings(req, res, _next) {
   } catch (error) {
     logger.error('Failed to fetch settings', {
       error: error.message,
-      shopId: req.ctx?.store?.id || 'unknown',
+      stack: error.stack,
+      shopId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 
 /**
  * Update sender number
  */
-export async function updateSenderNumber(req, res, _next) {
+export async function updateSenderNumber(req, res, next) {
   try {
     const { senderNumber } = req.body;
     const shopId = getStoreId(req);
@@ -136,17 +140,21 @@ export async function updateSenderNumber(req, res, _next) {
   } catch (error) {
     logger.error('Failed to update sender number', {
       error: error.message,
-      shopId: req.ctx?.store?.id || 'unknown',
+      stack: error.stack,
+      shopId: getStoreId(req),
       senderNumber: req.body.senderNumber,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 
 /**
  * Get account information
  */
-export async function getAccountInfo(req, res, _next) {
+export async function getAccountInfo(req, res, next) {
   try {
     const shopId = getStoreId(req);
 
@@ -210,23 +218,27 @@ export async function getAccountInfo(req, res, _next) {
   } catch (error) {
     logger.error('Failed to fetch account information', {
       error: error.message,
-      shopId: req.ctx?.store?.id || 'unknown',
+      stack: error.stack,
+      shopId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 
 /**
  * Update settings
  */
-export async function updateSettings(req, res, _next) {
+export async function updateSettings(req, res, next) {
   try {
     const shopId = getStoreId(req);
     const settingsData = req.body;
 
     // Prepare update data - map frontend fields to backend fields
     const updateData = {};
-    
+
     // Handle senderId - can be either senderNumber or senderName
     if (settingsData.senderId !== undefined) {
       const senderId = settingsData.senderId?.trim() || '';
@@ -277,10 +289,14 @@ export async function updateSettings(req, res, _next) {
   } catch (error) {
     logger.error('Failed to update settings', {
       error: error.message,
-      shopId: req.ctx?.store?.id || 'unknown',
+      stack: error.stack,
+      shopId: getStoreId(req),
       body: req.body,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
-    throw error;
+    next(error);
   }
 }
 

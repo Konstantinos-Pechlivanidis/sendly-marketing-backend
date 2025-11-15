@@ -9,7 +9,7 @@ export default function Privacy() {
         description="Read Sendly's Privacy Policy to understand how we collect, use, and protect your data."
         path="/privacy"
       />
-      <div className="min-h-screen pt-24 pb-20 px-4">
+      <div className="min-h-screen pt-24 pb-20 px-4 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-h1 md:text-5xl font-bold mb-4">Privacy Policy</h1>

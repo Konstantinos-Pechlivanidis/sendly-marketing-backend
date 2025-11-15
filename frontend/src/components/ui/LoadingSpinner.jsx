@@ -7,9 +7,12 @@ export default function LoadingSpinner({ size = 'md', className = '' }) {
 
   return (
     <div
-      className={`${sizeClasses[size]} ${className} border-2 border-ice-accent/30 border-t-ice-accent rounded-full animate-spin`}
+      className={`${sizeClasses[size]} ${className} border-2 border-ice-primary/40 border-t-ice-primary rounded-full animate-spin`}
       role="status"
       aria-label="Loading"
+      style={{
+        animation: 'spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+      }}
     />
   );
 }

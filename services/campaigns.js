@@ -406,9 +406,9 @@ export async function updateCampaign(storeId, campaignId, campaignData) {
     throw new NotFoundError('Campaign');
   }
 
-  // Can't update sent campaigns
-  if (existing.status === 'sent') {
-    throw new ValidationError('Cannot update a campaign that has already been sent');
+  // Can't update sent or sending campaigns
+  if (existing.status === 'sent' || existing.status === 'sending') {
+    throw new ValidationError('Cannot update a campaign that has already been sent or is currently sending');
   }
 
   // Prepare update data
@@ -433,9 +433,28 @@ export async function updateCampaign(storeId, campaignId, campaignData) {
 
   if (campaignData.audience !== undefined) updateData.audience = campaignData.audience;
   if (campaignData.discountId !== undefined) updateData.discountId = campaignData.discountId;
-  if (campaignData.scheduleType !== undefined) updateData.scheduleType = campaignData.scheduleType;
+  if (campaignData.scheduleType !== undefined) {
+    updateData.scheduleType = campaignData.scheduleType;
+    // If changing from scheduled to immediate, clear scheduleAt and set status to draft
+    if (campaignData.scheduleType === 'immediate' && existing.scheduleType === 'scheduled') {
+      updateData.scheduleAt = null;
+      updateData.status = 'draft';
+    }
+    // If changing to scheduled, status will be set by schedule endpoint
+  }
   if (campaignData.scheduleAt !== undefined) {
-    updateData.scheduleAt = campaignData.scheduleAt ? new Date(campaignData.scheduleAt) : null;
+    if (campaignData.scheduleAt) {
+      const scheduleAtDate = new Date(campaignData.scheduleAt);
+      if (isNaN(scheduleAtDate.getTime())) {
+        throw new ValidationError('Invalid schedule date format. Please use ISO 8601 format.');
+      }
+      if (scheduleAtDate <= new Date()) {
+        throw new ValidationError('Schedule date must be in the future');
+      }
+      updateData.scheduleAt = scheduleAtDate;
+    } else {
+      updateData.scheduleAt = null;
+    }
   }
   if (campaignData.recurringDays !== undefined) updateData.recurringDays = campaignData.recurringDays;
 

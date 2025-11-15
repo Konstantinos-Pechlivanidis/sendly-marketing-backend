@@ -703,7 +703,7 @@ export async function getBillingHistory(storeId, filters = {}) {
     // Get package info from packageType
     let packageName = 'N/A';
     let packageCredits = transaction.creditsAdded;
-    
+
     try {
       const pkg = getPackageById(transaction.packageType);
       packageName = pkg.name;

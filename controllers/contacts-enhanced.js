@@ -49,8 +49,12 @@ export async function list(req, res, next) {
   } catch (error) {
     logger.error('List contacts error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -71,8 +75,12 @@ export async function getOne(req, res, next) {
   } catch (error) {
     logger.error('Get contact error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       contactId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -93,8 +101,12 @@ export async function create(req, res, next) {
   } catch (error) {
     logger.error('Create contact error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       body: req.body,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -116,8 +128,13 @@ export async function update(req, res, next) {
   } catch (error) {
     logger.error('Update contact error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       contactId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+      body: req.body,
     });
     next(error);
   }
@@ -138,8 +155,12 @@ export async function remove(req, res, next) {
   } catch (error) {
     logger.error('Delete contact error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       contactId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -194,7 +215,11 @@ export async function stats(req, res, next) {
   } catch (error) {
     logger.error('Get contact stats error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -220,7 +245,12 @@ export async function getBirthdayContacts(req, res, next) {
   } catch (error) {
     logger.error('Get birthday contacts error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+      query: req.query,
     });
     next(error);
   }
@@ -245,7 +275,11 @@ export async function importCsv(req, res, next) {
   } catch (error) {
     logger.error('Import contacts error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }

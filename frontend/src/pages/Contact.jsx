@@ -112,7 +112,7 @@ export default function Contact() {
         description="Get in touch with the Sendly team. We're here to help you succeed with SMS marketing."
         path="/contact"
       />
-      <div className="min-h-screen pt-24 pb-20 px-4">
+      <div className="min-h-screen pt-24 pb-20 px-4 lg:px-8">
         <div className="max-w-[1200px] mx-auto">
           {/* Header */}
           <div className="text-center mb-12">

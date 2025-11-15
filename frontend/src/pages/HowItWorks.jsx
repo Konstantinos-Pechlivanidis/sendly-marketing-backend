@@ -61,7 +61,7 @@ export default function HowItWorks() {
         description="Get started with Sendly in minutes. Simple 3-step process to start sending SMS campaigns."
         path="/how-it-works"
       />
-      <div className="min-h-screen pt-24 pb-20 px-4">
+      <div className="min-h-screen pt-24 pb-20 px-4 lg:px-8">
         <div className="max-w-[1200px] mx-auto">
           {/* Header */}
           <div className="text-center mb-16">

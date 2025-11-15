@@ -74,7 +74,7 @@ export default function Landing() {
       <StructuredData data={structuredData} />
       <div className="min-h-screen">
         {/* Hero Section */}
-        <section className="relative pt-32 pb-24 px-4 overflow-hidden">
+        <section className="relative pt-32 pb-24 px-4 lg:px-8 overflow-hidden">
           {/* Background gradient with blobs */}
           <div className="absolute inset-0 bg-gradient-to-b from-bg-dark via-surface-dark to-bg-dark">
             <div className="absolute top-20 right-20 w-96 h-96 bg-ice-accent/10 rounded-full blur-3xl animate-float" />
@@ -156,7 +156,7 @@ export default function Landing() {
         </section>
 
         {/* Results Section */}
-        <section className="py-20 px-4 bg-surface-dark/30">
+        <section className="py-20 px-4 lg:px-8 bg-surface-dark/30">
           <div className="max-w-[1200px] mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-h1 font-bold mb-4">Why SMS Marketing Works</h2>
@@ -178,7 +178,7 @@ export default function Landing() {
         </section>
 
         {/* Features Section */}
-        <section className="py-20 px-4">
+        <section className="py-20 px-4 lg:px-8">
           <div className="max-w-[1200px] mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-h1 font-bold mb-4">Everything You Need</h2>
@@ -204,7 +204,7 @@ export default function Landing() {
         </section>
 
         {/* How It Works - Simple 3 Steps */}
-        <section className="py-20 px-4 bg-surface-dark/30">
+        <section className="py-20 px-4 lg:px-8 bg-surface-dark/30">
           <div className="max-w-[1200px] mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-h1 font-bold mb-4">Get Started in 3 Steps</h2>
@@ -263,7 +263,7 @@ export default function Landing() {
         </section>
 
         {/* GDPR Compliance Section */}
-        <section className="py-20 px-4">
+        <section className="py-20 px-4 lg:px-8">
           <div className="max-w-[1200px] mx-auto">
             <GlassCard variant="ice" className="p-8 md:p-12">
               <div className="flex flex-col md:flex-row items-start gap-8">
@@ -318,7 +318,7 @@ export default function Landing() {
         </section>
 
         {/* Social Proof / Metrics */}
-        <section className="py-20 px-4 bg-surface-dark/30">
+        <section className="py-20 px-4 lg:px-8 bg-surface-dark/30">
           <div className="max-w-[1200px] mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
               <div>

@@ -46,7 +46,8 @@ export default function Login() {
       ? shopDomain
       : `${shopDomain}.myshopify.com`;
     
-    // Redirect to OAuth flow
+    // Redirect to OAuth flow on backend
+    // Backend will handle Shopify OAuth and redirect back to frontend /auth/callback
     window.location.href = `${API_URL}/auth/shopify?shop=${normalizedDomain}`;
   };
 

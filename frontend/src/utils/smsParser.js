@@ -4,6 +4,7 @@
  */
 
 // GSM 7-bit character set (single byte)
+// eslint-disable-next-line no-useless-escape
 const GSM_7BIT_CHARS = /^[@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&'()*+,\-.\/0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà]*$/;
 
 // Characters that count as 2 in GSM 7-bit

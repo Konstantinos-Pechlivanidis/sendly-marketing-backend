@@ -87,7 +87,7 @@ export default function Features() {
         description="Powerful features to help you create, send, and track SMS campaigns that convert."
         path="/features"
       />
-      <div className="min-h-screen pt-24 pb-20 px-4">
+      <div className="min-h-screen pt-24 pb-20 px-4 lg:px-8">
         <div className="max-w-[1200px] mx-auto">
           {/* Header */}
           <div className="text-center mb-16">

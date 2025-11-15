@@ -7,10 +7,19 @@ import { z } from 'zod';
 
 // Phone number validation (E.164 format)
 const phoneE164Schema = z.string()
+  .trim()
+  .min(1, 'Phone number is required')
   .regex(/^\+[1-9]\d{1,14}$/, 'Phone number must be in E.164 format (e.g., +306977123456)');
 
 // Email validation
-const emailSchema = z.string().email('Invalid email format').optional();
+const emailSchema = z.string()
+  .trim()
+  .email('Invalid email format')
+  .max(255, 'Email is too long')
+  .optional()
+  .refine((val) => !val || val.length > 0, {
+    message: 'Email cannot be an empty string',
+  });
 
 // Gender validation
 const genderSchema = z.enum(['male', 'female', 'other'], {
@@ -24,11 +33,21 @@ const smsConsentSchema = z.enum(['opted_in', 'opted_out', 'unknown'], {
 
 // Birth date validation
 const birthDateSchema = z.string()
-  .datetime({ message: 'Birth date must be a valid ISO date string' })
-  .refine((date) => new Date(date) <= new Date(), {
+  .trim()
+  .datetime({ message: 'Birth date must be a valid ISO 8601 datetime string' })
+  .refine((date) => {
+    const birthDate = new Date(date);
+    if (isNaN(birthDate.getTime())) {
+      return false;
+    }
+    return birthDate <= new Date();
+  }, {
     message: 'Birth date cannot be in the future',
   })
-  .optional();
+  .optional()
+  .refine((val) => !val || val.length > 0, {
+    message: 'Birth date cannot be an empty string',
+  });
 
 // Tags validation
 const tagsSchema = z.array(z.string()).default([]);
@@ -37,8 +56,12 @@ const tagsSchema = z.array(z.string()).default([]);
  * Create Contact Schema
  */
 export const createContactSchema = z.object({
-  firstName: z.string().min(1, 'First name is required').max(100, 'First name too long').optional(),
-  lastName: z.string().min(1).max(100, 'Last name too long').optional(),
+  firstName: z.string().trim().min(1, 'First name cannot be empty').max(100, 'First name too long').optional().refine((val) => !val || val.length > 0, {
+    message: 'First name cannot be an empty string',
+  }),
+  lastName: z.string().trim().min(1, 'Last name cannot be empty').max(100, 'Last name too long').optional().refine((val) => !val || val.length > 0, {
+    message: 'Last name cannot be an empty string',
+  }),
   phoneE164: phoneE164Schema,
   email: emailSchema,
   gender: genderSchema,
@@ -51,15 +74,23 @@ export const createContactSchema = z.object({
  * Update Contact Schema (all fields optional)
  */
 export const updateContactSchema = z.object({
-  firstName: z.string().min(1).max(100).optional(),
-  lastName: z.string().min(1).max(100).optional(),
+  firstName: z.string().trim().min(1, 'First name cannot be empty').max(100, 'First name too long').optional().refine((val) => val === undefined || val.length > 0, {
+    message: 'First name cannot be an empty string',
+  }),
+  lastName: z.string().trim().min(1, 'Last name cannot be empty').max(100, 'Last name too long').optional().refine((val) => val === undefined || val.length > 0, {
+    message: 'Last name cannot be an empty string',
+  }),
   phoneE164: phoneE164Schema.optional(),
   email: emailSchema,
   gender: genderSchema,
   birthDate: birthDateSchema.nullable(),
   smsConsent: smsConsentSchema.optional(),
   tags: tagsSchema.optional(),
-}).refine((data) => Object.keys(data).length > 0, {
+}).refine((data) => {
+  // Filter out undefined values to check if at least one field is provided
+  const definedFields = Object.entries(data).filter(([_, value]) => value !== undefined);
+  return definedFields.length > 0;
+}, {
   message: 'At least one field must be provided for update',
 });
 

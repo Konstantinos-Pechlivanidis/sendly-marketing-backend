@@ -12,10 +12,10 @@ export default function Toast({ toast, onRemove }) {
   }, [toast, onRemove]);
 
   const typeStyles = {
-    success: 'bg-ice-accent/20 border-ice-accent text-ice-accent',
-    error: 'bg-red-500/20 border-red-500 text-red-400',
-    warning: 'bg-yellow-500/20 border-yellow-500 text-yellow-400',
-    info: 'bg-ice-accent/20 border-ice-accent text-ice-accent',
+    success: 'bg-ice-soft/60 border-ice-primary text-ice-primary',
+    error: 'bg-red-50/80 border-red-500 text-red-500',
+    warning: 'bg-yellow-50/80 border-yellow-500 text-yellow-600',
+    info: 'bg-ice-soft/60 border-ice-primary text-ice-primary',
   };
 
   const icons = {

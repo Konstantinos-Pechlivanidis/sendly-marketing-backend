@@ -48,7 +48,15 @@ export async function overview(req, res, next) {
       },
     });
   } catch (error) {
-    logger.error('Reports overview error:', error);
+    logger.error('Reports overview error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
@@ -144,7 +152,15 @@ export async function campaigns(req, res, next) {
       },
     });
   } catch (error) {
-    logger.error('Campaign reports error:', error);
+    logger.error('Campaign reports error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
@@ -229,7 +245,15 @@ export async function campaignById(req, res, next) {
       creditsUsed: sent,
     });
   } catch (error) {
-    logger.error('Campaign details error:', error);
+    logger.error('Campaign details error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      campaignId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
@@ -256,7 +280,15 @@ export async function automations(req, res, next) {
       },
     });
   } catch (error) {
-    logger.error('Automation reports error:', error);
+    logger.error('Automation reports error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
@@ -336,7 +368,15 @@ export async function messaging(req, res, next) {
       },
     });
   } catch (error) {
-    logger.error('Messaging reports error:', error);
+    logger.error('Messaging reports error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
@@ -362,7 +402,15 @@ export async function credits(req, res, next) {
       },
     });
   } catch (error) {
-    logger.error('Credit reports error:', error);
+    logger.error('Credit reports error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
@@ -378,7 +426,14 @@ export async function kpis(req, res, next) {
 
     return sendSuccess(res, kpis);
   } catch (error) {
-    logger.error('KPIs error:', error);
+    logger.error('KPIs error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
@@ -403,7 +458,15 @@ export async function contacts(req, res, next) {
       },
     });
   } catch (error) {
-    logger.error('Contact reports error:', error);
+    logger.error('Contact reports error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
@@ -445,7 +508,15 @@ export async function exportData(req, res, next) {
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
   } catch (error) {
-    logger.error('Export error:', error);
+    logger.error('Export error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }

@@ -7,31 +7,54 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary Colors
+        // Light Mode - Neutrals (improved contrast)
+        'neutral-bg-base': '#F5F7FA',
+        'neutral-surface-primary': '#FFFFFF',
+        'neutral-surface-secondary': '#EDF0F4',
+        'neutral-border': '#D1D7E0',
+        'neutral-text-primary': '#14161C',
+        'neutral-text-secondary': '#5A606B', // Improved from #4B505B for better contrast (WCAG AA compliant)
+        
+        // Light Mode - Ice Blue (Primary brand)
+        'ice-primary': '#4E8FB8',
+        'ice-soft': '#A5C4D4',
+        'ice-deep': '#35546A',
+        
+        // Light Mode - Zoom Fuchsia (Highlight)
+        'fuchsia-primary': '#8C5467',
+        'fuchsia-soft': '#F4E5EC',
+        
+        // Dark Mode - Legacy (kept for public pages)
         'primary-dark': '#020202',
         'primary-light': '#E5E5E5',
         
-        // Ice Accent Colors
+        // Dark Mode - Ice Accent Colors (legacy)
         'ice-accent': '#99B5D7',
         'ice-light': '#B3CDDA',
         'ice-dark': '#6686A9',
         
-        // Border / Subtle Lines
+        // Dark Mode - Border / Subtle Lines (legacy)
         'border-subtle': '#94A9B4',
         
-        // Zoom Fuchsia Colors
+        // Dark Mode - Zoom Fuchsia Colors (legacy)
         'zoom-fuchsia': '#C09DAE',
         'zoom-fuchsia-deep': '#7C5A67',
         
-        // Surface Colors
+        // Dark Mode - Surface Colors (legacy)
         'surface-dark': '#191819',
         'surface-mid': '#262425',
         
-        // Background Colors
+        // Dark Mode - Background Colors (legacy)
         'bg-dark': '#020202',
         'bg-light': '#E5E5E5',
         
-        // Glass Colors (with transparency - used in CSS)
+        // Glass Colors - Light Mode
+        'glass-light-white': 'rgba(255, 255, 255, 0.80)',
+        'glass-light-ice': 'rgba(165, 196, 212, 0.15)',
+        'glass-light-fuchsia': 'rgba(244, 229, 236, 0.20)',
+        'glass-light-border': 'rgba(209, 215, 224, 0.50)',
+        
+        // Glass Colors - Dark Mode (legacy)
         'glass-white': 'rgba(255, 255, 255, 0.10)',
         'glass-dark': 'rgba(2, 2, 2, 0.30)',
         'glass-ice': 'rgba(153, 181, 215, 0.20)',
@@ -79,6 +102,13 @@ export default {
         'md': '0 4px 6px rgba(0,0,0,0.10)',
         'lg': '0 10px 15px rgba(0,0,0,0.10)',
         'xl': '0 20px 25px rgba(0,0,0,0.10)',
+        // Light Mode Shadows
+        'glass-light': '0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04)',
+        'glass-light-lg': '0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)',
+        'glow-ice-light': '0 0 16px rgba(78, 143, 184, 0.25)',
+        'glow-ice-light-lg': '0 0 24px rgba(78, 143, 184, 0.35)',
+        'glow-fuchsia-light': '0 0 20px rgba(140, 84, 103, 0.30)',
+        // Dark Mode Shadows (legacy)
         'glass': '0 8px 32px rgba(2, 2, 2, 0.37)',
         'glass-lg': '0 16px 48px rgba(2, 2, 2, 0.50)',
         'glow-ice': '0 0 20px rgba(153, 181, 215, 0.40)',
@@ -123,6 +153,16 @@ export default {
         'mobile': { 'max': '767px' },
         'tablet': { 'min': '768px', 'max': '1279px' },
         'desktop': { 'min': '1280px' },
+      },
+      zIndex: {
+        '10': '10',
+        '20': '20',
+        '30': '30',
+        '40': '40',
+        '50': '50',
+        '60': '60',
+        '70': '70',
+        '80': '80',
       },
     },
   },

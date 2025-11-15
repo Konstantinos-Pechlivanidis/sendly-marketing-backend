@@ -14,7 +14,14 @@ export async function dashboard(req, res, next) {
 
     return sendSuccess(res, data);
   } catch (error) {
-    logger.error('Dashboard error', { error: error.message, storeId: getStoreId(req) });
+    logger.error('Dashboard error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
@@ -30,7 +37,15 @@ export async function overview(req, res, next) {
 
     return sendSuccess(res, data);
   } catch (error) {
-    logger.error('Dashboard overview error', { error: error.message, storeId: getStoreId(req) });
+    logger.error('Dashboard overview error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
@@ -46,7 +61,14 @@ export async function quickStats(req, res, next) {
 
     return sendSuccess(res, data);
   } catch (error) {
-    logger.error('Dashboard quick stats error', { error: error.message, storeId: getStoreId(req) });
+    logger.error('Dashboard quick stats error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }

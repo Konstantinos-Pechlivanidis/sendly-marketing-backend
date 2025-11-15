@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { countSMSCharacters, formatMessageWithTokens } from '../../utils/smsParser';
 import { API_URL } from '../../utils/constants';
 
@@ -13,6 +13,21 @@ export default function IPhonePreviewWithDiscount({
   firstName = 'Sarah',
   unsubscribeToken = 'demo-token-123',
 }) {
+  const [isLightMode, setIsLightMode] = useState(false);
+
+  useEffect(() => {
+    // Check if we're in light mode (logged-in pages)
+    const checkLightMode = () => {
+      setIsLightMode(document.body.classList.contains('app-light-mode'));
+    };
+    
+    checkLightMode();
+    // Watch for changes
+    const observer = new MutationObserver(checkLightMode);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    
+    return () => observer.disconnect();
+  }, []);
   // Replace tokens in message
   const processedMessage = useMemo(() => {
     let processed = message
@@ -61,22 +76,35 @@ export default function IPhonePreviewWithDiscount({
     return parts;
   }, [processedMessage, unsubscribeToken]);
 
+  // Light mode colors
+  const frameBg = isLightMode ? 'bg-neutral-surface-primary' : 'bg-primary-dark';
+  const frameGradient = isLightMode 
+    ? 'bg-gradient-to-b from-neutral-surface-primary via-neutral-surface-secondary to-neutral-surface-primary'
+    : 'bg-gradient-to-b from-primary-dark via-surface-dark to-primary-dark';
+  const screenBg = isLightMode
+    ? 'linear-gradient(180deg, #FFFFFF 0%, #F5F7FA 45%, #EDF0F4 100%)'
+    : 'linear-gradient(180deg, #020202 0%, #191819 45%, #262425 100%)';
+  const statusBarText = isLightMode ? 'text-neutral-text-primary' : 'text-white/90';
+  const emptyMessageText = isLightMode ? 'text-neutral-text-secondary' : 'text-white/40';
+  const counterText = isLightMode ? 'text-neutral-text-secondary' : 'text-white/60';
+  const homeIndicator = isLightMode ? 'bg-neutral-text-primary/20' : 'bg-white/30';
+
   return (
     <div className="w-full max-w-sm mx-auto">
       {/* iPhone Frame */}
-      <div className="relative bg-primary-dark rounded-3xl p-2 shadow-glass-lg">
+      <div className={`relative ${frameBg} rounded-3xl p-2 shadow-glass-lg`}>
         {/* Outer frame with subtle highlights */}
-        <div className="relative bg-gradient-to-b from-primary-dark via-surface-dark to-primary-dark rounded-[28px] p-1">
+        <div className={`relative ${frameGradient} rounded-[28px] p-1`}>
           {/* Inner screen */}
           <div
             className="relative rounded-[24px] overflow-hidden"
             style={{
-              background: 'linear-gradient(180deg, #020202 0%, #191819 45%, #262425 100%)',
+              background: screenBg,
               aspectRatio: '9 / 16', // Compact iPhone 17 aspect ratio (reduced height)
             }}
           >
             {/* Status Bar */}
-            <div className="absolute top-0 left-0 right-0 h-8 flex items-center justify-between px-4 text-white/90 text-xs z-10">
+            <div className={`absolute top-0 left-0 right-0 h-8 flex items-center justify-between px-4 ${statusBarText} text-xs z-10`}>
               <div className="flex items-center gap-1">
                 <span className="font-medium">9:41</span>
               </div>
@@ -87,8 +115,8 @@ export default function IPhonePreviewWithDiscount({
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M1 9l2-2v14l-2-2V9zm4-2l2-2v14l-2-2V7zm4-2l2-2v14l-2-2V5zm4-2l2-2v14l-2-2V3zm4-2l2-2v14l-2-2V1z" />
                 </svg>
-                <div className="w-6 h-3 border border-white/90 rounded-sm">
-                  <div className="w-4 h-2 bg-white/90 rounded-sm m-0.5" />
+                <div className={`w-6 h-3 border ${isLightMode ? 'border-neutral-text-primary' : 'border-white/90'} rounded-sm`}>
+                  <div className={`w-4 h-2 ${isLightMode ? 'bg-neutral-text-primary' : 'bg-white/90'} rounded-sm m-0.5`} />
                 </div>
               </div>
             </div>
@@ -103,13 +131,13 @@ export default function IPhonePreviewWithDiscount({
                     background: 'linear-gradient(135deg, #99B5D7 0%, #B3CDDA 100%)',
                   }}
                 >
-                  <div className="text-primary-dark text-[0.95rem] leading-relaxed whitespace-pre-wrap break-words">
+                  <div className={`${isLightMode ? 'text-neutral-text-primary' : 'text-primary-dark'} text-[0.95rem] leading-relaxed whitespace-pre-wrap break-words`}>
                     {messageParts.map((part, index) => {
                       if (part.type === 'token') {
                         return (
                           <span
                             key={index}
-                            className="font-semibold underline decoration-primary-dark/50 decoration-1 underline-offset-1"
+                            className={`font-semibold underline ${isLightMode ? 'decoration-neutral-text-primary/50' : 'decoration-primary-dark/50'} decoration-1 underline-offset-1`}
                           >
                             {part.content}
                           </span>
@@ -117,12 +145,12 @@ export default function IPhonePreviewWithDiscount({
                       }
                       if (part.type === 'unsubscribe') {
                         return (
-                          <span key={index} className="block mt-2 pt-2 border-t border-primary-dark/20">
+                          <span key={index} className={`block mt-2 pt-2 border-t ${isLightMode ? 'border-neutral-text-primary/20' : 'border-primary-dark/20'}`}>
                             <a
                               href={part.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-primary-dark/80 underline underline-offset-2 hover:text-primary-dark"
+                              className={`${isLightMode ? 'text-neutral-text-primary/80 hover:text-neutral-text-primary' : 'text-primary-dark/80 hover:text-primary-dark'} underline underline-offset-2`}
                               onClick={(e) => {
                                 e.preventDefault();
                                 window.open(part.url, '_blank');
@@ -141,10 +169,10 @@ export default function IPhonePreviewWithDiscount({
                 {/* Discount Code Highlight */}
                 {discountCode && processedMessage.includes(discountCode) && (
                   <div className="w-full max-w-[80%]">
-                    <div className="bg-zoom-fuchsia/20 border border-zoom-fuchsia/40 rounded-lg px-3 py-2">
+                    <div className={`${isLightMode ? 'bg-fuchsia-soft border-fuchsia-primary/40' : 'bg-zoom-fuchsia/20 border-zoom-fuchsia/40'} border rounded-lg px-3 py-2`}>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-zoom-fuchsia font-medium">CODE:</span>
-                        <span className="text-sm font-bold text-zoom-fuchsia tracking-wider">{discountCode}</span>
+                        <span className={`text-xs ${isLightMode ? 'text-fuchsia-primary' : 'text-zoom-fuchsia'} font-medium`}>CODE:</span>
+                        <span className={`text-sm font-bold ${isLightMode ? 'text-fuchsia-primary' : 'text-zoom-fuchsia'} tracking-wider`}>{discountCode}</span>
                       </div>
                     </div>
                   </div>
@@ -155,8 +183,8 @@ export default function IPhonePreviewWithDiscount({
                   <div
                     className={`text-xs flex items-center gap-1 ${
                       smsInfo.parts > 1
-                        ? 'text-zoom-fuchsia font-medium'
-                        : 'text-white/60'
+                        ? (isLightMode ? 'text-fuchsia-primary' : 'text-zoom-fuchsia') + ' font-medium'
+                        : counterText
                     }`}
                   >
                     <span>
@@ -165,7 +193,7 @@ export default function IPhonePreviewWithDiscount({
                     <span>•</span>
                     <span
                       className={
-                        smsInfo.parts > 1 ? 'text-zoom-fuchsia font-semibold' : ''
+                          smsInfo.parts > 1 ? (isLightMode ? 'text-fuchsia-primary' : 'text-zoom-fuchsia') + ' font-semibold' : ''
                       }
                     >
                       {smsInfo.parts} {smsInfo.parts === 1 ? 'part' : 'parts'}
@@ -176,7 +204,7 @@ export default function IPhonePreviewWithDiscount({
             </div>
 
             {/* Bottom Home Indicator */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/30 rounded-full" />
+            <div className={`absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 ${homeIndicator} rounded-full`} />
           </div>
         </div>
       </div>

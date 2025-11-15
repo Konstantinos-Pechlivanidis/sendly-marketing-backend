@@ -29,19 +29,29 @@ const audienceSchema = z.string()
  */
 export const createCampaignSchema = z.object({
   name: z.string()
+    .trim()
     .min(1, 'Campaign name is required')
     .max(200, 'Campaign name too long'),
   message: z.string()
+    .trim()
     .min(1, 'Campaign message is required')
     .max(1600, 'Message is too long (max 1600 characters)'),
   audience: audienceSchema.default('all'),
-  discountId: z.string().optional().nullable(), // Optional - campaign can be created without discount
+  discountId: z.string().trim().optional().nullable().refine((val) => !val || val.length > 0, {
+    message: 'Discount ID cannot be an empty string',
+  }), // Optional - campaign can be created without discount
   scheduleType: scheduleTypeSchema.default('immediate'),
-  scheduleAt: z.string().datetime().optional(),
+  scheduleAt: z.string()
+    .trim()
+    .datetime({ message: 'Schedule date must be a valid ISO 8601 datetime string' })
+    .optional()
+    .refine((val) => !val || val.length > 0, {
+      message: 'Schedule date cannot be an empty string',
+    }),
   recurringDays: z.number().int().positive().max(365).optional(),
 }).refine((data) => {
   if (data.scheduleType === 'scheduled') {
-    return !!data.scheduleAt;
+    return !!data.scheduleAt && data.scheduleAt.trim().length > 0;
   }
   return true;
 }, {
@@ -49,15 +59,19 @@ export const createCampaignSchema = z.object({
   path: ['scheduleAt'],
 }).refine((data) => {
   if (data.scheduleType === 'recurring') {
-    return !!data.recurringDays;
+    return !!data.recurringDays && data.recurringDays > 0;
   }
   return true;
 }, {
   message: 'Recurring days is required for recurring campaigns',
   path: ['recurringDays'],
 }).refine((data) => {
-  if (data.scheduleAt) {
-    return new Date(data.scheduleAt) > new Date();
+  if (data.scheduleAt && data.scheduleAt.trim().length > 0) {
+    const scheduleDate = new Date(data.scheduleAt);
+    if (isNaN(scheduleDate.getTime())) {
+      return false;
+    }
+    return scheduleDate > new Date();
   }
   return true;
 }, {
@@ -69,15 +83,41 @@ export const createCampaignSchema = z.object({
  * Update Campaign Schema
  */
 export const updateCampaignSchema = z.object({
-  name: z.string().min(1).max(200).optional(),
-  message: z.string().min(1).max(1600).optional(),
+  name: z.string().trim().min(1, 'Campaign name cannot be empty').max(200, 'Campaign name too long').optional(),
+  message: z.string().trim().min(1, 'Campaign message cannot be empty').max(1600, 'Message is too long (max 1600 characters)').optional(),
   audience: audienceSchema.optional(),
-  discountId: z.string().optional().nullable(),
+  discountId: z.string().trim().optional().nullable().refine((val) => val === null || val === undefined || val.length > 0, {
+    message: 'Discount ID cannot be an empty string',
+  }),
   scheduleType: scheduleTypeSchema.optional(),
-  scheduleAt: z.string().datetime().optional().nullable(),
+  scheduleAt: z.string()
+    .trim()
+    .datetime({ message: 'Schedule date must be a valid ISO 8601 datetime string' })
+    .optional()
+    .nullable()
+    .refine((val) => val === null || val === undefined || val.length > 0, {
+      message: 'Schedule date cannot be an empty string',
+    }),
   recurringDays: z.number().int().positive().max(365).optional().nullable(),
-}).refine((data) => Object.keys(data).length > 0, {
+}).refine((data) => {
+  // Filter out undefined values to check if at least one field is provided
+  const definedFields = Object.entries(data).filter(([_, value]) => value !== undefined);
+  return definedFields.length > 0;
+}, {
   message: 'At least one field must be provided for update',
+}).refine((data) => {
+  // If scheduleAt is provided and not null, validate it's in the future
+  if (data.scheduleAt && data.scheduleAt.trim().length > 0) {
+    const scheduleDate = new Date(data.scheduleAt);
+    if (isNaN(scheduleDate.getTime())) {
+      return false;
+    }
+    return scheduleDate > new Date();
+  }
+  return true;
+}, {
+  message: 'Schedule date must be in the future',
+  path: ['scheduleAt'],
 });
 
 /**
@@ -96,13 +136,20 @@ export const listCampaignsQuerySchema = z.object({
  */
 export const scheduleCampaignSchema = z.object({
   scheduleType: scheduleTypeSchema.default('scheduled'),
-  scheduleAt: z.string().datetime('Schedule date must be a valid ISO date string'),
+  scheduleAt: z.string()
+    .trim()
+    .min(1, 'Schedule date is required')
+    .datetime({ message: 'Schedule date must be a valid ISO 8601 datetime string' })
+    .refine((val) => {
+      const scheduleDate = new Date(val);
+      if (isNaN(scheduleDate.getTime())) {
+        return false;
+      }
+      return scheduleDate > new Date();
+    }, {
+      message: 'Schedule date must be in the future',
+    }),
   recurringDays: z.number().int().positive().max(365).optional(),
-}).refine((data) => {
-  return new Date(data.scheduleAt) > new Date();
-}, {
-  message: 'Schedule date must be in the future',
-  path: ['scheduleAt'],
 });
 
 export default {

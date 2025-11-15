@@ -31,8 +31,12 @@ export async function list(req, res, next) {
   } catch (error) {
     logger.error('List campaigns error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       query: req.query,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -53,8 +57,12 @@ export async function getOne(req, res, next) {
   } catch (error) {
     logger.error('Get campaign error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       campaignId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -108,8 +116,13 @@ export async function update(req, res, next) {
   } catch (error) {
     logger.error('Update campaign error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       campaignId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+      body: req.body,
     });
     next(error);
   }
@@ -130,8 +143,12 @@ export async function remove(req, res, next) {
   } catch (error) {
     logger.error('Delete campaign error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       campaignId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -152,8 +169,12 @@ export async function prepare(req, res, next) {
   } catch (error) {
     logger.error('Prepare campaign error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       campaignId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -174,8 +195,12 @@ export async function sendNow(req, res, next) {
   } catch (error) {
     logger.error('Send campaign error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       campaignId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -197,8 +222,13 @@ export async function schedule(req, res, next) {
   } catch (error) {
     logger.error('Schedule campaign error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       campaignId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+      body: req.body,
     });
     next(error);
   }
@@ -219,8 +249,12 @@ export async function metrics(req, res, next) {
   } catch (error) {
     logger.error('Get campaign metrics error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       campaignId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -240,7 +274,11 @@ export async function stats(req, res, next) {
   } catch (error) {
     logger.error('Get campaign stats error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
@@ -261,8 +299,12 @@ export async function retryFailed(req, res, next) {
   } catch (error) {
     logger.error('Retry failed SMS error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       campaignId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }

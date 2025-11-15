@@ -9,12 +9,12 @@ export default function GlassButton({
   as,
   ...props
 }) {
-  const baseClasses = 'transition-button focus-ring font-medium rounded-lg inline-flex items-center justify-center';
+  const baseClasses = 'spring-animation focus-ring font-medium rounded-lg inline-flex items-center justify-center active-scale';
   
   const variantClasses = {
-    primary: 'bg-ice-accent text-primary-dark hover:bg-ice-dark shadow-glow-ice hover:shadow-glow-ice-lg',
-    ghost: 'border border-glass-border text-primary-light hover:border-ice-accent hover:text-ice-accent bg-transparent',
-    fuchsia: 'bg-zoom-fuchsia text-primary-dark hover:bg-zoom-fuchsia-deep shadow-glow-fuchsia',
+    primary: 'glass-button-primary shadow-glow-ice-light hover:shadow-glow-ice-light-lg',
+    ghost: 'glass-button-ghost bg-transparent',
+    fuchsia: 'glass-button-fuchsia shadow-glow-fuchsia-light',
   };
   
   const sizeClasses = {
@@ -29,7 +29,13 @@ export default function GlassButton({
 
   // Handle 'as' prop for Link components
   const Component = as || 'button';
-  const buttonProps = Component === 'button' ? { type: 'button', disabled } : {};
+  const buttonProps = Component === 'button' 
+    ? { 
+        type: 'button', 
+        disabled,
+        'aria-disabled': disabled,
+      } 
+    : {};
   
   return (
     <Component
