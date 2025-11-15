@@ -182,9 +182,22 @@ export const validateContentType = (req, res, next) => {
     const contentType = req.headers['content-type'];
     const contentLength = parseInt(req.headers['content-length'] || '0', 10);
     
+    // Allow specific routes that don't require a body
+    const noBodyRoutes = [
+      '/campaigns/:id/send',
+      '/campaigns/:id/retry-failed',
+    ];
+    
+    // Check if this is a no-body route
+    const isNoBodyRoute = noBodyRoutes.some(route => {
+      const routePattern = route.replace(/:id/g, '[^/]+');
+      const regex = new RegExp(`^${routePattern.replace(/\//g, '\\/')}$`);
+      return regex.test(req.path);
+    });
+    
     // Allow requests without body or with empty body (Content-Length: 0 or 2 for "{}")
     // Some endpoints like /campaigns/:id/send don't require a body
-    if (contentLength === 0 || contentLength <= 2) {
+    if (isNoBodyRoute || contentLength === 0 || contentLength <= 2) {
       return next();
     }
 
