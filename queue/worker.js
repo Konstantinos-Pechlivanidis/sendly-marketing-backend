@@ -8,6 +8,7 @@ import {
   handleOrderFulfilledTrigger,
   handleCustomerReengagementTrigger,
   handleBirthdayTrigger,
+  handleWelcomeTrigger,
 } from './jobs/automationTriggers.js';
 import { logger } from '../utils/logger.js';
 
@@ -85,6 +86,8 @@ export const automationWorker = skipWorkers ? new MockWorker('automation-trigger
         return await handleCustomerReengagementTrigger(job);
       case 'birthday':
         return await handleBirthdayTrigger(job);
+      case 'welcome':
+        return await handleWelcomeTrigger(job);
       default:
         logger.warn('Unknown automation job type', {
           jobId: job.id,

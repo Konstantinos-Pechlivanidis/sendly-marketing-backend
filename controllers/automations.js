@@ -39,6 +39,7 @@ export async function createUserAutomation(req, res, next) {
       'customer_inactive',
       'cart_abandoned',
       'order_placed',
+      'order_fulfilled', // Added
     ];
 
     if (!validTriggers.includes(trigger)) {

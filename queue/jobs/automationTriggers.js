@@ -5,6 +5,7 @@ import {
   triggerOrderFulfilled,
   triggerCustomerReengagement,
   triggerBirthdayOffer,
+  triggerWelcome,
 } from '../../services/automations.js';
 import prisma from '../../services/prisma.js';
 import { validateAndConsumeCredits, InsufficientCreditsError, logAutomationSkip } from '../../services/credit-validation.js';
@@ -330,6 +331,73 @@ export async function handleBirthdayTrigger(_job) {
 }
 
 /**
+ * Handle welcome automation trigger
+ */
+export async function handleWelcomeTrigger(job) {
+  const { shopId, contactId, welcomeData, automationId } = job.data;
+
+  try {
+    logger.info('Processing welcome automation', {
+      jobId: job.id,
+      shopId,
+      contactId,
+      welcomeData,
+      automationId,
+    });
+
+    // Validate credits before triggering automation
+    try {
+      await validateAndConsumeCredits(shopId, 1);
+    } catch (error) {
+      if (error instanceof InsufficientCreditsError) {
+        await logAutomationSkip(automationId, shopId, 'Insufficient credits');
+        logger.warn('Welcome automation skipped due to insufficient credits', {
+          shopId,
+          contactId,
+          automationId,
+        });
+        return { success: false, reason: 'insufficient_credits', error: error.message };
+      }
+      throw error;
+    }
+
+    const result = await triggerWelcome({
+      shopId,
+      contactId,
+      welcomeData,
+    });
+
+    if (result.success) {
+      logger.info('Welcome automation triggered successfully', {
+        jobId: job.id,
+        shopId,
+        contactId,
+        messageId: result.messageId,
+      });
+    } else {
+      logger.warn('Welcome automation failed', {
+        jobId: job.id,
+        shopId,
+        contactId,
+        reason: result.reason,
+        error: result.error,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Welcome automation job failed', {
+      jobId: job.id,
+      error: error.message,
+      stack: error.stack,
+      shopId,
+      contactId,
+    });
+    throw error;
+  }
+}
+
+/**
  * Daily job to check for inactive customers and trigger re-engagement
  */
 export async function handleDailyReengagementCheck(_job) {
@@ -476,6 +544,7 @@ export default {
   handleOrderFulfilledTrigger,
   handleCustomerReengagementTrigger,
   handleBirthdayTrigger,
+  handleWelcomeTrigger,
   handleDailyReengagementCheck,
   handleDailyBirthdayCheck,
 };

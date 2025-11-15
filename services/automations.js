@@ -12,13 +12,12 @@ export async function triggerAutomation({
   additionalData = {},
 }) {
   try {
-    // Find the user automation for this trigger
+    // Find the user automation for this trigger (system default or custom)
     const userAutomation = await prisma.userAutomation.findFirst({
       where: {
         shopId,
         automation: {
           triggerEvent,
-          isSystemDefault: true,
         },
         isActive: true,
       },
@@ -249,6 +248,18 @@ export async function triggerBirthdayOffer({ shopId, contactId, birthdayData = {
 }
 
 /**
+ * Trigger welcome automation
+ */
+export async function triggerWelcome({ shopId, contactId, welcomeData = {} }) {
+  return await triggerAutomation({
+    shopId,
+    contactId,
+    triggerEvent: 'welcome',
+    additionalData: welcomeData,
+  });
+}
+
+/**
  * Get all active automations for a shop
  */
 export async function getActiveAutomations(shopId) {
@@ -273,7 +284,6 @@ export async function hasActiveAutomation(shopId, triggerEvent) {
       isActive: true,
       automation: {
         triggerEvent,
-        isSystemDefault: true,
       },
     },
   });
@@ -440,6 +450,7 @@ export default {
   triggerOrderFulfilled,
   triggerCustomerReengagement,
   triggerBirthdayOffer,
+  triggerWelcome,
   getActiveAutomations,
   hasActiveAutomation,
   processDailyBirthdayAutomations,

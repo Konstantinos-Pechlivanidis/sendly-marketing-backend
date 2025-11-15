@@ -1,6 +1,8 @@
 import prisma from './prisma.js';
 import { logger } from '../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError } from '../utils/errors.js';
+import { automationQueue } from '../queue/index.js';
+import { hasActiveAutomation } from './automations.js';
 
 /**
  * Contacts Service
@@ -300,6 +302,68 @@ export async function createContact(storeId, contactData) {
   });
 
   logger.info('Contact created successfully', { storeId, contactId: contact.id });
+
+  // Trigger welcome automation if contact has opted in and welcome automation is active
+  if (contact.smsConsent === 'opted_in') {
+    try {
+      const hasWelcomeAutomation = await hasActiveAutomation(storeId, 'welcome');
+      
+      if (hasWelcomeAutomation) {
+        logger.info('Queueing welcome automation for new contact', {
+          storeId,
+          contactId: contact.id,
+          phoneE164: contact.phoneE164,
+        });
+
+        // Queue welcome automation job
+        await automationQueue.add(
+          'welcome',
+          {
+            shopId: storeId,
+            contactId: contact.id,
+            welcomeData: {
+              firstName: contact.firstName,
+              lastName: contact.lastName,
+              email: contact.email,
+              phoneE164: contact.phoneE164,
+            },
+          },
+          {
+            jobId: `welcome-${storeId}-${contact.id}-${Date.now()}`,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 2000,
+            },
+          },
+        );
+
+        logger.info('Welcome automation queued successfully', {
+          storeId,
+          contactId: contact.id,
+        });
+      } else {
+        logger.debug('No active welcome automation found for shop', {
+          storeId,
+          contactId: contact.id,
+        });
+      }
+    } catch (automationError) {
+      // Log error but don't fail contact creation
+      logger.error('Failed to trigger welcome automation', {
+        storeId,
+        contactId: contact.id,
+        error: automationError.message,
+        stack: automationError.stack,
+      });
+    }
+  } else {
+    logger.debug('Contact does not have SMS consent, skipping welcome automation', {
+      storeId,
+      contactId: contact.id,
+      smsConsent: contact.smsConsent,
+    });
+  }
 
   return contact;
 }
