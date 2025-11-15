@@ -41,10 +41,19 @@ export async function resolveStore(req, res, next) {
           if (store) {
             shopDomain = store.shopDomain;
             logger.debug('Store resolved from app JWT token', { storeId, shopDomain });
+          } else {
+            logger.warn('Store not found for storeId from JWT token', { storeId });
           }
+        } else {
+          logger.warn('JWT token decoded but no storeId found', { decoded });
         }
       } catch (jwtError) {
         // Not our app token, might be Shopify session token from App Bridge
+        logger.debug('App JWT token verification failed, trying Shopify session token', {
+          error: jwtError.message,
+          errorName: jwtError.name,
+        });
+        
         try {
           const shopifySession = await verifyShopifySessionToken(token);
 
@@ -58,17 +67,30 @@ export async function resolveStore(req, res, next) {
             include: { settings: true },
           });
 
-          logger.debug('Store resolved from Shopify session token', { storeId, shopDomain });
+          if (store) {
+            logger.debug('Store resolved from Shopify session token', { storeId, shopDomain });
+          } else {
+            logger.warn('Store not found for storeId from Shopify session token', { storeId, shopDomain });
+          }
         } catch (shopifyError) {
-          // Neither token type worked, log for debugging
-          logger.debug('Token verification failed, trying other methods', {
+          // Neither token type worked, log for debugging but continue to fallback methods
+          logger.debug('Both token verification methods failed, falling back to headers', {
             jwtError: jwtError.message,
+            jwtErrorName: jwtError.name,
             shopifyError: shopifyError.message,
+            shopifyErrorName: shopifyError.name,
             hasAuthHeader: !!req.headers.authorization,
             tokenLength: token?.length,
+            hasShopDomainHeader: !!req.headers['x-shopify-shop-domain'],
           });
         }
       }
+    } else {
+      // No Authorization header, log for debugging
+      logger.debug('No Authorization header found, using fallback methods', {
+        hasShopDomainHeader: !!req.headers['x-shopify-shop-domain'],
+        hasShopHeader: !!req.headers['x-shopify-shop'],
+      });
     }
 
     // Method 2: Shopify Headers (backward compatible)
@@ -124,17 +146,21 @@ export async function resolveStore(req, res, next) {
       if (!shopDomain || typeof shopDomain !== 'string') {
         // No shop domain provided - shop domain is required in production
         logger.warn('No shop domain provided in headers, query, or body', {
+          method: req.method,
+          path: req.path,
+          url: req.url,
           headers: Object.keys(req.headers).filter(h => h.toLowerCase().includes('shop')),
           headerValues: {
             'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
             'x-shopify-shop': req.headers['x-shopify-shop'],
             'x-shopify-shop-name': req.headers['x-shopify-shop-name'],
+            'authorization': req.headers.authorization ? 'Bearer ***' : undefined,
           },
           query: req.query,
           body: req.body ? Object.keys(req.body) : 'no body',
-          url: req.url,
           possibleShopDomain,
           nodeEnv: process.env.NODE_ENV,
+          hasToken: !!req.headers.authorization,
         });
 
         // In production, shop domain is required - fail if not provided
