@@ -69,14 +69,24 @@ export async function create(req, res, next) {
     const storeId = getStoreId(req);
     const campaignData = req.body;
 
+    // Log the incoming data for debugging
+    logger.info('Creating campaign request', {
+      storeId,
+      scheduleType: campaignData.scheduleType,
+      hasScheduleAt: !!campaignData.scheduleAt,
+    });
+
     const campaign = await campaignsService.createCampaign(storeId, campaignData);
 
     return sendCreated(res, campaign, 'Campaign created successfully');
   } catch (error) {
     logger.error('Create campaign error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       body: req.body,
+      scheduleType: req.body?.scheduleType,
+      scheduleAt: req.body?.scheduleAt,
     });
     next(error);
   }

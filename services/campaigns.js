@@ -337,29 +337,54 @@ export async function createCampaign(storeId, campaignData) {
   // Validate campaign data
   validateCampaignData(campaignData);
 
-  // Create campaign
-  const campaign = await prisma.campaign.create({
-    data: {
-      shopId: storeId,
-      name: campaignData.name.trim(),
-      message: campaignData.message.trim(),
-      audience: campaignData.audience || 'all',
-      discountId: campaignData.discountId || null,
-      scheduleType: campaignData.scheduleType || 'immediate',
-      scheduleAt: campaignData.scheduleAt ? new Date(campaignData.scheduleAt) : null,
-      recurringDays: campaignData.recurringDays || null,
-      status: 'draft',
-    },
+  // Validate and parse scheduleAt date if provided
+  let scheduleAtDate = null;
+  if (campaignData.scheduleAt) {
+    try {
+      scheduleAtDate = new Date(campaignData.scheduleAt);
+      if (isNaN(scheduleAtDate.getTime())) {
+        throw new ValidationError('Invalid schedule date format. Please use ISO 8601 format.');
+      }
+      // Validate that scheduled date is in the future
+      if (scheduleAtDate <= new Date()) {
+        throw new ValidationError('Schedule date must be in the future');
+      }
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
+      throw new ValidationError(`Invalid schedule date: ${error.message}`);
+    }
+  }
+
+  // Use transaction to ensure both campaign and metrics are created atomically
+  const result = await prisma.$transaction(async (tx) => {
+    // Create campaign
+    const campaign = await tx.campaign.create({
+      data: {
+        shopId: storeId,
+        name: campaignData.name.trim(),
+        message: campaignData.message.trim(),
+        audience: campaignData.audience || 'all',
+        discountId: campaignData.discountId || null,
+        scheduleType: campaignData.scheduleType || 'immediate',
+        scheduleAt: scheduleAtDate,
+        recurringDays: campaignData.recurringDays || null,
+        status: 'draft',
+      },
+    });
+
+    // Create metrics record
+    await tx.campaignMetrics.create({
+      data: { campaignId: campaign.id },
+    });
+
+    return campaign;
   });
 
-  // Create metrics record
-  await prisma.campaignMetrics.create({
-    data: { campaignId: campaign.id },
-  });
+  logger.info('Campaign created successfully', { storeId, campaignId: result.id });
 
-  logger.info('Campaign created successfully', { storeId, campaignId: campaign.id });
-
-  return campaign;
+  return result;
 }
 
 /**

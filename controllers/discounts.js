@@ -11,14 +11,31 @@ export async function getShopifyDiscounts(req, res, next) {
   try {
     const shopDomain = req.ctx?.store?.shopDomain;
     if (!shopDomain) {
-      throw new ValidationError('Store context is required');
+      throw new ValidationError('Store context is required. Please ensure you are properly authenticated.');
     }
 
-    const discountCodes = await getDiscountCodes(shopDomain);
+    let discountCodes;
+    try {
+      discountCodes = await getDiscountCodes(shopDomain);
+    } catch (shopifyError) {
+      logger.error('Shopify API error in getShopifyDiscounts', {
+        shopDomain,
+        error: shopifyError.message,
+        stack: shopifyError.stack,
+      });
+      // Return empty array instead of failing completely
+      discountCodes = [];
+    }
+
+    // Ensure discountCodes is an array
+    if (!Array.isArray(discountCodes)) {
+      logger.warn('getDiscountCodes returned non-array', { shopDomain, type: typeof discountCodes });
+      discountCodes = [];
+    }
 
     // Filter only active and non-expired discounts
     const activeDiscounts = discountCodes.filter(discount =>
-      discount.isActive && !discount.isExpired,
+      discount && discount.isActive && !discount.isExpired,
     );
 
     logger.info('Shopify discounts retrieved', {
@@ -36,6 +53,7 @@ export async function getShopifyDiscounts(req, res, next) {
     logger.error('Error in getShopifyDiscounts', {
       shopDomain: req.ctx?.store?.shopDomain || 'unknown',
       error: error.message,
+      stack: error.stack,
     });
     next(error);
   }
@@ -50,15 +68,34 @@ export async function getShopifyDiscount(req, res, next) {
     const { id } = req.params;
     const shopDomain = req.ctx?.store?.shopDomain;
     if (!shopDomain) {
-      throw new ValidationError('Store context is required');
+      throw new ValidationError('Store context is required. Please ensure you are properly authenticated.');
     }
 
-    const discount = await getDiscountCode(shopDomain, id);
+    if (!id) {
+      throw new ValidationError('Discount ID is required');
+    }
+
+    let discount;
+    try {
+      discount = await getDiscountCode(shopDomain, id);
+    } catch (shopifyError) {
+      logger.error('Shopify API error in getShopifyDiscount', {
+        shopDomain,
+        discountId: id,
+        error: shopifyError.message,
+        stack: shopifyError.stack,
+      });
+      throw new ValidationError(`Failed to retrieve discount: ${shopifyError.message}`);
+    }
+
+    if (!discount) {
+      throw new ValidationError('Discount not found');
+    }
 
     logger.info('Shopify discount retrieved', {
       shopDomain,
       discountId: id,
-      title: discount.title,
+      title: discount.title || 'Unknown',
     });
 
     return sendSuccess(res, discount);
@@ -67,6 +104,7 @@ export async function getShopifyDiscount(req, res, next) {
       shopDomain: req.ctx?.store?.shopDomain || 'unknown',
       discountId: req.params.id,
       error: error.message,
+      stack: error.stack,
     });
     next(error);
   }

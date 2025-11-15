@@ -14,10 +14,30 @@ import { logger } from '../utils/logger.js';
 export async function getDashboard(storeId) {
   logger.info('Fetching dashboard data', { storeId });
 
-  const shop = await prisma.shop.findUnique({
-    where: { id: storeId },
-    select: { id: true, credits: true, currency: true },
-  });
+  if (!storeId) {
+    logger.warn('No storeId provided for dashboard', { storeId });
+    return {
+      credits: 0,
+      totalCampaigns: 0,
+      totalContacts: 0,
+      totalMessagesSent: 0,
+    };
+  }
+
+  let shop;
+  try {
+    shop = await prisma.shop.findUnique({
+      where: { id: storeId },
+      select: { id: true, credits: true, currency: true },
+    });
+  } catch (error) {
+    logger.error('Database error fetching shop for dashboard', {
+      storeId,
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
 
   if (!shop) {
     logger.warn('Shop not found for dashboard', { storeId });
@@ -29,22 +49,51 @@ export async function getDashboard(storeId) {
     };
   }
 
-  // Fetch stats in parallel
-  const [totalCampaigns, totalContacts, totalMessagesSent] = await Promise.all([
-    prisma.campaign.count({
-      where: { shopId: shop.id },
-    }),
-    prisma.contact.count({
-      where: { shopId: shop.id },
-    }),
-    prisma.messageLog.count({
-      where: { shopId: shop.id, direction: 'outbound' },
-    }),
-  ]);
+  // Fetch stats in parallel with error handling
+  let totalCampaigns = 0;
+  let totalContacts = 0;
+  let totalMessagesSent = 0;
+
+  try {
+    const results = await Promise.allSettled([
+      prisma.campaign.count({
+        where: { shopId: shop.id },
+      }),
+      prisma.contact.count({
+        where: { shopId: shop.id },
+      }),
+      prisma.messageLog.count({
+        where: { shopId: shop.id, direction: 'outbound' },
+      }),
+    ]);
+
+    // Extract results with fallback to 0 on error
+    totalCampaigns = results[0].status === 'fulfilled' ? results[0].value : 0;
+    totalContacts = results[1].status === 'fulfilled' ? results[1].value : 0;
+    totalMessagesSent = results[2].status === 'fulfilled' ? results[2].value : 0;
+
+    // Log any errors
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        logger.error('Error fetching dashboard stat', {
+          storeId,
+          statIndex: index,
+          error: result.reason?.message,
+        });
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching dashboard stats', {
+      storeId,
+      error: error.message,
+      stack: error.stack,
+    });
+    // Continue with default values rather than failing completely
+  }
 
   logger.info('Dashboard data fetched successfully', {
     storeId,
-    credits: shop.credits,
+    credits: shop.credits || 0,
     totalCampaigns,
     totalContacts,
     totalMessagesSent,
@@ -52,9 +101,9 @@ export async function getDashboard(storeId) {
 
   return {
     credits: shop.credits || 0,
-    totalCampaigns,
-    totalContacts,
-    totalMessagesSent,
+    totalCampaigns: totalCampaigns || 0,
+    totalContacts: totalContacts || 0,
+    totalMessagesSent: totalMessagesSent || 0,
   };
 }
 
@@ -66,10 +115,31 @@ export async function getDashboard(storeId) {
 export async function getOverview(storeId) {
   logger.info('Fetching dashboard overview', { storeId });
 
-  const shop = await prisma.shop.findUnique({
-    where: { id: storeId },
-    select: { id: true, credits: true, currency: true },
-  });
+  if (!storeId) {
+    logger.warn('No storeId provided for overview', { storeId });
+    return {
+      sms: { sent: 0, delivered: 0, failed: 0, deliveryRate: 0 },
+      contacts: { total: 0, optedIn: 0, optedOut: 0 },
+      wallet: { balance: 0, currency: 'EUR' },
+      recentMessages: [],
+      recentTransactions: [],
+    };
+  }
+
+  let shop;
+  try {
+    shop = await prisma.shop.findUnique({
+      where: { id: storeId },
+      select: { id: true, credits: true, currency: true },
+    });
+  } catch (error) {
+    logger.error('Database error fetching shop for overview', {
+      storeId,
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
 
   if (!shop) {
     logger.warn('Shop not found for overview', { storeId });
@@ -82,15 +152,45 @@ export async function getOverview(storeId) {
     };
   }
 
-  // Fetch all data in parallel for better performance
-  const [smsStats, contactStats, recentMessages, recentTransactions] = await Promise.all([
-    getSmsStats(shop.id),
-    getContactStats(shop.id),
-    getRecentMessages(shop.id),
-    getRecentTransactions(shop.id),
-  ]);
+  // Fetch all data in parallel with error handling
+  let smsStats = { sent: 0, delivered: 0, failed: 0, deliveryRate: 0 };
+  let contactStats = { total: 0, optedIn: 0, optedOut: 0 };
+  let recentMessages = [];
+  let recentTransactions = [];
 
-  const wallet = { balance: shop.credits || 0, currency: shop.currency };
+  try {
+    const results = await Promise.allSettled([
+      getSmsStats(shop.id),
+      getContactStats(shop.id),
+      getRecentMessages(shop.id),
+      getRecentTransactions(shop.id),
+    ]);
+
+    smsStats = results[0].status === 'fulfilled' ? results[0].value : smsStats;
+    contactStats = results[1].status === 'fulfilled' ? results[1].value : contactStats;
+    recentMessages = results[2].status === 'fulfilled' ? results[2].value : recentMessages;
+    recentTransactions = results[3].status === 'fulfilled' ? results[3].value : recentTransactions;
+
+    // Log any errors
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        logger.error('Error fetching overview stat', {
+          storeId,
+          statIndex: index,
+          error: result.reason?.message,
+        });
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching dashboard overview stats', {
+      storeId,
+      error: error.message,
+      stack: error.stack,
+    });
+    // Continue with default values
+  }
+
+  const wallet = { balance: shop.credits || 0, currency: shop.currency || 'EUR' };
 
   logger.info('Dashboard overview fetched successfully', {
     storeId,
@@ -102,8 +202,8 @@ export async function getOverview(storeId) {
     sms: smsStats,
     contacts: contactStats,
     wallet,
-    recentMessages,
-    recentTransactions,
+    recentMessages: recentMessages || [],
+    recentTransactions: recentTransactions || [],
   };
 }
 
@@ -115,24 +215,48 @@ export async function getOverview(storeId) {
 export async function getQuickStats(storeId) {
   logger.info('Fetching quick stats', { storeId });
 
-  const shop = await prisma.shop.findUnique({
-    where: { id: storeId },
-    select: { id: true, credits: true },
-  });
+  if (!storeId) {
+    logger.warn('No storeId provided for quick stats', { storeId });
+    return { smsSent: 0, walletBalance: 0 };
+  }
+
+  let shop;
+  try {
+    shop = await prisma.shop.findUnique({
+      where: { id: storeId },
+      select: { id: true, credits: true },
+    });
+  } catch (error) {
+    logger.error('Database error fetching shop for quick stats', {
+      storeId,
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
 
   if (!shop) {
     logger.warn('Shop not found for quick stats', { storeId });
     return { smsSent: 0, walletBalance: 0 };
   }
 
-  const smsSent = await prisma.messageLog.count({
-    where: { shopId: shop.id, direction: 'outbound' },
-  });
+  let smsSent = 0;
+  try {
+    smsSent = await prisma.messageLog.count({
+      where: { shopId: shop.id, direction: 'outbound' },
+    });
+  } catch (error) {
+    logger.error('Error counting messages for quick stats', {
+      storeId,
+      error: error.message,
+    });
+    // Continue with default value
+  }
 
-  logger.info('Quick stats fetched successfully', { storeId, smsSent, balance: shop.credits });
+  logger.info('Quick stats fetched successfully', { storeId, smsSent, balance: shop.credits || 0 });
 
   return {
-    smsSent,
+    smsSent: smsSent || 0,
     walletBalance: shop.credits || 0,
   };
 }

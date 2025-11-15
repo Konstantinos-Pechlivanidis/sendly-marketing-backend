@@ -1,6 +1,6 @@
 import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
-import { sendSuccess, sendError } from '../utils/response.js';
+import { sendSuccess } from '../utils/response.js';
 import { ValidationError, NotFoundError } from '../utils/errors.js';
 import crypto from 'crypto';
 
@@ -165,7 +165,7 @@ export async function processUnsubscribe(req, res, next) {
     // In production, you might want to include shopId in token for better security
     const contact = await prisma.contact.findFirst({
       where: {
-        phoneE164: phoneE164,
+        phoneE164,
       },
       include: {
         shop: {
