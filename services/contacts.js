@@ -369,7 +369,19 @@ export async function updateContact(storeId, contactId, contactData) {
     updateData.lastName = contactData.lastName && contactData.lastName.trim() ? contactData.lastName.trim() : null;
   }
   if (contactData.birthDate !== undefined) {
-    updateData.birthDate = contactData.birthDate ? new Date(contactData.birthDate) : null;
+    if (contactData.birthDate && contactData.birthDate.trim()) {
+      const birthDate = new Date(contactData.birthDate);
+      if (isNaN(birthDate.getTime())) {
+        throw new ValidationError('Invalid birth date format');
+      }
+      // Ensure birth date is not in the future
+      if (birthDate > new Date()) {
+        throw new ValidationError('Birth date cannot be in the future');
+      }
+      updateData.birthDate = birthDate;
+    } else {
+      updateData.birthDate = null;
+    }
   }
   if (contactData.tags !== undefined) updateData.tags = contactData.tags || [];
 
