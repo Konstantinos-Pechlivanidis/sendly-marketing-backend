@@ -180,6 +180,13 @@ export const handleValidation = (req, res, next) => {
 export const validateContentType = (req, res, next) => {
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
     const contentType = req.headers['content-type'];
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    
+    // Allow requests without body or with empty body (Content-Length: 0 or 2 for "{}")
+    // Some endpoints like /campaigns/:id/send don't require a body
+    if (contentLength === 0 || contentLength <= 2) {
+      return next();
+    }
 
     if (!contentType || !contentType.includes('application/json')) {
       return res.status(400).json({
