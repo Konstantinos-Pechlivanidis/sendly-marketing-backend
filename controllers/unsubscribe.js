@@ -1,32 +1,15 @@
-import prisma from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 import { sendSuccess } from '../utils/response.js';
-import { ValidationError, NotFoundError } from '../utils/errors.js';
-import crypto from 'crypto';
+import { NotFoundError, ValidationError } from '../utils/errors.js';
+import { verifyUnsubscribeToken } from '../utils/unsubscribe.js';
+import prisma from '../services/prisma.js';
+import contactsService from '../services/contacts.js';
 
 /**
- * Generate unsubscribe token for a contact
+ * Get unsubscribe page data (verify token and get contact/store info)
+ * @route GET /api/unsubscribe/:token
  */
-export function generateUnsubscribeToken(contactId, phoneE164) {
-  const data = `${contactId}:${phoneE164}:${Date.now()}`;
-  return crypto.createHash('sha256').update(data).digest('hex').substring(0, 32);
-}
-
-/**
- * Verify and decode unsubscribe token
- */
-export function verifyUnsubscribeToken(token) {
-  // Token format: contactId:phoneE164:timestamp (hashed)
-  // For now, we'll store tokens in a way that allows us to verify them
-  // In production, you might want to use JWT or store tokens in database
-  return token; // Simplified - in production, implement proper token verification
-}
-
-/**
- * Show unsubscribe page
- * GET /unsubscribe/:token
- */
-export async function showUnsubscribePage(req, res, next) {
+export async function getUnsubscribeInfo(req, res, next) {
   try {
     const { token } = req.params;
 
@@ -34,116 +17,86 @@ export async function showUnsubscribePage(req, res, next) {
       throw new ValidationError('Unsubscribe token is required');
     }
 
-    // Find contact by token (in production, store tokens in database)
-    // For now, we'll use a simple approach: token contains contact info
-    // In production, implement proper token storage and verification
+    // Verify token
+    const payload = verifyUnsubscribeToken(token);
 
-    // Return HTML page for unsubscribe
-    const html = `
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Unsubscribe - Sendly</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-              background: linear-gradient(135deg, #020202 0%, #191819 100%);
-              color: #E5E5E5;
-              min-height: 100vh;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              padding: 20px;
-            }
-            .container {
-              max-width: 500px;
-              width: 100%;
-              background: rgba(255, 255, 255, 0.10);
-              backdrop-filter: blur(24px);
-              border: 1px solid rgba(148, 169, 180, 0.30);
-              border-radius: 24px;
-              padding: 40px;
-              box-shadow: 0 8px 32px 0 rgba(2, 2, 2, 0.37);
-            }
-            h1 { font-size: 24px; margin-bottom: 16px; color: #99B5D7; }
-            p { margin-bottom: 24px; line-height: 1.6; color: #94A9B4; }
-            button {
-              width: 100%;
-              padding: 12px 24px;
-              background: #99B5D7;
-              color: #020202;
-              border: none;
-              border-radius: 12px;
-              font-size: 16px;
-              font-weight: 600;
-              cursor: pointer;
-              transition: all 0.2s;
-            }
-            button:hover { background: #6686A9; transform: translateY(-2px); }
-            .success { color: #99B5D7; margin-top: 16px; }
-            .error { color: #EF4444; margin-top: 16px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>Unsubscribe from SMS</h1>
-            <p>We're sorry to see you go. Click the button below to unsubscribe from all SMS messages.</p>
-            <form id="unsubscribeForm" method="POST">
-              <button type="submit">Unsubscribe</button>
-            </form>
-            <div id="message"></div>
-          </div>
-          <script>
-            document.getElementById('unsubscribeForm').addEventListener('submit', async (e) => {
-              e.preventDefault();
-              const button = e.target.querySelector('button');
-              const messageDiv = document.getElementById('message');
-              button.disabled = true;
-              button.textContent = 'Processing...';
-              
-              try {
-                const response = await fetch(window.location.href, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' }
-                });
-                const data = await response.json();
-                
-                if (response.ok) {
-                  messageDiv.className = 'success';
-                  messageDiv.textContent = 'You have been successfully unsubscribed.';
-                  button.style.display = 'none';
-                } else {
-                  messageDiv.className = 'error';
-                  messageDiv.textContent = data.message || 'An error occurred. Please try again.';
-                  button.disabled = false;
-                  button.textContent = 'Unsubscribe';
-                }
-              } catch (error) {
-                messageDiv.className = 'error';
-                messageDiv.textContent = 'An error occurred. Please try again.';
-                button.disabled = false;
-                button.textContent = 'Unsubscribe';
-              }
-            });
-          </script>
-        </body>
-      </html>
-    `;
+    if (!payload) {
+      throw new ValidationError('Invalid or expired unsubscribe token');
+    }
 
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
+    const { contactId, shopId, phoneE164 } = payload;
+
+    // Get contact and shop info
+    const [contact, shop] = await Promise.all([
+      prisma.contact.findFirst({
+        where: {
+          id: contactId,
+          shopId,
+          phoneE164,
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          phoneE164: true,
+          smsConsent: true,
+        },
+      }),
+      prisma.shop.findUnique({
+        where: { id: shopId },
+        select: {
+          id: true,
+          shopName: true,
+          shopDomain: true,
+        },
+      }),
+    ]);
+
+    if (!contact) {
+      throw new NotFoundError('Contact');
+    }
+
+    if (!shop) {
+      throw new NotFoundError('Shop');
+    }
+
+    logger.info('Unsubscribe info retrieved', {
+      contactId,
+      shopId,
+      phoneE164: phoneE164.substring(0, 5) + '***',
+    });
+
+    return sendSuccess(res, {
+      contact: {
+        id: contact.id,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        phoneE164: contact.phoneE164,
+        smsConsent: contact.smsConsent,
+      },
+      shop: {
+        id: shop.id,
+        shopName: shop.shopName || shop.shopDomain.replace('.myshopify.com', ''),
+        shopDomain: shop.shopDomain,
+      },
+      token,
+    });
   } catch (error) {
-    logger.error('Error showing unsubscribe page', { error: error.message, token: req.params.token });
+    logger.error('Get unsubscribe info error', {
+      error: error.message,
+      stack: error.stack,
+      token: req.params.token?.substring(0, 20) + '...',
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
     next(error);
   }
 }
 
 /**
  * Process unsubscribe request
- * POST /unsubscribe/:token
+ * @route POST /api/unsubscribe/:token
  */
 export async function processUnsubscribe(req, res, next) {
   try {
@@ -153,57 +106,62 @@ export async function processUnsubscribe(req, res, next) {
       throw new ValidationError('Unsubscribe token is required');
     }
 
-    // Extract phone from query or body
-    // In production, implement proper token verification with database lookup
-    const phoneE164 = req.query.phone || req.body.phone;
+    // Verify token
+    const payload = verifyUnsubscribeToken(token);
 
-    if (!phoneE164) {
-      throw new ValidationError('Phone number is required for unsubscribe');
+    if (!payload) {
+      throw new ValidationError('Invalid or expired unsubscribe token');
     }
 
-    // Find contact by phone (across all shops for unsubscribe)
-    // In production, you might want to include shopId in token for better security
+    const { contactId, shopId, phoneE164 } = payload;
+
+    // Verify contact exists and matches token
     const contact = await prisma.contact.findFirst({
       where: {
+        id: contactId,
+        shopId,
         phoneE164,
-      },
-      include: {
-        shop: {
-          select: {
-            shopDomain: true,
-          },
-        },
       },
     });
 
     if (!contact) {
-      throw new NotFoundError('Contact not found');
+      throw new NotFoundError('Contact');
     }
 
-    // Update contact consent to opted_out
-    await prisma.contact.update({
-      where: { id: contact.id },
-      data: {
-        smsConsent: 'opted_out',
-      },
+    // Update contact SMS consent to opted_out
+    await contactsService.updateContact(shopId, contactId, {
+      smsConsent: 'opted_out',
     });
 
-    logger.info('Contact unsubscribed', {
-      contactId: contact.id,
-      phoneE164: contact.phoneE164,
-      shopId: contact.shopId,
+    logger.info('Contact unsubscribed successfully', {
+      contactId,
+      shopId,
+      phoneE164: phoneE164.substring(0, 5) + '***',
     });
 
     return sendSuccess(res, {
-      message: 'You have been successfully unsubscribed from all SMS messages.',
-      unsubscribed: true,
+      success: true,
+      message: 'You have been successfully unsubscribed from SMS messages.',
+      contact: {
+        id: contact.id,
+        phoneE164: contact.phoneE164,
+        smsConsent: 'opted_out',
+      },
     });
   } catch (error) {
-    logger.error('Error processing unsubscribe', {
+    logger.error('Process unsubscribe error', {
       error: error.message,
-      token: req.params.token,
+      stack: error.stack,
+      token: req.params.token?.substring(0, 20) + '...',
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
     });
     next(error);
   }
 }
 
+export default {
+  getUnsubscribeInfo,
+  processUnsubscribe,
+};

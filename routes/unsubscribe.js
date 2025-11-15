@@ -1,14 +1,17 @@
 import express from 'express';
-import * as ctrl from '../controllers/unsubscribe.js';
+import { getUnsubscribeInfo, processUnsubscribe } from '../controllers/unsubscribe.js';
 
-const r = express.Router();
+const router = express.Router();
 
-// Unsubscribe routes (public, no authentication required)
-// GET /unsubscribe/:token - Show unsubscribe page
-r.get('/:token', ctrl.showUnsubscribePage);
+/**
+ * Unsubscribe Routes
+ * These routes are public and don't require authentication
+ */
 
-// POST /unsubscribe/:token - Process unsubscribe request
-r.post('/:token', ctrl.processUnsubscribe);
+// GET /api/unsubscribe/:token - Get unsubscribe page info
+router.get('/:token', getUnsubscribeInfo);
 
-export default r;
+// POST /api/unsubscribe/:token - Process unsubscribe
+router.post('/:token', processUnsubscribe);
 
+export default router;

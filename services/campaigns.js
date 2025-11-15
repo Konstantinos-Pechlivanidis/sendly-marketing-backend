@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { ValidationError, NotFoundError } from '../utils/errors.js';
 import { validateAndConsumeCredits, InsufficientCreditsError, refundCredits } from './credit-validation.js';
 import { smsQueue } from '../queue/index.js';
+import { appendUnsubscribeLink } from '../utils/unsubscribe.js';
 
 /**
  * Campaigns Service
@@ -694,16 +695,30 @@ export async function sendCampaign(storeId, campaignId) {
         totalRecipientsCreated += recipientBatch.length;
 
         // Queue SMS jobs in batch
-        const smsJobs = recipientBatch.map(recipient => ({
-          name: 'sms-send',
-          data: {
-            campaignId,
-            shopId: storeId,
-            phoneE164: recipient.phoneE164,
-            message: campaign.message,
-            sender,
-          },
-        }));
+        // Get frontend base URL for unsubscribe links
+        const frontendBaseUrl = process.env.FRONTEND_URL || process.env.FRONTEND_BASE_URL || 'https://sendly-marketing-frontend.onrender.com';
+        
+        const smsJobs = recipientBatch.map(recipient => {
+          // Append unsubscribe link to message
+          const messageWithUnsubscribe = appendUnsubscribeLink(
+            campaign.message,
+            recipient.contactId,
+            storeId,
+            recipient.phoneE164,
+            frontendBaseUrl
+          );
+
+          return {
+            name: 'sms-send',
+            data: {
+              campaignId,
+              shopId: storeId,
+              phoneE164: recipient.phoneE164,
+              message: messageWithUnsubscribe,
+              sender,
+            },
+          };
+        });
 
         await smsQueue.addBulk(smsJobs);
         totalQueued += smsJobs.length;
@@ -743,16 +758,30 @@ export async function sendCampaign(storeId, campaignId) {
       totalRecipientsCreated = recipients.length;
 
       // Queue SMS jobs in batches
-      const smsJobs = recipients.map(recipient => ({
-        name: 'sms-send',
-        data: {
-          campaignId,
-          shopId: storeId,
-          phoneE164: recipient.phoneE164,
-          message: campaign.message,
-          sender,
-        },
-      }));
+      // Get frontend base URL for unsubscribe links
+      const frontendBaseUrl = process.env.FRONTEND_URL || process.env.FRONTEND_BASE_URL || 'https://sendly-marketing-frontend.onrender.com';
+      
+      const smsJobs = recipients.map(recipient => {
+        // Append unsubscribe link to message
+        const messageWithUnsubscribe = appendUnsubscribeLink(
+          campaign.message,
+          recipient.contactId,
+          storeId,
+          recipient.phoneE164,
+          frontendBaseUrl
+        );
+
+        return {
+          name: 'sms-send',
+          data: {
+            campaignId,
+            shopId: storeId,
+            phoneE164: recipient.phoneE164,
+            message: messageWithUnsubscribe,
+            sender,
+          },
+        };
+      });
 
       if (smsJobs.length > 0) {
         for (let i = 0; i < smsJobs.length; i += BATCH_SIZE) {
