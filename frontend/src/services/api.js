@@ -19,6 +19,7 @@ api.interceptors.request.use(
     }
     
     // Add shop domain header as fallback if store info is available
+    // This ensures consistent shop domain resolution even if token verification fails
     try {
       const storeInfo = localStorage.getItem(STORE_KEY);
       if (storeInfo) {
@@ -27,8 +28,39 @@ api.interceptors.request.use(
           config.headers['X-Shopify-Shop-Domain'] = store.shopDomain;
         }
       }
+      
+      // Also try to extract shop domain from token if store info is not available
+      if (!config.headers['X-Shopify-Shop-Domain'] && token) {
+        try {
+          const tokenParts = token.split('.');
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            if (payload.shopDomain) {
+              config.headers['X-Shopify-Shop-Domain'] = payload.shopDomain;
+              // Also update localStorage for future requests
+              try {
+                const existingStore = localStorage.getItem(STORE_KEY);
+                if (!existingStore || !JSON.parse(existingStore).shopDomain) {
+                  localStorage.setItem(STORE_KEY, JSON.stringify({
+                    shopDomain: payload.shopDomain,
+                    id: payload.storeId,
+                  }));
+                }
+              } catch (e) {
+                // Silently fail - localStorage update is not critical
+              }
+            }
+          }
+        } catch (tokenError) {
+          // Silently fail - token parsing is not critical if store info exists
+        }
+      }
     } catch (error) {
       // Silently fail - invalid store info in localStorage
+      // Log in development for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[API] Failed to extract shop domain from localStorage:', error);
+      }
     }
     
     // Store request start time for duration calculation

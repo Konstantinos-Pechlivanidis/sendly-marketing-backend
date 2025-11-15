@@ -22,6 +22,7 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Install = lazy(() => import('./pages/Install'));
 const Login = lazy(() => import('./pages/Login'));
+const Unsubscribe = lazy(() => import('./pages/Unsubscribe'));
 const AuthCallback = lazy(() => import('./pages/auth/AuthCallback'));
 const Dashboard = lazy(() => import('./pages/app/Dashboard'));
 const Campaigns = lazy(() => import('./pages/app/Campaigns'));
@@ -142,6 +143,7 @@ function AppRoutes() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/install" element={<Install />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/unsubscribe/:token" element={<Unsubscribe />} />
           
           {/* Auth Routes */}
           <Route path="/auth/callback" element={<AuthCallback />} />
