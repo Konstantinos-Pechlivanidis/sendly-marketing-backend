@@ -22,7 +22,7 @@ export async function submitContactForm(req, res, next) {
 
     // Validate input
     const validationResult = contactFormSchema.safeParse({ name, email, message });
-    
+
     if (!validationResult.success) {
       const firstError = validationResult.error.errors[0];
       throw new ValidationError(firstError.message);

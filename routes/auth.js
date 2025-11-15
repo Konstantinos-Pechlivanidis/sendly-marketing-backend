@@ -205,7 +205,7 @@ r.get('/callback', async (req, res, _next) => {
     let store;
     let retries = 3;
     let lastError;
-    
+
     while (retries > 0) {
       try {
         store = await prisma.shop.findUnique({
@@ -215,31 +215,31 @@ r.get('/callback', async (req, res, _next) => {
       } catch (dbError) {
         lastError = dbError;
         retries--;
-        
+
         // Check if it's a connection error
-        if (dbError.message?.includes('closed') || 
+        if (dbError.message?.includes('closed') ||
             dbError.message?.includes('connection') ||
             dbError.code === 'P1001' || // Prisma connection error
             dbError.code === 'P1017') { // Server closed connection
-          
+
           logger.warn('Database connection error, retrying...', {
             shopDomain,
             retriesLeft: retries,
             error: dbError.message,
           });
-          
+
           if (retries > 0) {
             // Wait before retrying (exponential backoff)
             await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
             continue;
           }
         }
-        
+
         // If it's not a connection error or we're out of retries, throw
         throw dbError;
       }
     }
-    
+
     if (!store && lastError) {
       throw lastError;
     }
@@ -248,10 +248,10 @@ r.get('/callback', async (req, res, _next) => {
       // Create new store with retry logic
       retries = 3;
       lastError = null;
-      
+
       while (retries > 0) {
         try {
-              store = await prisma.shop.create({
+          store = await prisma.shop.create({
             data: {
               shopDomain,
               shopName: shopDomain.replace('.myshopify.com', ''),
@@ -279,26 +279,26 @@ r.get('/callback', async (req, res, _next) => {
         } catch (dbError) {
           lastError = dbError;
           retries--;
-          
-          if ((dbError.message?.includes('closed') || 
+
+          if ((dbError.message?.includes('closed') ||
                dbError.message?.includes('connection') ||
                dbError.code === 'P1001' ||
                dbError.code === 'P1017') && retries > 0) {
-            
+
             logger.warn('Database connection error during store creation, retrying...', {
               shopDomain,
               retriesLeft: retries,
               error: dbError.message,
             });
-            
+
             await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
             continue;
           }
-          
+
           throw dbError;
         }
       }
-      
+
       if (!store && lastError) {
         throw lastError;
       }
@@ -306,7 +306,7 @@ r.get('/callback', async (req, res, _next) => {
       // Update access token with retry logic
       retries = 3;
       lastError = null;
-      
+
       while (retries > 0) {
         try {
           store = await prisma.shop.update({
@@ -323,26 +323,26 @@ r.get('/callback', async (req, res, _next) => {
         } catch (dbError) {
           lastError = dbError;
           retries--;
-          
-          if ((dbError.message?.includes('closed') || 
+
+          if ((dbError.message?.includes('closed') ||
                dbError.message?.includes('connection') ||
                dbError.code === 'P1001' ||
                dbError.code === 'P1017') && retries > 0) {
-            
+
             logger.warn('Database connection error during token update, retrying...', {
               shopDomain,
               retriesLeft: retries,
               error: dbError.message,
             });
-            
+
             await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
             continue;
           }
-          
+
           throw dbError;
         }
       }
-      
+
       if (!store && lastError) {
         throw lastError;
       }
@@ -371,9 +371,9 @@ r.get('/callback', async (req, res, _next) => {
 
     // Provide user-friendly error message
     let userMessage = error.message;
-    
+
     // Handle specific database connection errors
-    if (error.message?.includes('closed') || 
+    if (error.message?.includes('closed') ||
         error.message?.includes('connection') ||
         error.code === 'P1001' ||
         error.code === 'P1017') {

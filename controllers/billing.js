@@ -39,13 +39,13 @@ export async function getPublicPackages(req, res, next) {
   try {
     // Get currency from query param or default to EUR
     const currency = req.query.currency || 'EUR';
-    
+
     // Validate currency
     const validCurrencies = ['EUR', 'USD'];
-    const finalCurrency = validCurrencies.includes(currency.toUpperCase()) 
-      ? currency.toUpperCase() 
+    const finalCurrency = validCurrencies.includes(currency.toUpperCase())
+      ? currency.toUpperCase()
       : 'EUR';
-    
+
     const packages = billingService.getPackages(finalCurrency);
 
     return sendSuccess(res, { packages, currency: finalCurrency });

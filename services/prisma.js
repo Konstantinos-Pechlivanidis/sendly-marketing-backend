@@ -20,7 +20,7 @@ const prisma = global.__prisma || new PrismaClient(prismaOptions);
 
 if (!global.__prisma) {
   global.__prisma = prisma;
-  
+
   // Handle graceful shutdown
   process.on('beforeExit', async () => {
     await prisma.$disconnect();
