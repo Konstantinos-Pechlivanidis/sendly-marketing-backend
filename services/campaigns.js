@@ -599,12 +599,28 @@ export async function sendCampaign(storeId, campaignId) {
   }
 
   // Get recipient count first (for credit validation)
-  // Use the same logic as resolveRecipients to ensure consistency
+  // Use efficient count query first, then resolve recipients for actual sending
+  let recipients = [];
   let recipientCount = 0;
   
-  // Resolve recipients to get actual count (ensures consistency with what will be queued)
-  const recipients = await resolveRecipients(storeId, campaign.audience);
-  recipientCount = recipients.length;
+  // First, get count using efficient count query
+  const base = normalizeAudienceQuery(campaign.audience);
+  if (base) {
+    recipientCount = await prisma.contact.count({
+      where: { shopId: storeId, ...base },
+    });
+  } else if (campaign.audience.startsWith('segment:')) {
+    const segmentId = campaign.audience.split(':')[1];
+    recipientCount = await prisma.segmentMembership.count({
+      where: {
+        segmentId,
+        contact: {
+          shopId: storeId,
+          smsConsent: 'opted_in',
+        },
+      },
+    });
+  }
 
   if (recipientCount === 0) {
     throw new ValidationError('No recipients found for this campaign');
@@ -701,7 +717,19 @@ export async function sendCampaign(storeId, campaignId) {
       }
     } else {
       // For smaller campaigns, load all recipients at once (faster for < 10k)
-      const recipients = await resolveRecipients(storeId, campaign.audience);
+      // Resolve recipients if not already resolved
+      if (recipients.length === 0) {
+        recipients = await resolveRecipients(storeId, campaign.audience);
+      }
+
+      if (recipients.length === 0) {
+        logger.warn('No recipients resolved for campaign', {
+          storeId,
+          campaignId,
+          audience: campaign.audience,
+        });
+        throw new ValidationError('No recipients found for this campaign');
+      }
 
       // Create recipient records
       await prisma.campaignRecipient.createMany({
