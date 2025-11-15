@@ -698,8 +698,47 @@ export async function getBillingHistory(storeId, filters = {}) {
 
   logger.info('Billing history retrieved', { storeId, total, returned: transactions.length });
 
+  // Transform transactions to include frontend-friendly fields
+  const transformedTransactions = transactions.map(transaction => {
+    // Get package info from packageType
+    let packageName = 'N/A';
+    let packageCredits = transaction.creditsAdded;
+    
+    try {
+      const pkg = getPackageById(transaction.packageType);
+      packageName = pkg.name;
+      packageCredits = pkg.credits;
+    } catch (error) {
+      // Package not found, use defaults
+      packageName = transaction.packageType || 'N/A';
+    }
+
+    // Convert amount from cents to currency
+    const amountInCurrency = transaction.amount ? (transaction.amount / 100).toFixed(2) : 0;
+
+    return {
+      id: transaction.id,
+      packageName,
+      credits: transaction.creditsAdded,
+      creditsAdded: transaction.creditsAdded, // Keep for backward compatibility
+      amount: parseFloat(amountInCurrency), // Amount in currency (not cents)
+      amountCents: transaction.amount, // Keep original in cents for reference
+      price: parseFloat(amountInCurrency), // Alias for amount
+      currency: transaction.currency || 'EUR',
+      status: transaction.status,
+      packageType: transaction.packageType,
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
+      // Include package info for backward compatibility
+      package: {
+        name: packageName,
+        credits: packageCredits,
+      },
+    };
+  });
+
   return {
-    transactions,
+    transactions: transformedTransactions,
     pagination: {
       page: parseInt(page),
       pageSize: parseInt(pageSize),

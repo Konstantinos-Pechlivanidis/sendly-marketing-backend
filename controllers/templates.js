@@ -28,6 +28,15 @@ export async function getAllTemplates(req, res, _next) {
       ];
     }
 
+    // Get storeId for usage tracking (optional)
+    let shopId = null;
+    try {
+      shopId = getStoreId(req);
+    } catch (error) {
+      // Not authenticated or no store context - templates still available
+      shopId = null;
+    }
+
     // Get templates with pagination
     const [templates, total] = await Promise.all([
       prisma.template.findMany({
@@ -49,6 +58,31 @@ export async function getAllTemplates(req, res, _next) {
       prisma.template.count({ where }),
     ]);
 
+    // Get usage counts for each template if shopId is available
+    let usageCounts = {};
+    if (shopId) {
+      const templateIds = templates.map(t => t.id);
+      const usages = await prisma.templateUsage.findMany({
+        where: {
+          shopId,
+          templateId: { in: templateIds },
+        },
+        select: {
+          templateId: true,
+          usedCount: true,
+        },
+      });
+      usages.forEach(usage => {
+        usageCounts[usage.templateId] = usage.usedCount;
+      });
+    }
+
+    // Add usage counts to templates
+    const templatesWithUsage = templates.map(template => ({
+      ...template,
+      useCount: usageCounts[template.id] || 0,
+    }));
+
     // Get unique categories for filter options
     const categories = await prisma.template.findMany({
       where: { isPublic: true },
@@ -63,7 +97,7 @@ export async function getAllTemplates(req, res, _next) {
 
     return sendPaginated(
       res,
-      templates,
+      templatesWithUsage,
       {
         page,
         pageSize,
@@ -73,7 +107,7 @@ export async function getAllTemplates(req, res, _next) {
         hasPrevPage: parseInt(offset) > 0,
       },
       {
-        templates, // Include templates array for backward compatibility
+        templates: templatesWithUsage, // Include templates array with usage counts
         categories: categories.map(c => c.category),
       },
     );

@@ -94,32 +94,28 @@ export async function updateSettings(storeId, settingsData) {
 
   let settings;
 
+  // Prepare update data - only include fields that are provided
+  const updateData = {};
+  if (settingsData.senderNumber !== undefined) updateData.senderNumber = settingsData.senderNumber;
+  if (settingsData.senderName !== undefined) updateData.senderName = settingsData.senderName;
+  if (settingsData.timezone !== undefined) updateData.timezone = settingsData.timezone;
+  if (settingsData.currency !== undefined) updateData.currency = settingsData.currency;
+
   if (existingSettings) {
-    // Update existing settings
+    // Update existing settings - only update provided fields
     settings = await prisma.shopSettings.update({
       where: { shopId: storeId },
-      data: {
-        senderNumber: settingsData.senderNumber,
-        senderName: settingsData.senderName,
-        timezone: settingsData.timezone,
-        defaultLanguage: settingsData.defaultLanguage,
-        emailNotifications: settingsData.emailNotifications,
-        smsNotifications: settingsData.smsNotifications,
-        webhookUrl: settingsData.webhookUrl,
-      },
+      data: updateData,
     });
   } else {
-    // Create new settings
+    // Create new settings with defaults
     settings = await prisma.shopSettings.create({
       data: {
         shopId: storeId,
-        senderNumber: settingsData.senderNumber,
-        senderName: settingsData.senderName,
+        senderNumber: settingsData.senderNumber || null,
+        senderName: settingsData.senderName || null,
         timezone: settingsData.timezone || 'UTC',
-        defaultLanguage: settingsData.defaultLanguage || 'en',
-        emailNotifications: settingsData.emailNotifications ?? true,
-        smsNotifications: settingsData.smsNotifications ?? false,
-        webhookUrl: settingsData.webhookUrl,
+        currency: settingsData.currency || 'EUR',
       },
     });
   }

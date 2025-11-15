@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { getStoreId } from '../middlewares/store-resolution.js';
 import { sendSuccess } from '../utils/response.js';
 import { ValidationError, NotFoundError } from '../utils/errors.js';
+import * as settingsService from '../services/settings.js';
 
 /**
  * Get current user settings
@@ -59,15 +60,25 @@ export async function getSettings(req, res, _next) {
       ],
     };
 
+    // Return flat structure for easier frontend access
+    // Frontend expects: senderId (senderNumber or senderName), timezone, currency, etc.
+    const settings = shop.settings || {};
+    
     return sendSuccess(res, {
-      shop: {
-        id: shop.id,
-        shopDomain: shop.shopDomain,
-        credits: shop.credits,
-        createdAt: shop.createdAt,
-        updatedAt: shop.updatedAt,
-      },
-      settings: shop.settings,
+      // Shop info
+      shopId: shop.id,
+      shopDomain: shop.shopDomain,
+      shopName: shop.shopName,
+      credits: shop.credits,
+      createdAt: shop.createdAt,
+      updatedAt: shop.updatedAt,
+      // Settings (flat structure)
+      senderId: settings.senderNumber || settings.senderName || '', // Frontend uses senderId
+      senderNumber: settings.senderNumber || null,
+      senderName: settings.senderName || null,
+      timezone: settings.timezone || 'UTC',
+      currency: settings.currency || shop.currency || 'EUR',
+      // Additional data
       recentTransactions: shop.billingTransactions,
       usageGuide,
     });
@@ -205,8 +216,77 @@ export async function getAccountInfo(req, res, _next) {
   }
 }
 
+/**
+ * Update settings
+ */
+export async function updateSettings(req, res, _next) {
+  try {
+    const shopId = getStoreId(req);
+    const settingsData = req.body;
+
+    // Prepare update data - map frontend fields to backend fields
+    const updateData = {};
+    
+    // Handle senderId - can be either senderNumber or senderName
+    if (settingsData.senderId !== undefined) {
+      const senderId = settingsData.senderId?.trim() || '';
+      if (senderId) {
+        // Determine if it's a phone number (E.164) or alphanumeric name
+        const isE164 = /^\+[1-9]\d{1,14}$/.test(senderId);
+        if (isE164) {
+          updateData.senderNumber = senderId;
+          updateData.senderName = null; // Clear senderName if setting number
+        } else if (/^[a-zA-Z0-9]{3,11}$/.test(senderId)) {
+          updateData.senderName = senderId;
+          updateData.senderNumber = null; // Clear senderNumber if setting name
+        } else {
+          throw new ValidationError('Sender ID must be either a valid E.164 phone number (e.g., +1234567890) or 3-11 alphanumeric characters');
+        }
+      } else {
+        // Clear both if empty
+        updateData.senderNumber = null;
+        updateData.senderName = null;
+      }
+    }
+
+    if (settingsData.timezone !== undefined) {
+      updateData.timezone = settingsData.timezone;
+    }
+
+    if (settingsData.currency !== undefined) {
+      updateData.currency = settingsData.currency;
+    }
+
+    // Update settings
+    const updatedSettings = await settingsService.updateSettings(shopId, updateData);
+
+    logger.info('Settings updated', {
+      shopId,
+      fields: Object.keys(updateData),
+    });
+
+    // Return in same format as getSettings
+    return sendSuccess(res, {
+      senderId: updatedSettings.senderNumber || updatedSettings.senderName || '',
+      senderNumber: updatedSettings.senderNumber || null,
+      senderName: updatedSettings.senderName || null,
+      timezone: updatedSettings.timezone || 'UTC',
+      currency: updatedSettings.currency || 'EUR',
+      updatedAt: updatedSettings.updatedAt,
+    }, 'Settings updated successfully');
+  } catch (error) {
+    logger.error('Failed to update settings', {
+      error: error.message,
+      shopId: req.ctx?.store?.id || 'unknown',
+      body: req.body,
+    });
+    throw error;
+  }
+}
+
 export default {
   getSettings,
   updateSenderNumber,
+  updateSettings,
   getAccountInfo,
 };
