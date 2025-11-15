@@ -2,10 +2,12 @@ import { logger } from '../utils/logger.js';
 import {
   triggerAbandonedCart,
   triggerOrderConfirmation,
+  triggerOrderFulfilled,
 } from '../services/automations.js';
 import prisma from '../services/prisma.js';
 import { sendSuccess } from '../utils/response.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
+import { automationQueue } from '../queue/index.js';
 
 /**
  * Handle Shopify order creation webhook
@@ -44,37 +46,52 @@ export async function handleOrderCreated(req, res, _next) {
       throw new NotFoundError('Contact');
     }
 
-    // Trigger order confirmation automation
-    const result = await triggerOrderConfirmation({
-      shopId: shop.id,
-      contactId: contact.id,
-      orderData: {
-        orderNumber: id.toString(),
-        customerEmail: customer.email,
-        customerName: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
-        lineItems: line_items,
-        totalPrice: req.body.total_price,
-        currency: req.body.currency,
-      },
-    });
+    // Queue automation job instead of processing synchronously
+    // This allows for retry on failure and doesn't block webhook response
+    try {
+      await automationQueue.add(
+        'order-confirmation',
+        {
+          shopId: shop.id,
+          contactId: contact.id,
+          orderData: {
+            orderNumber: id.toString(),
+            customerEmail: customer.email,
+            customerName: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
+            lineItems: line_items,
+            totalPrice: req.body.total_price,
+            currency: req.body.currency,
+          },
+        },
+        {
+          jobId: `order-confirmation-${shop.id}-${id}-${Date.now()}`,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      );
 
-    if (result.success) {
-      logger.info('Order confirmation automation triggered', {
+      logger.info('Order confirmation automation queued', {
         shopId: shop.id,
         contactId: contact.id,
         orderId: id,
-        messageId: result.messageId,
       });
-    } else {
-      logger.warn('Order confirmation automation failed', {
+
+      // Return success immediately - job will be processed asynchronously
+      return sendSuccess(res, { automationQueued: true }, 'Order webhook processed');
+    } catch (queueError) {
+      logger.error('Failed to queue order confirmation automation', {
         shopId: shop.id,
         contactId: contact.id,
         orderId: id,
-        reason: result.reason,
+        error: queueError.message,
       });
+      // Still return success to Shopify to prevent retries
+      // The error is logged and can be handled separately
+      return sendSuccess(res, { automationQueued: false, error: 'Queue failed' }, 'Order webhook processed');
     }
-
-    return sendSuccess(res, { automationTriggered: result.success }, 'Order webhook processed');
   } catch (error) {
     logger.error('Order webhook processing failed', {
       error: error.message,
@@ -121,36 +138,47 @@ export async function handleCartAbandoned(req, res, _next) {
       throw new NotFoundError('Contact');
     }
 
-    // Trigger abandoned cart automation
-    const result = await triggerAbandonedCart({
-      shopId: shop.id,
-      contactId: contact.id,
-      cartData: {
-        cartToken: cart_token,
-        customerEmail: customer.email,
-        customerName: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
-        lineItems: line_items,
-        abandonedAt: new Date().toISOString(),
-      },
-    });
+    // Queue automation job instead of processing synchronously
+    try {
+      await automationQueue.add(
+        'abandoned-cart',
+        {
+          shopId: shop.id,
+          contactId: contact.id,
+          cartData: {
+            cartToken: cart_token,
+            customerEmail: customer.email,
+            customerName: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
+            lineItems: line_items,
+            abandonedAt: new Date().toISOString(),
+          },
+        },
+        {
+          jobId: `abandoned-cart-${shop.id}-${cart_token}-${Date.now()}`,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      );
 
-    if (result.success) {
-      logger.info('Abandoned cart automation triggered', {
+      logger.info('Abandoned cart automation queued', {
         shopId: shop.id,
         contactId: contact.id,
         cartToken: cart_token,
-        messageId: result.messageId,
       });
-    } else {
-      logger.warn('Abandoned cart automation failed', {
+
+      return sendSuccess(res, { automationQueued: true }, 'Cart webhook processed');
+    } catch (queueError) {
+      logger.error('Failed to queue abandoned cart automation', {
         shopId: shop.id,
         contactId: contact.id,
         cartToken: cart_token,
-        reason: result.reason,
+        error: queueError.message,
       });
+      return sendSuccess(res, { automationQueued: false, error: 'Queue failed' }, 'Cart webhook processed');
     }
-
-    return sendSuccess(res, { automationTriggered: result.success }, 'Cart webhook processed');
   } catch (error) {
     logger.error('Cart webhook processing failed', {
       error: error.message,
@@ -209,8 +237,97 @@ export async function triggerAutomationManually(req, res, _next) {
   }
 }
 
+/**
+ * Handle Shopify order fulfillment webhook
+ */
+export async function handleOrderFulfilled(req, res, _next) {
+  try {
+    const { shop_domain, id, customer, fulfillment_status, tracking_number, tracking_urls } = req.body;
+
+    if (!shop_domain || !id || !customer) {
+      throw new ValidationError('shop_domain, id, and customer are required');
+    }
+
+    // Find the shop
+    const shop = await prisma.shop.findUnique({
+      where: { shopDomain: shop_domain },
+    });
+
+    if (!shop) {
+      logger.warn('Shop not found for order fulfillment webhook', { shop_domain });
+      throw new NotFoundError('Shop');
+    }
+
+    // Find the customer contact
+    const contact = await prisma.contact.findFirst({
+      where: {
+        shopId: shop.id,
+        email: customer.email,
+      },
+    });
+
+    if (!contact) {
+      logger.warn('Contact not found for order fulfillment webhook', {
+        shopId: shop.id,
+        customerEmail: customer.email,
+      });
+      throw new NotFoundError('Contact');
+    }
+
+    // Queue automation job
+    try {
+      await automationQueue.add(
+        'order-fulfilled',
+        {
+          shopId: shop.id,
+          contactId: contact.id,
+          orderData: {
+            orderNumber: id.toString(),
+            customerEmail: customer.email,
+            customerName: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
+            fulfillmentStatus: fulfillment_status,
+            trackingNumber: tracking_number,
+            trackingUrls: tracking_urls || [],
+          },
+        },
+        {
+          jobId: `order-fulfilled-${shop.id}-${id}-${Date.now()}`,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      );
+
+      logger.info('Order fulfillment automation queued', {
+        shopId: shop.id,
+        contactId: contact.id,
+        orderId: id,
+      });
+
+      return sendSuccess(res, { automationQueued: true }, 'Order fulfillment webhook processed');
+    } catch (queueError) {
+      logger.error('Failed to queue order fulfillment automation', {
+        shopId: shop.id,
+        contactId: contact.id,
+        orderId: id,
+        error: queueError.message,
+      });
+      return sendSuccess(res, { automationQueued: false, error: 'Queue failed' }, 'Order fulfillment webhook processed');
+    }
+  } catch (error) {
+    logger.error('Order fulfillment webhook processing failed', {
+      error: error.message,
+      body: req.body,
+    });
+    throw error;
+  }
+}
+
 export default {
   handleOrderCreated,
+  handleOrderFulfilled,
   handleCartAbandoned,
   triggerAutomationManually,
 };

@@ -2,6 +2,13 @@ import { Worker } from 'bullmq';
 import { queueRedis } from '../config/redis.js';
 import { handleMittoSend } from './jobs/mittoSend.js';
 import { handleCampaignStatusUpdate, handleAllCampaignsStatusUpdate } from './jobs/deliveryStatusUpdate.js';
+import {
+  handleAbandonedCartTrigger,
+  handleOrderConfirmationTrigger,
+  handleOrderFulfilledTrigger,
+  handleCustomerReengagementTrigger,
+  handleBirthdayTrigger,
+} from './jobs/automationTriggers.js';
 import { logger } from '../utils/logger.js';
 
 // Skip workers in test mode for faster tests
@@ -63,9 +70,37 @@ export const campaignWorker = skipWorkers ? new MockWorker('campaign-send', () =
 export const automationWorker = skipWorkers ? new MockWorker('automation-trigger', () => {}, {}) : new Worker(
   'automation-trigger',
   async (job) => {
-    logger.info(`Processing automation job ${job.id}`, { jobData: job.data });
-    // TODO: Implement automation processing logic
-    return { status: 'processed', jobId: job.id };
+    logger.info(`Processing automation job ${job.id}`, { jobData: job.data, jobName: job.name });
+
+    // Route to appropriate handler based on job name
+    try {
+      switch (job.name) {
+      case 'order-confirmation':
+        return await handleOrderConfirmationTrigger(job);
+      case 'order-fulfilled':
+        return await handleOrderFulfilledTrigger(job);
+      case 'abandoned-cart':
+        return await handleAbandonedCartTrigger(job);
+      case 'customer-reengagement':
+        return await handleCustomerReengagementTrigger(job);
+      case 'birthday':
+        return await handleBirthdayTrigger(job);
+      default:
+        logger.warn('Unknown automation job type', {
+          jobId: job.id,
+          jobName: job.name,
+        });
+        return { success: false, reason: 'Unknown job type' };
+      }
+    } catch (error) {
+      logger.error('Automation job processing failed', {
+        jobId: job.id,
+        jobName: job.name,
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error; // Re-throw to trigger retry mechanism
+    }
   },
   {
     connection: queueRedis,

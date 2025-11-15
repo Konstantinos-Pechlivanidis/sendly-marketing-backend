@@ -171,6 +171,13 @@ function processMessageTemplate(template, data) {
   if (data.trackingLink) {
     processedMessage = processedMessage.replace(/\{\{trackingLink\}\}/g, data.trackingLink);
   }
+  if (data.trackingNumber) {
+    processedMessage = processedMessage.replace(/\{\{trackingNumber\}\}/g, data.trackingNumber);
+  }
+  if (data.trackingUrls && Array.isArray(data.trackingUrls) && data.trackingUrls.length > 0) {
+    // Use first tracking URL if available
+    processedMessage = processedMessage.replace(/\{\{trackingLink\}\}/g, data.trackingUrls[0]);
+  }
   if (data.productName) {
     processedMessage = processedMessage.replace(/\{\{productName\}\}/g, data.productName);
   }
@@ -201,6 +208,18 @@ export async function triggerOrderConfirmation({ shopId, contactId, orderData = 
     shopId,
     contactId,
     triggerEvent: 'order_placed',
+    additionalData: orderData,
+  });
+}
+
+/**
+ * Trigger order fulfillment automation
+ */
+export async function triggerOrderFulfilled({ shopId, contactId, orderData = {} }) {
+  return await triggerAutomation({
+    shopId,
+    contactId,
+    triggerEvent: 'order_fulfilled',
     additionalData: orderData,
   });
 }
@@ -418,6 +437,7 @@ export default {
   triggerAutomation,
   triggerAbandonedCart,
   triggerOrderConfirmation,
+  triggerOrderFulfilled,
   triggerCustomerReengagement,
   triggerBirthdayOffer,
   getActiveAutomations,

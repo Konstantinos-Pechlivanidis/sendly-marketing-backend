@@ -2,6 +2,7 @@ import { logger } from '../../utils/logger.js';
 import {
   triggerAbandonedCart,
   triggerOrderConfirmation,
+  triggerOrderFulfilled,
   triggerCustomerReengagement,
   triggerBirthdayOffer,
 } from '../../services/automations.js';
@@ -78,6 +79,7 @@ export async function handleOrderConfirmationTrigger(job) {
 
   try {
     logger.info('Processing order confirmation automation', {
+      jobId: job.id,
       shopId,
       contactId,
       orderData,
@@ -108,12 +110,14 @@ export async function handleOrderConfirmationTrigger(job) {
 
     if (result.success) {
       logger.info('Order confirmation automation triggered successfully', {
+        jobId: job.id,
         shopId,
         contactId,
         messageId: result.messageId,
       });
     } else {
       logger.warn('Order confirmation automation failed', {
+        jobId: job.id,
         shopId,
         contactId,
         reason: result.reason,
@@ -124,7 +128,76 @@ export async function handleOrderConfirmationTrigger(job) {
     return result;
   } catch (error) {
     logger.error('Order confirmation automation job failed', {
+      jobId: job.id,
       error: error.message,
+      stack: error.stack,
+      shopId,
+      contactId,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Handle order fulfillment automation trigger
+ */
+export async function handleOrderFulfilledTrigger(job) {
+  const { shopId, contactId, orderData, automationId } = job.data;
+
+  try {
+    logger.info('Processing order fulfillment automation', {
+      jobId: job.id,
+      shopId,
+      contactId,
+      orderData,
+      automationId,
+    });
+
+    // Validate credits before triggering automation
+    try {
+      await validateAndConsumeCredits(shopId, 1);
+    } catch (error) {
+      if (error instanceof InsufficientCreditsError) {
+        await logAutomationSkip(automationId, shopId, 'Insufficient credits');
+        logger.warn('Order fulfillment automation skipped due to insufficient credits', {
+          shopId,
+          contactId,
+          automationId,
+        });
+        return { success: false, reason: 'insufficient_credits', error: error.message };
+      }
+      throw error;
+    }
+
+    const result = await triggerOrderFulfilled({
+      shopId,
+      contactId,
+      orderData,
+    });
+
+    if (result.success) {
+      logger.info('Order fulfillment automation triggered successfully', {
+        jobId: job.id,
+        shopId,
+        contactId,
+        messageId: result.messageId,
+      });
+    } else {
+      logger.warn('Order fulfillment automation failed', {
+        jobId: job.id,
+        shopId,
+        contactId,
+        reason: result.reason,
+        error: result.error,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Order fulfillment automation job failed', {
+      jobId: job.id,
+      error: error.message,
+      stack: error.stack,
       shopId,
       contactId,
     });
@@ -400,6 +473,7 @@ export async function handleDailyBirthdayCheck(_job) {
 export default {
   handleAbandonedCartTrigger,
   handleOrderConfirmationTrigger,
+  handleOrderFulfilledTrigger,
   handleCustomerReengagementTrigger,
   handleBirthdayTrigger,
   handleDailyReengagementCheck,

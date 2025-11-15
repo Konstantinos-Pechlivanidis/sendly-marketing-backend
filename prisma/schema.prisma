@@ -322,6 +322,7 @@ enum AutomationTrigger {
   customer_inactive
   cart_abandoned
   order_placed
+  order_fulfilled
 }
 
 model ShopSettings {
