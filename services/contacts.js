@@ -58,11 +58,25 @@ function normalizePhone(phone) {
 async function checkDuplicates(storeId, phoneE164, email, excludeId = null) {
   const where = {
     shopId: storeId,
-    OR: [{ phoneE164 }],
+    OR: [],
   };
 
+  // Only add phone to OR if it's provided and not null
+  if (phoneE164) {
+    where.OR.push({ phoneE164 });
+  }
+
+  // Only add email to OR if it's provided and not null
   if (email) {
     where.OR.push({ email });
+  }
+
+  // If no OR conditions, return no duplicates
+  if (where.OR.length === 0) {
+    return {
+      hasDuplicate: false,
+      duplicate: null,
+    };
   }
 
   if (excludeId) {
@@ -369,7 +383,7 @@ export async function updateContact(storeId, contactId, contactData) {
     updateData.lastName = contactData.lastName && contactData.lastName.trim() ? contactData.lastName.trim() : null;
   }
   if (contactData.birthDate !== undefined) {
-    if (contactData.birthDate && contactData.birthDate.trim()) {
+    if (contactData.birthDate && typeof contactData.birthDate === 'string' && contactData.birthDate.trim()) {
       const birthDate = new Date(contactData.birthDate);
       if (isNaN(birthDate.getTime())) {
         throw new ValidationError('Invalid birth date format');
@@ -379,8 +393,23 @@ export async function updateContact(storeId, contactId, contactData) {
         throw new ValidationError('Birth date cannot be in the future');
       }
       updateData.birthDate = birthDate;
-    } else {
+    } else if (contactData.birthDate === null) {
       updateData.birthDate = null;
+    } else if (!contactData.birthDate) {
+      // Empty string or falsy value
+      updateData.birthDate = null;
+    } else {
+      // Try to parse as Date object if it's already a Date
+      const birthDate = contactData.birthDate instanceof Date 
+        ? contactData.birthDate 
+        : new Date(contactData.birthDate);
+      if (isNaN(birthDate.getTime())) {
+        throw new ValidationError('Invalid birth date format');
+      }
+      if (birthDate > new Date()) {
+        throw new ValidationError('Birth date cannot be in the future');
+      }
+      updateData.birthDate = birthDate;
     }
   }
   if (contactData.tags !== undefined) updateData.tags = contactData.tags || [];
@@ -397,17 +426,55 @@ export async function updateContact(storeId, contactId, contactData) {
     const contact = await prisma.contact.update({
       where: { id: contactId },
       data: updateData,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phoneE164: true,
+        email: true,
+        gender: true,
+        birthDate: true,
+        smsConsent: true,
+        tags: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     logger.info('Contact updated successfully', { storeId, contactId });
 
     return contact;
   } catch (error) {
+    // Handle Prisma-specific errors
+    if (error.code === 'P2002') {
+      // Unique constraint violation
+      const field = error.meta?.target?.[0] || 'field';
+      logger.error('Duplicate contact detected during update', {
+        storeId,
+        contactId,
+        field,
+        updateData,
+        error: error.message,
+      });
+      throw new ConflictError(`Contact already exists with this ${field}`);
+    } else if (error.code === 'P2025') {
+      // Record not found
+      logger.error('Contact not found during update', {
+        storeId,
+        contactId,
+        updateData,
+        error: error.message,
+      });
+      throw new NotFoundError('Contact');
+    }
+    
     logger.error('Failed to update contact in database', {
       storeId,
       contactId,
       updateData,
       error: error.message,
+      errorCode: error.code,
+      errorMeta: error.meta,
       stack: error.stack,
     });
     throw error;
