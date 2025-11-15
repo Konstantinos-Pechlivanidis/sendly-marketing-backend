@@ -166,7 +166,6 @@ export async function updateCampaignDeliveryStatuses(campaignId) {
       campaignId,
       mittoMessageId: { not: null },
       status: { in: ['pending', 'sent'] }, // Only update pending/sent, skip already failed
-      deliveryStatus: { notIn: ['Delivered', 'Failed', 'Failure'] }, // Skip already final statuses
     },
     select: {
       id: true,
@@ -179,6 +178,8 @@ export async function updateCampaignDeliveryStatuses(campaignId) {
 
   if (recipients.length === 0) {
     logger.info('No recipients to update for campaign', { campaignId });
+    // Still update campaign status in case it needs to change
+    await updateCampaignStatusFromRecipients(campaignId);
     return {
       campaignId,
       updated: 0,
@@ -186,13 +187,32 @@ export async function updateCampaignDeliveryStatuses(campaignId) {
     };
   }
 
+  // Filter out recipients that already have final statuses
+  const recipientsToUpdate = recipients.filter((recipient) => {
+    const deliveryStatus = recipient.deliveryStatus?.toLowerCase();
+    // Skip if already in final status
+    return !deliveryStatus || (deliveryStatus !== 'delivered' && deliveryStatus !== 'failed' && deliveryStatus !== 'failure');
+  });
+
+  if (recipientsToUpdate.length === 0) {
+    logger.info('All recipients already have final delivery statuses', { campaignId });
+    // Still update campaign status in case it needs to change
+    await updateCampaignStatusFromRecipients(campaignId);
+    return {
+      campaignId,
+      updated: 0,
+      total: recipients.length,
+    };
+  }
+
   logger.info('Found recipients to update', {
     campaignId,
-    count: recipients.length,
+    count: recipientsToUpdate.length,
+    total: recipients.length,
   });
 
   // Update statuses in parallel (with rate limiting consideration)
-  const updatePromises = recipients.map((recipient) =>
+  const updatePromises = recipientsToUpdate.map((recipient) =>
     updateMessageDeliveryStatus(recipient.mittoMessageId, campaignId).catch((error) => {
       logger.error('Failed to update recipient status', {
         campaignId,
