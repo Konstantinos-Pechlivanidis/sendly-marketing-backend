@@ -39,9 +39,15 @@ function verifyShopifyWebhookSignature(req) {
   }
 
   // Get raw body for signature verification
-  // The raw body should be stored by body-parser middleware
-  const rawBody = req.rawBody || JSON.stringify(req.body || {});
-
+  // The raw body should be stored by body-parser middleware as Buffer
+  let rawBody = req.rawBody;
+  if (rawBody && Buffer.isBuffer(rawBody)) {
+    // Convert Buffer to string for HMAC calculation
+    rawBody = rawBody.toString('utf8');
+  } else if (!rawBody && req.body) {
+    // Fallback: reconstruct from parsed body (less secure but better than nothing)
+    rawBody = JSON.stringify(req.body);
+  }
   if (!rawBody) {
     logger.warn('No raw body available for webhook verification', {
       shopDomain,
@@ -51,9 +57,10 @@ function verifyShopifyWebhookSignature(req) {
   }
 
   // Calculate HMAC
+  // Shopify uses the raw body (as received) for HMAC calculation
   const calculatedHmac = crypto
     .createHmac('sha256', webhookSecret)
-    .update(rawBody, 'utf8')
+    .update(rawBody)
     .digest('base64');
 
   // Compare HMACs (use timing-safe comparison to prevent timing attacks)
