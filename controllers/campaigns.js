@@ -310,6 +310,33 @@ export async function retryFailed(req, res, next) {
   }
 }
 
+/**
+ * Update delivery status for a campaign
+ * @route POST /campaigns/:id/update-status
+ */
+export async function updateDeliveryStatus(req, res, next) {
+  try {
+    const storeId = getStoreId(req);
+    const { id } = req.params;
+
+    const deliveryStatusService = await import('../services/delivery-status.js');
+    const result = await deliveryStatusService.updateCampaignDeliveryStatuses(id);
+
+    return sendSuccess(res, result, 'Delivery status updated successfully');
+  } catch (error) {
+    logger.error('Update delivery status error', {
+      error: error.message,
+      stack: error.stack,
+      storeId: getStoreId(req),
+      campaignId: req.params.id,
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
+    next(error);
+  }
+}
+
 export default {
   list,
   getOne,
@@ -322,4 +349,5 @@ export default {
   metrics,
   stats,
   retryFailed,
+  updateDeliveryStatus,
 };

@@ -63,13 +63,43 @@ export const automationQueue = skipQueues ? new MockQueue('automation-trigger', 
   },
 });
 
+// Delivery Status Update Queue
+export const deliveryStatusQueue = skipQueues ? new MockQueue('delivery-status-update', {}) : new Queue('delivery-status-update', {
+  connection: queueRedis,
+  defaultJobOptions: {
+    removeOnComplete: 100,
+    removeOnFail: 50,
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 2000,
+    },
+  },
+});
+
+// All Campaigns Status Update Queue (for periodic polling)
+export const allCampaignsStatusQueue = skipQueues ? new MockQueue('all-campaigns-status-update', {}) : new Queue('all-campaigns-status-update', {
+  connection: queueRedis,
+  defaultJobOptions: {
+    removeOnComplete: 10,
+    removeOnFail: 5,
+    attempts: 2,
+    backoff: {
+      type: 'fixed',
+      delay: 5000,
+    },
+  },
+});
+
 // Queue health check
 export const getQueueHealth = async () => {
   try {
-    const [smsWaiting, campaignWaiting, automationWaiting] = await Promise.all([
+    const [smsWaiting, campaignWaiting, automationWaiting, deliveryStatusWaiting, allCampaignsStatusWaiting] = await Promise.all([
       smsQueue.getWaiting(),
       campaignQueue.getWaiting(),
       automationQueue.getWaiting(),
+      deliveryStatusQueue.getWaiting(),
+      allCampaignsStatusQueue.getWaiting(),
     ]);
 
     return {
@@ -85,6 +115,14 @@ export const getQueueHealth = async () => {
         waiting: automationWaiting.length,
         status: 'healthy',
       },
+      deliveryStatus: {
+        waiting: deliveryStatusWaiting.length,
+        status: 'healthy',
+      },
+      allCampaignsStatus: {
+        waiting: allCampaignsStatusWaiting.length,
+        status: 'healthy',
+      },
     };
   } catch (error) {
     return {
@@ -94,4 +132,10 @@ export const getQueueHealth = async () => {
   }
 };
 
-export default { smsQueue, campaignQueue, automationQueue };
+export default {
+  smsQueue,
+  campaignQueue,
+  automationQueue,
+  deliveryStatusQueue,
+  allCampaignsStatusQueue,
+};

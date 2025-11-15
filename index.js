@@ -5,6 +5,7 @@ import { logger } from './utils/logger.js';
 import { validateAndLogEnvironment } from './config/env-validation.js';
 import { closeRedisConnections } from './config/redis.js';
 import './queue/worker.js'; // starts BullMQ worker
+import { startPeriodicStatusUpdates } from './services/scheduler.js';
 
 // Validate environment variables on startup
 try {
@@ -24,6 +25,9 @@ const server = app.listen(PORT, () => {
     environment: process.env.NODE_ENV || 'development',
     nodeVersion: process.version,
   });
+
+  // Start periodic delivery status updates
+  startPeriodicStatusUpdates();
 });
 
 // Graceful shutdown handler

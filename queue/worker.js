@@ -1,6 +1,7 @@
 import { Worker } from 'bullmq';
 import { queueRedis } from '../config/redis.js';
 import { handleMittoSend } from './jobs/mittoSend.js';
+import { handleCampaignStatusUpdate, handleAllCampaignsStatusUpdate } from './jobs/deliveryStatusUpdate.js';
 import { logger } from '../utils/logger.js';
 
 // Skip workers in test mode for faster tests
@@ -74,6 +75,36 @@ export const automationWorker = skipWorkers ? new MockWorker('automation-trigger
   },
 );
 
+// Delivery Status Update Worker
+export const deliveryStatusWorker = skipWorkers ? new MockWorker('delivery-status-update', () => {}, {}) : new Worker(
+  'delivery-status-update',
+  async (job) => {
+    logger.info(`Processing delivery status update job ${job.id}`, { jobData: job.data });
+    return await handleCampaignStatusUpdate(job);
+  },
+  {
+    connection: queueRedis,
+    concurrency: 5, // Lower concurrency to avoid rate limiting Mitto API
+    removeOnComplete: 100,
+    removeOnFail: 50,
+  },
+);
+
+// All Campaigns Status Update Worker (for periodic polling)
+export const allCampaignsStatusWorker = skipWorkers ? new MockWorker('all-campaigns-status-update', () => {}, {}) : new Worker(
+  'all-campaigns-status-update',
+  async (job) => {
+    logger.info(`Processing all campaigns status update job ${job.id}`, { jobData: job.data });
+    return await handleAllCampaignsStatusUpdate(job);
+  },
+  {
+    connection: queueRedis,
+    concurrency: 1, // Single concurrent job for periodic updates
+    removeOnComplete: 10,
+    removeOnFail: 5,
+  },
+);
+
 // Event handlers for SMS Worker
 smsWorker.on('completed', (job) => {
   logger.info(`SMS job completed: ${job.id}`, { duration: job.processedOn - job.timestamp });
@@ -105,6 +136,34 @@ automationWorker.on('failed', (job, err) => {
   logger.error(`Automation job failed: ${job?.id}`, { error: err.message, attempts: job.attemptsMade });
 });
 
+// Event handlers for Delivery Status Worker
+deliveryStatusWorker.on('completed', (job) => {
+  logger.info(`Delivery status update job completed: ${job.id}`, {
+    duration: job.processedOn - job.timestamp,
+  });
+});
+
+deliveryStatusWorker.on('failed', (job, err) => {
+  logger.error(`Delivery status update job failed: ${job?.id}`, {
+    error: err.message,
+    attempts: job.attemptsMade,
+  });
+});
+
+// Event handlers for All Campaigns Status Worker
+allCampaignsStatusWorker.on('completed', (job) => {
+  logger.info(`All campaigns status update job completed: ${job.id}`, {
+    duration: job.processedOn - job.timestamp,
+  });
+});
+
+allCampaignsStatusWorker.on('failed', (job, err) => {
+  logger.error(`All campaigns status update job failed: ${job?.id}`, {
+    error: err.message,
+    attempts: job.attemptsMade,
+  });
+});
+
 // Graceful shutdown
 const gracefulShutdown = async () => {
   logger.info('Shutting down workers gracefully...');
@@ -113,6 +172,8 @@ const gracefulShutdown = async () => {
     smsWorker.close(),
     campaignWorker.close(),
     automationWorker.close(),
+    deliveryStatusWorker.close(),
+    allCampaignsStatusWorker.close(),
   ]);
 
   logger.info('All workers shut down');

@@ -52,4 +52,7 @@ r.get('/:id/metrics', campaignMetricsCache, ctrl.metrics);
 // POST /campaigns/:id/retry-failed - Retry failed SMS for a campaign
 r.post('/:id/retry-failed', invalidateCampaignsCache, ctrl.retryFailed);
 
+// POST /campaigns/:id/update-status - Manually trigger delivery status update
+r.post('/:id/update-status', invalidateCampaignsCache, ctrl.updateDeliveryStatus);
+
 export default r;

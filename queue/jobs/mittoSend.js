@@ -1,6 +1,7 @@
 import prisma from '../../services/prisma.js';
 import { sendSms, MittoApiError, ValidationError } from '../../services/mitto.js';
 import { logger } from '../../utils/logger.js';
+import { deliveryStatusQueue } from '../index.js';
 
 export async function handleMittoSend(job) {
   const { campaignId, shopId, phoneE164, message, sender } = job.data;
@@ -82,6 +83,54 @@ export async function handleMittoSend(job) {
       where: { campaignId },
       data: { totalSent: { increment: 1 } },
     });
+
+    // Queue delivery status update job (with delay to allow Mitto to process)
+    // Check status after 30 seconds, then again after 2 minutes, then after 5 minutes
+    if (campaignId && msgId) {
+      try {
+        // First check after 30 seconds
+        await deliveryStatusQueue.add(
+          'update-campaign-status',
+          { campaignId },
+          {
+            delay: 30000, // 30 seconds
+            jobId: `status-update-${campaignId}-30s`,
+          },
+        );
+
+        // Second check after 2 minutes
+        await deliveryStatusQueue.add(
+          'update-campaign-status',
+          { campaignId },
+          {
+            delay: 120000, // 2 minutes
+            jobId: `status-update-${campaignId}-2m`,
+          },
+        );
+
+        // Final check after 5 minutes
+        await deliveryStatusQueue.add(
+          'update-campaign-status',
+          { campaignId },
+          {
+            delay: 300000, // 5 minutes
+            jobId: `status-update-${campaignId}-5m`,
+          },
+        );
+
+        logger.info('Queued delivery status update jobs', {
+          campaignId,
+          msgId,
+        });
+      } catch (queueError) {
+        // Log but don't fail the SMS send if status update queue fails
+        logger.warn('Failed to queue delivery status update', {
+          campaignId,
+          msgId,
+          error: queueError.message,
+        });
+      }
+    }
 
     logger.info('SMS sent successfully via queue', {
       campaignId,
