@@ -277,12 +277,26 @@ export async function listCampaigns(storeId, filters = {}) {
     prisma.campaign.count({ where }),
   ]);
 
+  // Get recipient counts for all campaigns in parallel
+  const campaignsWithRecipientCounts = await Promise.all(
+    campaigns.map(async (campaign) => {
+      const recipientCount = await prisma.campaignRecipient.count({
+        where: { campaignId: campaign.id },
+      });
+      return {
+        ...campaign,
+        recipientCount,
+        totalRecipients: recipientCount, // Alias for backward compatibility
+      };
+    }),
+  );
+
   const totalPages = Math.ceil(total / parseInt(pageSize));
 
   logger.info('Campaigns listed successfully', { storeId, total, returned: campaigns.length });
 
   return {
-    campaigns,
+    campaigns: campaignsWithRecipientCounts,
     pagination: {
       page: parseInt(page),
       pageSize: parseInt(pageSize),
@@ -320,9 +334,18 @@ export async function getCampaignById(storeId, campaignId) {
     throw new NotFoundError('Campaign');
   }
 
-  logger.info('Campaign retrieved successfully', { storeId, campaignId });
+  // Get total recipient count from CampaignRecipient records
+  const recipientCount = await prisma.campaignRecipient.count({
+    where: { campaignId },
+  });
 
-  return campaign;
+  logger.info('Campaign retrieved successfully', { storeId, campaignId, recipientCount });
+
+  return {
+    ...campaign,
+    recipientCount,
+    totalRecipients: recipientCount, // Alias for backward compatibility
+  };
 }
 
 /**
@@ -576,30 +599,23 @@ export async function sendCampaign(storeId, campaignId) {
   }
 
   // Get recipient count first (for credit validation)
-  // Use count query instead of loading all recipients
-  const base = normalizeAudienceQuery(campaign.audience);
+  // Use the same logic as resolveRecipients to ensure consistency
   let recipientCount = 0;
-
-  if (base) {
-    recipientCount = await prisma.contact.count({
-      where: { shopId: storeId, ...base },
-    });
-  } else if (campaign.audience.startsWith('segment:')) {
-    const segmentId = campaign.audience.split(':')[1];
-    recipientCount = await prisma.segmentMembership.count({
-      where: {
-        segmentId,
-        contact: {
-          shopId: storeId,
-          smsConsent: 'opted_in',
-        },
-      },
-    });
-  }
+  
+  // Resolve recipients to get actual count (ensures consistency with what will be queued)
+  const recipients = await resolveRecipients(storeId, campaign.audience);
+  recipientCount = recipients.length;
 
   if (recipientCount === 0) {
     throw new ValidationError('No recipients found for this campaign');
   }
+
+  logger.info('Recipient count calculated', {
+    storeId,
+    campaignId,
+    audience: campaign.audience,
+    recipientCount,
+  });
 
   // Validate and consume credits upfront
   // If campaign fails before any SMS is sent, credits will be refunded
@@ -710,10 +726,25 @@ export async function sendCampaign(storeId, campaignId) {
         },
       }));
 
-      for (let i = 0; i < smsJobs.length; i += BATCH_SIZE) {
-        const batch = smsJobs.slice(i, i + BATCH_SIZE);
-        await smsQueue.addBulk(batch);
-        totalQueued += batch.length;
+      if (smsJobs.length > 0) {
+        for (let i = 0; i < smsJobs.length; i += BATCH_SIZE) {
+          const batch = smsJobs.slice(i, i + BATCH_SIZE);
+          await smsQueue.addBulk(batch);
+          totalQueued += batch.length;
+        }
+        logger.info('SMS jobs queued', {
+          storeId,
+          campaignId,
+          totalQueued,
+          batchCount: Math.ceil(smsJobs.length / BATCH_SIZE),
+        });
+      } else {
+        logger.warn('No SMS jobs to queue', {
+          storeId,
+          campaignId,
+          recipientCount,
+          recipientsLength: recipients.length,
+        });
       }
     }
 
