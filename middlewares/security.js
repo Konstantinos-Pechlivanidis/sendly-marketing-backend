@@ -189,7 +189,6 @@ export const validateContentType = (req, res, next) => {
       '/campaigns/:id/prepare',
       '/templates/:id/track',
       '/automations/sync',
-      '/automation-webhooks/trigger',
     ];
     
     // Check if this is a no-body route
