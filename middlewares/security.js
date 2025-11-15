@@ -186,6 +186,10 @@ export const validateContentType = (req, res, next) => {
     const noBodyRoutes = [
       '/campaigns/:id/send',
       '/campaigns/:id/retry-failed',
+      '/campaigns/:id/prepare',
+      '/templates/:id/track',
+      '/automations/sync',
+      '/automation-webhooks/trigger',
     ];
     
     // Check if this is a no-body route
