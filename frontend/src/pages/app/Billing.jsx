@@ -95,7 +95,7 @@ export default function Billing() {
         description="Manage your SMS credits and billing"
         path="/app/billing"
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-10 bg-neutral-bg-base">
+      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
         {/* Header */}
         <PageHeader
           title="Billing"

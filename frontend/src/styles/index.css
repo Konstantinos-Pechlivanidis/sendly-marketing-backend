@@ -10,6 +10,11 @@
   body {
     @apply bg-bg-dark text-primary-light font-sans antialiased;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+  
+  html {
+    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6 {

@@ -75,7 +75,6 @@ export default function Login() {
 
             <form onSubmit={handleLogin} className="space-y-6">
               <GlassInput
-                label="Shopify Store Domain"
                 name="shop"
                 type="text"
                 value={shopDomain}

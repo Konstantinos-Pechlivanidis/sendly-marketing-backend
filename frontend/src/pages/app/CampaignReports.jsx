@@ -42,8 +42,8 @@ export default function CampaignReports() {
         description="Detailed campaign performance reports"
         path="/app/reports/campaigns"
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-10 bg-neutral-bg-base">
-        <div className="max-w-[1400px] mx-auto">
+      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
+        <div className="max-w-[1400px] mx-auto w-full">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-4">

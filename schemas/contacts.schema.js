@@ -32,22 +32,21 @@ const smsConsentSchema = z.enum(['opted_in', 'opted_out', 'unknown'], {
 });
 
 // Birth date validation
-const birthDateSchema = z.string()
-  .trim()
-  .datetime({ message: 'Birth date must be a valid ISO 8601 datetime string' })
-  .refine((date) => {
-    const birthDate = new Date(date);
-    if (isNaN(birthDate.getTime())) {
-      return false;
-    }
-    return birthDate <= new Date();
-  }, {
-    message: 'Birth date cannot be in the future',
-  })
-  .optional()
-  .refine((val) => !val || val.length > 0, {
-    message: 'Birth date cannot be an empty string',
-  });
+const birthDateSchema = z.union([
+  z.string()
+    .trim()
+    .datetime({ message: 'Birth date must be a valid ISO 8601 datetime string' })
+    .refine((date) => {
+      const birthDate = new Date(date);
+      if (isNaN(birthDate.getTime())) {
+        return false;
+      }
+      return birthDate <= new Date();
+    }, {
+      message: 'Birth date cannot be in the future',
+    }),
+  z.null(),
+]).optional();
 
 // Tags validation
 const tagsSchema = z.array(z.string()).default([]);
@@ -83,7 +82,7 @@ export const updateContactSchema = z.object({
   phoneE164: phoneE164Schema.optional(),
   email: emailSchema,
   gender: genderSchema,
-  birthDate: birthDateSchema.nullable(),
+  birthDate: birthDateSchema,
   smsConsent: smsConsentSchema.optional(),
   tags: tagsSchema.optional(),
 }).refine((data) => {

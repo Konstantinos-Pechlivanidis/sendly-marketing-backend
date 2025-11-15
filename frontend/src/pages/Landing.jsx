@@ -74,7 +74,7 @@ export default function Landing() {
       <StructuredData data={structuredData} />
       <div className="min-h-screen">
         {/* Hero Section */}
-        <section className="relative pt-32 pb-24 px-4 lg:px-8 overflow-hidden">
+        <section className="relative pt-36 pb-24 px-4 lg:px-8 overflow-hidden">
           {/* Background gradient with blobs */}
           <div className="absolute inset-0 bg-gradient-to-b from-bg-dark via-surface-dark to-bg-dark">
             <div className="absolute top-20 right-20 w-96 h-96 bg-ice-accent/10 rounded-full blur-3xl animate-float" />

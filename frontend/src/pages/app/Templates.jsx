@@ -75,7 +75,7 @@ export default function Templates() {
         description="Browse and use SMS message templates"
         path="/app/templates"
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-10 bg-neutral-bg-base">
+      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
         {/* Header */}
         <PageHeader
           title="Templates"

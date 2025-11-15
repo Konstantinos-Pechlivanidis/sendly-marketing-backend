@@ -23,14 +23,33 @@ export default function GlassDatePicker({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(value ? new Date(value) : null);
-  const [tempDate, setTempDate] = useState(value ? new Date(value).toISOString().split('T')[0] : '');
+  const [tempDate, setTempDate] = useState(() => {
+    if (!value) return '';
+    try {
+      const date = new Date(value);
+      if (isNaN(date.getTime())) return '';
+      return date.toISOString().split('T')[0];
+    } catch {
+      return '';
+    }
+  });
   const pickerRef = useRef(null);
 
   useEffect(() => {
-    if (value) {
-      const date = new Date(value);
-      setSelectedDate(date);
-      setTempDate(date.toISOString().split('T')[0]);
+    if (value && value.trim()) {
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          setSelectedDate(date);
+          setTempDate(date.toISOString().split('T')[0]);
+        } else {
+          setSelectedDate(null);
+          setTempDate('');
+        }
+      } catch {
+        setSelectedDate(null);
+        setTempDate('');
+      }
     } else {
       setSelectedDate(null);
       setTempDate('');
@@ -144,6 +163,7 @@ export default function GlassDatePicker({
             spring-smooth shadow-sm
             hover:border-neutral-border hover:shadow-md
             text-left flex items-center justify-between
+            min-h-[44px]
             ${!displayValue && 'text-neutral-text-secondary'}
           `}
           aria-label={label || 'Select date'}
@@ -167,40 +187,50 @@ export default function GlassDatePicker({
       </div>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 p-6 rounded-xl glass border border-neutral-border/60 z-10 min-w-[360px] shadow-glass-light-lg">
-          <div className="space-y-6">
-            {/* Preset Buttons */}
-            <div>
-              <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Quick Select</p>
-              <div className="grid grid-cols-2 gap-2">
-                {presets.map((preset) => (
-                  <GlassButton
-                    key={preset.id}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => applyPreset(preset.id)}
-                    className="justify-start text-left text-xs"
-                  >
-                    {preset.label}
-                  </GlassButton>
-                ))}
+        <>
+          {/* Mobile Backdrop */}
+          <div 
+            className="fixed inset-0 bg-neutral-text-primary/20 backdrop-blur-sm z-[9] lg:hidden"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+          
+          {/* Dropdown Panel */}
+          <div className="absolute top-full left-0 right-0 sm:right-auto mt-2 p-4 sm:p-6 rounded-xl glass border border-neutral-border/60 z-10 w-full sm:w-auto sm:min-w-[360px] max-w-full shadow-glass-light-lg">
+            <div className="space-y-4 sm:space-y-6">
+              {/* Preset Buttons */}
+              <div>
+                <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Quick Select</p>
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
+                  {presets.map((preset) => (
+                    <GlassButton
+                      key={preset.id}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyPreset(preset.id)}
+                      className="justify-start text-left text-xs min-h-[44px]"
+                    >
+                      {preset.label}
+                    </GlassButton>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date Input */}
+              <div className="pt-4 border-t border-neutral-border/60">
+                <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Custom Date</p>
+                <input
+                  type="date"
+                  value={tempDate}
+                  onChange={handleDateChange}
+                  min={minDate ? new Date(minDate).toISOString().split('T')[0] : undefined}
+                  max={maxDate ? new Date(maxDate).toISOString().split('T')[0] : undefined}
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-surface-primary border border-neutral-border/60 text-neutral-text-primary focus-ring focus:border-ice-primary focus:shadow-glow-ice-light text-base sm:text-sm min-h-[44px]"
+                />
               </div>
             </div>
-
-            {/* Date Input */}
-            <div className="pt-4 border-t border-neutral-border/60">
-              <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Custom Date</p>
-              <input
-                type="date"
-                value={tempDate}
-                onChange={handleDateChange}
-                min={minDate ? new Date(minDate).toISOString().split('T')[0] : undefined}
-                max={maxDate ? new Date(maxDate).toISOString().split('T')[0] : undefined}
-                className="w-full px-4 py-3 rounded-xl bg-neutral-surface-primary border border-neutral-border/60 text-neutral-text-primary focus-ring focus:border-ice-primary focus:shadow-glow-ice-light"
-              />
-            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

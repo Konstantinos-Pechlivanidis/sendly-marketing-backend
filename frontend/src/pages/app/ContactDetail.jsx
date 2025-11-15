@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { isValidPhoneNumber } from 'react-phone-number-input';
@@ -23,10 +23,11 @@ import { format } from 'date-fns';
 
 export default function ContactDetail() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const toast = useToastContext();
   const isNewContact = !id || id === 'new';
-  const [isEditing, setIsEditing] = useState(isNewContact);
+  const [isEditing, setIsEditing] = useState(isNewContact || location.state?.edit === true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -54,7 +55,7 @@ export default function ContactDetail() {
         phone: contact.phoneE164 || '', // Backend returns phoneE164
         email: contact.email || '',
         gender: contact.gender || '',
-        birthDate: contact.birthDate ? new Date(contact.birthDate).toISOString().split('T')[0] : '',
+        birthDate: contact.birthDate ? new Date(contact.birthDate).toISOString() : '',
         smsConsent: contact.smsConsent || 'unknown',
         tags: contact.tags || [],
       });
@@ -90,13 +91,21 @@ export default function ContactDetail() {
       } else {
         delete newErrors.email;
       }
-    } else if (fieldName === 'birthDate' && formData.birthDate) {
-      const birthDate = new Date(formData.birthDate);
-      if (birthDate > new Date()) {
-        newErrors.birthDate = 'Birth date cannot be in the future';
-      } else {
-        delete newErrors.birthDate;
+    } else if (fieldName === 'birthDate' && formData.birthDate && formData.birthDate.trim()) {
+      try {
+        const birthDate = new Date(formData.birthDate);
+        if (isNaN(birthDate.getTime())) {
+          newErrors.birthDate = 'Invalid date format';
+        } else if (birthDate > new Date()) {
+          newErrors.birthDate = 'Birth date cannot be in the future';
+        } else {
+          delete newErrors.birthDate;
+        }
+      } catch (error) {
+        newErrors.birthDate = 'Invalid date format';
       }
+    } else if (fieldName === 'birthDate' && !formData.birthDate) {
+      delete newErrors.birthDate;
     }
     
     setErrors(newErrors);
@@ -122,10 +131,16 @@ export default function ContactDetail() {
       }
     }
     
-    if (formData.birthDate) {
-      const birthDate = new Date(formData.birthDate);
-      if (birthDate > new Date()) {
-        newErrors.birthDate = 'Birth date cannot be in the future';
+    if (formData.birthDate && formData.birthDate.trim()) {
+      try {
+        const birthDate = new Date(formData.birthDate);
+        if (isNaN(birthDate.getTime())) {
+          newErrors.birthDate = 'Invalid date format';
+        } else if (birthDate > new Date()) {
+          newErrors.birthDate = 'Birth date cannot be in the future';
+        }
+      } catch (error) {
+        newErrors.birthDate = 'Invalid date format';
       }
     }
     
@@ -160,7 +175,7 @@ export default function ContactDetail() {
         phoneE164: formData.phone?.trim() || null, // react-phone-number-input already returns E.164 format
         email: formData.email?.trim() || null,
         gender: formData.gender || null,
-        birthDate: formData.birthDate ? new Date(formData.birthDate).toISOString() : null,
+        birthDate: formData.birthDate && formData.birthDate.trim() ? (formData.birthDate.includes('T') ? formData.birthDate : new Date(formData.birthDate).toISOString()) : null,
         smsConsent: formData.smsConsent || 'unknown',
         tags: formData.tags || [],
       };
@@ -212,8 +227,8 @@ export default function ContactDetail() {
 
   if (!isNewContact && error && !contact) {
     return (
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-10 bg-neutral-bg-base">
-        <div className="max-w-[1200px] mx-auto">
+      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
+        <div className="max-w-[1200px] mx-auto w-full">
           <ErrorState
             title="Contact Not Found"
             message={error?.message || 'The contact you are looking for does not exist.'}
@@ -232,8 +247,8 @@ export default function ContactDetail() {
         description="View and edit contact details"
         path={isNewContact ? '/app/contacts/new' : `/app/contacts/${id}`}
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-10 bg-neutral-bg-base">
-        <div className="max-w-[1200px] mx-auto">
+      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
+        <div className="max-w-[1200px] mx-auto w-full">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-4">
@@ -419,13 +434,15 @@ export default function ContactDetail() {
                       name="birthDate"
                       value={formData.birthDate}
                       onChange={(e) => {
+                        // GlassDatePicker returns ISO datetime string or empty string
                         setFormData((prev) => ({ ...prev, birthDate: e.target.value || '' }));
                         if (errors.birthDate) {
                           setErrors((prev) => ({ ...prev, birthDate: '' }));
                         }
                       }}
+                      onBlur={() => handleBlur('birthDate')}
                       error={errors.birthDate}
-                      maxDate={new Date().toISOString().split('T')[0]}
+                      maxDate={new Date().toISOString()}
                     />
                     
                     <GlassSelectCustom

@@ -102,7 +102,7 @@ export default function Contacts() {
         description="Manage your SMS marketing contacts"
         path="/app/contacts"
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-10 bg-neutral-bg-base">
+      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
         {/* Header */}
         <PageHeader
           title="Contacts"
@@ -166,145 +166,169 @@ export default function Contacts() {
 
             {/* Filters and Search */}
             <GlassCard className="p-4 sm:p-6 mb-6 sm:mb-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <GlassInput
-                  label="Search Contacts"
-                  type="text"
-                  placeholder="Search by name, phone, or email..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setPage(1);
-                  }}
-                />
-                <GlassSelectCustom
-                  label="Filter by Consent Status"
-                  value={consentFilter}
-                  onChange={(e) => {
-                    setConsentFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  options={[
-                    { value: '', label: 'All Statuses' },
-                    { value: 'opted_in', label: 'Opted In' },
-                    { value: 'opted_out', label: 'Opted Out' },
-                    { value: 'pending', label: 'Pending' },
-                  ]}
-                />
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon name="filter" size="sm" variant="ice" />
+                  <h3 className="text-lg font-semibold text-neutral-text-primary">Filters & Search</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <GlassInput
+                    label="Search Contacts"
+                    type="text"
+                    placeholder="Search by name, phone, or email..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }}
+                  />
+                  <GlassSelectCustom
+                    label="Filter by Consent Status"
+                    value={consentFilter}
+                    onChange={(e) => {
+                      setConsentFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    options={[
+                      { value: '', label: 'All Statuses' },
+                      { value: 'opted_in', label: 'Opted In' },
+                      { value: 'opted_out', label: 'Opted Out' },
+                      { value: 'unknown', label: 'Unknown' },
+                    ]}
+                  />
+                </div>
               </div>
             </GlassCard>
 
             {/* Contacts Table */}
             {contacts.length === 0 ? (
-          <EmptyState
-            icon="segment"
-            title="No contacts found"
-            message={searchQuery || consentFilter
-              ? 'Try adjusting your filters'
-              : 'Import contacts or add your first contact to get started'}
-            action={!searchQuery && !consentFilter ? (
-              <div className="flex gap-4 justify-center">
-                <GlassButton variant="ghost" size="lg" onClick={() => setIsImportModalOpen(true)}>
-                  <span className="flex items-center gap-2">
-                    <Icon name="import" size="sm" variant="ice" />
-                    Import Contacts
-                  </span>
-                </GlassButton>
-                <GlassButton variant="primary" size="lg" as={Link} to="/app/contacts/new" className="group">
-                  <span className="flex items-center gap-2">
-                    <Icon name="segment" size="sm" variant="ice" />
-                    Add Contact
-                    <Icon name="arrowRight" size="sm" className="group-hover:translate-x-1 transition-transform" />
-                  </span>
-                </GlassButton>
-              </div>
-            ) : undefined}
-          />
-        ) : (
-          <>
-            <GlassCard className="p-0 overflow-hidden">
-              <GlassTable>
-                <GlassTableHeader>
-                  <GlassTableRow>
-                    <GlassTableHeaderCell>Name</GlassTableHeaderCell>
-                    <GlassTableHeaderCell>Phone</GlassTableHeaderCell>
-                    <GlassTableHeaderCell>Email</GlassTableHeaderCell>
-                    <GlassTableHeaderCell>Tags</GlassTableHeaderCell>
-                    <GlassTableHeaderCell>Consent Status</GlassTableHeaderCell>
-                    <GlassTableHeaderCell>Actions</GlassTableHeaderCell>
-                  </GlassTableRow>
-                </GlassTableHeader>
-                <GlassTableBody>
-                  {contacts.map((contact) => (
-                    <GlassTableRow key={contact.id}>
-                      <GlassTableCell>
-                        <Link
-                          to={`/app/contacts/${contact.id}`}
-                          className="font-semibold text-ice-primary hover:underline"
-                        >
-                          {contact.firstName && contact.lastName
-                            ? `${contact.firstName} ${contact.lastName}`
-                            : contact.name || 'Unnamed Contact'}
-                        </Link>
-                      </GlassTableCell>
-                      <GlassTableCell>
-                        <span className="text-neutral-text-primary font-medium">{contact.phoneE164 || contact.phone || '-'}</span>
-                      </GlassTableCell>
-                      <GlassTableCell>
-                        <span className="text-neutral-text-primary font-medium">{contact.email || '-'}</span>
-                      </GlassTableCell>
-                      <GlassTableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {contact.tags && contact.tags.length > 0 ? (
-                            contact.tags.slice(0, 2).map((tag, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-1 text-xs rounded-full bg-ice-soft/60 border border-ice-primary/20 text-ice-primary font-medium"
+              <EmptyState
+                icon="segment"
+                title="No contacts found"
+                message={searchQuery || consentFilter
+                  ? 'Try adjusting your filters'
+                  : 'Import contacts or add your first contact to get started'}
+                action={!searchQuery && !consentFilter ? (
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <GlassButton variant="ghost" size="lg" onClick={() => setIsImportModalOpen(true)}>
+                      <span className="flex items-center gap-2">
+                        <Icon name="import" size="sm" variant="ice" />
+                        Import Contacts
+                      </span>
+                    </GlassButton>
+                    <GlassButton variant="primary" size="lg" as={Link} to="/app/contacts/new" className="group">
+                      <span className="flex items-center gap-2">
+                        <Icon name="segment" size="sm" variant="ice" />
+                        Add Contact
+                        <Icon name="arrowRight" size="sm" className="group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </GlassButton>
+                  </div>
+                ) : undefined}
+              />
+            ) : (
+              <>
+                <GlassCard className="p-0 overflow-hidden">
+                  <div className="p-4 sm:p-6 border-b border-neutral-border/40">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-neutral-text-primary">Contacts List</h3>
+                        <p className="text-sm text-neutral-text-secondary mt-1">
+                          {pagination.total || contacts.length} {pagination.total === 1 ? 'contact' : 'contacts'} total
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <GlassTable>
+                    <GlassTableHeader>
+                      <GlassTableRow>
+                        <GlassTableHeaderCell>Name</GlassTableHeaderCell>
+                        <GlassTableHeaderCell className="hidden sm:table-cell">Phone</GlassTableHeaderCell>
+                        <GlassTableHeaderCell className="hidden md:table-cell">Email</GlassTableHeaderCell>
+                        <GlassTableHeaderCell className="hidden lg:table-cell">Tags</GlassTableHeaderCell>
+                        <GlassTableHeaderCell>Status</GlassTableHeaderCell>
+                        <GlassTableHeaderCell>Actions</GlassTableHeaderCell>
+                      </GlassTableRow>
+                    </GlassTableHeader>
+                    <GlassTableBody>
+                      {contacts.map((contact) => (
+                        <GlassTableRow key={contact.id}>
+                          <GlassTableCell>
+                            <div className="flex flex-col">
+                              <Link
+                                to={`/app/contacts/${contact.id}`}
+                                className="font-semibold text-ice-primary hover:underline transition-colors"
                               >
-                                {tag}
+                                {contact.firstName && contact.lastName
+                                  ? `${contact.firstName} ${contact.lastName}`
+                                  : contact.firstName || contact.lastName || contact.name || 'Unnamed Contact'}
+                              </Link>
+                              <span className="text-xs text-neutral-text-secondary sm:hidden mt-1">
+                                {contact.phoneE164 || contact.phone || '-'}
                               </span>
-                            ))
-                          ) : (
-                            <span className="text-neutral-text-secondary text-sm">-</span>
-                          )}
-                          {contact.tags && contact.tags.length > 2 && (
-                            <span className="text-neutral-text-secondary text-xs">+{contact.tags.length - 2}</span>
-                          )}
-                        </div>
-                      </GlassTableCell>
-                      <GlassTableCell>
-                        <StatusBadge status={contact.smsConsent || contact.consentStatus} />
-                      </GlassTableCell>
-                      <GlassTableCell>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => navigate(`/app/contacts/${contact.id}`)}
-                            className="p-2.5 rounded-lg hover:bg-neutral-surface-secondary transition-colors focus-ring min-w-[44px] min-h-[44px] flex items-center justify-center"
-                            aria-label="View contact"
-                          >
-                            <Icon name="view" size="sm" variant="ice" />
-                          </button>
-                          <button
-                            onClick={() => navigate(`/app/contacts/${contact.id}/edit`)}
-                            className="p-2.5 rounded-lg hover:bg-neutral-surface-secondary transition-colors focus-ring min-w-[44px] min-h-[44px] flex items-center justify-center"
-                            aria-label="Edit contact"
-                          >
-                            <Icon name="edit" size="sm" variant="ice" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(contact.id, contact.name || contact.firstName || 'this contact')}
-                            className="p-2.5 rounded-lg hover:bg-red-50 transition-colors focus-ring min-w-[44px] min-h-[44px] flex items-center justify-center"
-                            aria-label="Delete contact"
-                          >
-                            <Icon name="delete" size="sm" className="text-red-500" />
-                          </button>
-                        </div>
-                      </GlassTableCell>
-                    </GlassTableRow>
-                  ))}
-                </GlassTableBody>
-              </GlassTable>
-            </GlassCard>
+                            </div>
+                          </GlassTableCell>
+                          <GlassTableCell className="hidden sm:table-cell">
+                            <span className="text-neutral-text-primary font-medium text-sm">{contact.phoneE164 || contact.phone || '-'}</span>
+                          </GlassTableCell>
+                          <GlassTableCell className="hidden md:table-cell">
+                            <span className="text-neutral-text-primary font-medium text-sm">{contact.email || '-'}</span>
+                          </GlassTableCell>
+                          <GlassTableCell className="hidden lg:table-cell">
+                            <div className="flex flex-wrap gap-1">
+                              {contact.tags && contact.tags.length > 0 ? (
+                                contact.tags.slice(0, 2).map((tag, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-2 py-0.5 text-xs rounded-full bg-ice-soft/60 border border-ice-primary/20 text-ice-primary font-medium"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-neutral-text-secondary text-xs">-</span>
+                              )}
+                              {contact.tags && contact.tags.length > 2 && (
+                                <span className="text-neutral-text-secondary text-xs">+{contact.tags.length - 2}</span>
+                              )}
+                            </div>
+                          </GlassTableCell>
+                          <GlassTableCell>
+                            <StatusBadge status={contact.smsConsent || contact.consentStatus} />
+                          </GlassTableCell>
+                          <GlassTableCell>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => navigate(`/app/contacts/${contact.id}`)}
+                                className="p-2 rounded-lg hover:bg-neutral-surface-secondary transition-colors focus-ring min-w-[40px] min-h-[40px] flex items-center justify-center"
+                                aria-label="View contact"
+                                title="View"
+                              >
+                                <Icon name="view" size="sm" variant="ice" />
+                              </button>
+                              <button
+                                onClick={() => navigate(`/app/contacts/${contact.id}`, { state: { edit: true } })}
+                                className="p-2 rounded-lg hover:bg-neutral-surface-secondary transition-colors focus-ring min-w-[40px] min-h-[40px] flex items-center justify-center"
+                                aria-label="Edit contact"
+                                title="Edit"
+                              >
+                                <Icon name="edit" size="sm" variant="ice" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(contact.id, contact.name || contact.firstName || contact.lastName || 'this contact')}
+                                className="p-2 rounded-lg hover:bg-red-50 transition-colors focus-ring min-w-[40px] min-h-[40px] flex items-center justify-center"
+                                aria-label="Delete contact"
+                                title="Delete"
+                              >
+                                <Icon name="delete" size="sm" className="text-red-500" />
+                              </button>
+                            </div>
+                          </GlassTableCell>
+                        </GlassTableRow>
+                      ))}
+                    </GlassTableBody>
+                  </GlassTable>
+                </GlassCard>
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (

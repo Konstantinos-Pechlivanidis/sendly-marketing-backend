@@ -243,7 +243,7 @@ export async function createContact(storeId, contactData) {
   }
 
   // Validate email if provided
-  if (contactData.email && !isValidEmail(contactData.email)) {
+  if (contactData.email && contactData.email.trim() && !isValidEmail(contactData.email.trim())) {
     throw new ValidationError('Invalid email format');
   }
 
@@ -330,18 +330,19 @@ export async function updateContact(storeId, contactId, contactData) {
 
   // Validate and update email if provided
   if (contactData.email !== undefined) {
-    if (contactData.email && !isValidEmail(contactData.email)) {
+    const emailValue = contactData.email && contactData.email.trim() ? contactData.email.trim() : null;
+    if (emailValue && !isValidEmail(emailValue)) {
       throw new ValidationError('Invalid email format');
     }
 
-    if (contactData.email) {
-      const { hasDuplicate } = await checkDuplicates(storeId, null, contactData.email, contactId);
+    if (emailValue) {
+      const { hasDuplicate } = await checkDuplicates(storeId, null, emailValue, contactId);
       if (hasDuplicate) {
-        throw new ConflictError(`Contact already exists with email: ${contactData.email}`);
+        throw new ConflictError(`Contact already exists with email: ${emailValue}`);
       }
     }
 
-    updateData.email = contactData.email;
+    updateData.email = emailValue;
   }
 
   // Validate gender if provided
@@ -361,12 +362,16 @@ export async function updateContact(storeId, contactId, contactData) {
   }
 
   // Update other fields
-  if (contactData.firstName !== undefined) updateData.firstName = contactData.firstName;
-  if (contactData.lastName !== undefined) updateData.lastName = contactData.lastName;
+  if (contactData.firstName !== undefined) {
+    updateData.firstName = contactData.firstName && contactData.firstName.trim() ? contactData.firstName.trim() : null;
+  }
+  if (contactData.lastName !== undefined) {
+    updateData.lastName = contactData.lastName && contactData.lastName.trim() ? contactData.lastName.trim() : null;
+  }
   if (contactData.birthDate !== undefined) {
     updateData.birthDate = contactData.birthDate ? new Date(contactData.birthDate) : null;
   }
-  if (contactData.tags !== undefined) updateData.tags = contactData.tags;
+  if (contactData.tags !== undefined) updateData.tags = contactData.tags || [];
 
   // Update contact
   const contact = await prisma.contact.update({

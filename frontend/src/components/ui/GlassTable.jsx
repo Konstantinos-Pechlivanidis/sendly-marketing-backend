@@ -7,12 +7,12 @@ import { clsx } from 'clsx';
 export default function GlassTable({ children, className, ...props }) {
   return (
     <div 
-      className="overflow-x-auto -mx-4 sm:mx-0" 
+      className="overflow-x-auto w-full" 
       role="region" 
       aria-label="Data table" 
       tabIndex={0}
     >
-      <div className="inline-block min-w-full align-middle px-4 sm:px-0">
+      <div className="inline-block min-w-full align-middle">
         <table
           className={clsx(
             'w-full border-collapse min-w-[640px] sm:min-w-0',

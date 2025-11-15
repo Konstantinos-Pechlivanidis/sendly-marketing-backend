@@ -112,7 +112,6 @@ export default function Install() {
               
               <form onSubmit={handleOAuthInstall} className="space-y-4">
                 <GlassInput
-                  label="Shopify Store Domain"
                   name="shop"
                   type="text"
                   value={shopDomain}

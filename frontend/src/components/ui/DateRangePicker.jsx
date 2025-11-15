@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import GlassInput from './GlassInput';
 import GlassButton from './GlassButton';
 import Icon from './Icon';
 import { format } from 'date-fns';
@@ -33,6 +32,8 @@ export default function DateRangePicker({
     const value = e.target.value;
     if (value) {
       onStartDateChange(new Date(value));
+    } else {
+      onStartDateChange(null);
     }
   };
 
@@ -40,6 +41,8 @@ export default function DateRangePicker({
     const value = e.target.value;
     if (value) {
       onEndDateChange(new Date(value));
+    } else {
+      onEndDateChange(null);
     }
   };
 
@@ -112,7 +115,7 @@ export default function DateRangePicker({
     <div className={`relative ${className}`} ref={pickerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-3 rounded-xl bg-neutral-surface-primary border border-neutral-border/60 hover:border-ice-primary focus-ring focus:shadow-glow-ice-light spring-smooth shadow-sm text-sm text-neutral-text-primary font-medium"
+        className="flex items-center gap-2 px-4 py-3 rounded-xl bg-neutral-surface-primary border border-neutral-border/60 hover:border-ice-primary focus-ring focus:shadow-glow-ice-light spring-smooth shadow-sm text-sm text-neutral-text-primary font-medium min-h-[44px] w-full sm:w-auto"
         aria-label="Select date range"
         aria-expanded={isOpen}
       >
@@ -130,46 +133,64 @@ export default function DateRangePicker({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 p-6 rounded-xl glass border border-neutral-border/60 z-10 min-w-[360px] shadow-glass-light-lg">
-          <div className="space-y-6">
-            {/* Preset Buttons */}
-            <div>
-              <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Quick Select</p>
-              <div className="grid grid-cols-2 gap-2">
-                {presets.map((preset) => (
-                  <GlassButton
-                    key={preset.id}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => applyPreset(preset.id)}
-                    className="justify-start text-left text-xs"
-                  >
-                    {preset.label}
-                  </GlassButton>
-                ))}
+        <>
+          {/* Mobile Backdrop */}
+          <div 
+            className="fixed inset-0 bg-neutral-text-primary/20 backdrop-blur-sm z-[9] lg:hidden"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+          
+          {/* Dropdown Panel */}
+          <div className="absolute top-full left-0 right-0 sm:right-auto mt-2 p-4 sm:p-6 rounded-xl glass border border-neutral-border/60 z-10 w-full sm:w-auto sm:min-w-[360px] max-w-full shadow-glass-light-lg">
+            <div className="space-y-4 sm:space-y-6">
+              {/* Preset Buttons */}
+              <div>
+                <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Quick Select</p>
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
+                  {presets.map((preset) => (
+                    <GlassButton
+                      key={preset.id}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyPreset(preset.id)}
+                      className="justify-start text-left text-xs min-h-[44px]"
+                    >
+                      {preset.label}
+                    </GlassButton>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Custom Date Inputs */}
-            <div className="pt-4 border-t border-neutral-border/60">
-              <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Custom Range</p>
-              <div className="space-y-4">
-                <GlassInput
-                  label="Start Date"
-                  type="date"
-                  value={formatDate(startDate)}
-                  onChange={handleStartDateChange}
-                />
-                <GlassInput
-                  label="End Date"
-                  type="date"
-                  value={formatDate(endDate)}
-                  onChange={handleEndDateChange}
-                />
+              {/* Custom Date Inputs */}
+              <div className="pt-4 border-t border-neutral-border/60">
+                <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Custom Range</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-text-secondary mb-2">Start Date</label>
+                    <input
+                      type="date"
+                      value={formatDate(startDate)}
+                      onChange={handleStartDateChange}
+                      max={endDate ? formatDate(endDate) : undefined}
+                      className="w-full px-4 py-3 rounded-xl bg-neutral-surface-primary border border-neutral-border/60 text-neutral-text-primary focus-ring focus:border-ice-primary focus:shadow-glow-ice-light text-base sm:text-sm min-h-[44px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-text-secondary mb-2">End Date</label>
+                    <input
+                      type="date"
+                      value={formatDate(endDate)}
+                      onChange={handleEndDateChange}
+                      min={startDate ? formatDate(startDate) : undefined}
+                      className="w-full px-4 py-3 rounded-xl bg-neutral-surface-primary border border-neutral-border/60 text-neutral-text-primary focus-ring focus:border-ice-primary focus:shadow-glow-ice-light text-base sm:text-sm min-h-[44px]"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
