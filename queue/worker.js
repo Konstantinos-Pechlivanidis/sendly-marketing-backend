@@ -79,7 +79,14 @@ export const automationWorker = skipWorkers ? new MockWorker('automation-trigger
 export const deliveryStatusWorker = skipWorkers ? new MockWorker('delivery-status-update', () => {}, {}) : new Worker(
   'delivery-status-update',
   async (job) => {
-    logger.info(`Processing delivery status update job ${job.id}`, { jobData: job.data });
+    logger.info(`Processing delivery status update job ${job.id}`, { jobData: job.data, jobName: job.name });
+    // Handle both single campaign update and all campaigns update based on job name
+    if (job.name === 'update-campaign-status') {
+      return await handleCampaignStatusUpdate(job);
+    } else if (job.name === 'update-all-campaigns-status') {
+      return await handleAllCampaignsStatusUpdate(job);
+    }
+    // Default to single campaign update for backward compatibility
     return await handleCampaignStatusUpdate(job);
   },
   {
