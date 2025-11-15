@@ -373,15 +373,33 @@ export async function updateContact(storeId, contactId, contactData) {
   }
   if (contactData.tags !== undefined) updateData.tags = contactData.tags || [];
 
+  // Check if there's anything to update
+  if (Object.keys(updateData).length === 0) {
+    logger.warn('No fields to update', { storeId, contactId });
+    // Return existing contact if no updates
+    return existing;
+  }
+
   // Update contact
-  const contact = await prisma.contact.update({
-    where: { id: contactId },
-    data: updateData,
-  });
+  try {
+    const contact = await prisma.contact.update({
+      where: { id: contactId },
+      data: updateData,
+    });
 
-  logger.info('Contact updated successfully', { storeId, contactId });
+    logger.info('Contact updated successfully', { storeId, contactId });
 
-  return contact;
+    return contact;
+  } catch (error) {
+    logger.error('Failed to update contact in database', {
+      storeId,
+      contactId,
+      updateData,
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
 }
 
 /**
