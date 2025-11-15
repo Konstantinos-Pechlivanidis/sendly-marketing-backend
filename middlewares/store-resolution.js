@@ -60,9 +60,12 @@ export async function resolveStore(req, res, next) {
 
           logger.debug('Store resolved from Shopify session token', { storeId, shopDomain });
         } catch (shopifyError) {
-          // Neither token type worked, continue to other methods
+          // Neither token type worked, log for debugging
           logger.debug('Token verification failed, trying other methods', {
-            error: shopifyError.message,
+            jwtError: jwtError.message,
+            shopifyError: shopifyError.message,
+            hasAuthHeader: !!req.headers.authorization,
+            tokenLength: token?.length,
           });
         }
       }

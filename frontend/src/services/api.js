@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_URL, TOKEN_KEY } from '../utils/constants';
+import { API_URL, TOKEN_KEY, STORE_KEY } from '../utils/constants';
 
 // Create axios instance
 const api = axios.create({
@@ -10,12 +10,25 @@ const api = axios.create({
   timeout: 30000, // 30 seconds timeout
 });
 
-// Request interceptor - add auth token
+// Request interceptor - add auth token and shop domain
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Add shop domain header as fallback if store info is available
+    try {
+      const storeInfo = localStorage.getItem(STORE_KEY);
+      if (storeInfo) {
+        const store = JSON.parse(storeInfo);
+        if (store.shopDomain) {
+          config.headers['X-Shopify-Shop-Domain'] = store.shopDomain;
+        }
+      }
+    } catch (error) {
+      // Silently fail - invalid store info in localStorage
     }
     
     // Store request start time for duration calculation

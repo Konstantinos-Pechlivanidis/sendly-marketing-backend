@@ -65,6 +65,11 @@ export default function AuthCallback() {
               };
               // Save basic store info from token
               localStorage.setItem(STORE_KEY, JSON.stringify(storeInfo));
+            } else if (payload.storeId) {
+              // If we have storeId but no shopDomain, try to get it from backend
+              storeInfo = {
+                id: payload.storeId,
+              };
             }
           }
         } catch (decodeError) {
@@ -77,27 +82,50 @@ export default function AuthCallback() {
           
           if (response && response.store) {
             // Save full store info from backend
-            localStorage.setItem(STORE_KEY, JSON.stringify(response.store));
-            storeInfo = response.store;
+            const fullStoreInfo = {
+              id: response.store.id,
+              shopDomain: response.store.shopDomain || response.store.domain || storeInfo?.shopDomain,
+              shopName: response.store.shopName || response.store.name,
+              credits: response.store.credits,
+              currency: response.store.currency,
+            };
+            localStorage.setItem(STORE_KEY, JSON.stringify(fullStoreInfo));
+            storeInfo = fullStoreInfo;
           }
         } catch (verifyError) {
           // If verify fails but we have basic info from token, continue anyway
           // The token will be validated on the next API call
-          if (!storeInfo) {
-            // No store info at all - this is a problem
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(STORE_KEY);
+          if (!storeInfo || !storeInfo.shopDomain) {
+            // No store info with shopDomain - this is a problem
+            console.error('Token verification failed and no shopDomain available:', verifyError);
             
-            setStatus('error');
-            setError('Token verification failed. Please try logging in again.');
-            
-            setTimeout(() => {
-              navigate('/login', { 
-                replace: true,
-                state: { error: 'Token verification failed. Please try again.' } 
-              });
-            }, 2000);
-            return;
+            // Try one more time to get store info from a different endpoint
+            try {
+              // Try to get store info from settings endpoint as fallback
+              const settingsResponse = await api.get('/settings');
+              if (settingsResponse && settingsResponse.shopDomain) {
+                storeInfo = {
+                  ...storeInfo,
+                  shopDomain: settingsResponse.shopDomain,
+                };
+                localStorage.setItem(STORE_KEY, JSON.stringify(storeInfo));
+              }
+            } catch (settingsError) {
+              // If this also fails, we need to re-authenticate
+              localStorage.removeItem(TOKEN_KEY);
+              localStorage.removeItem(STORE_KEY);
+              
+              setStatus('error');
+              setError('Token verification failed. Please try logging in again.');
+              
+              setTimeout(() => {
+                navigate('/login', { 
+                  replace: true,
+                  state: { error: 'Token verification failed. Please try again.' } 
+                });
+              }, 2000);
+              return;
+            }
           }
           // We have basic info from token, continue with redirect
           console.warn('Token verify failed, but using token payload info:', verifyError);
