@@ -290,7 +290,7 @@ export default function GlassDatePicker({
               maxHeight: 'calc(100vh - 32px)',
             }}
           >
-            <div className="p-2 sm:p-4 overflow-y-auto max-h-[calc(100vh-64px)]">
+            <div className="p-2 sm:p-3 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 80px)' }}>
               <GlassCalendar
                 selectedDate={selectedDate}
                 onDateSelect={handleDateSelect}

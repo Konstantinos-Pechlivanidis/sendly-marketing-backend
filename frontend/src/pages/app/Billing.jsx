@@ -29,7 +29,7 @@ export default function Billing() {
 
   const { data: balanceData, isLoading: isLoadingBalance, error: balanceError } = useBillingBalance();
   const { data: settingsData } = useSettings();
-  const { data: packagesData, isLoading: isLoadingPackages, error: packagesError } = useBillingPackages(selectedCurrency);
+  const { data: packagesData, isLoading: isLoadingPackages, error: packagesError, refetch: refetchPackages } = useBillingPackages(selectedCurrency);
   const { data: historyData, isLoading: isLoadingHistory, error: historyError } = useBillingHistory({
     page,
     pageSize,
@@ -61,6 +61,13 @@ export default function Billing() {
       setSelectedCurrency(defaultCurrency);
     }
   }, [defaultCurrency, selectedCurrency]);
+
+  // Refetch packages when currency changes
+  useEffect(() => {
+    if (selectedCurrency) {
+      refetchPackages();
+    }
+  }, [selectedCurrency, refetchPackages]);
 
   const handlePurchase = async (packageId) => {
     try {

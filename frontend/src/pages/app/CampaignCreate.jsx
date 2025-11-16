@@ -82,7 +82,7 @@ export default function CampaignCreate() {
         message: existingCampaign.message || '',
         audience: existingCampaign.audience || 'all',
         scheduleType: scheduleType,
-        scheduleAt: existingCampaign.scheduleAt ? new Date(existingCampaign.scheduleAt).toISOString().slice(0, 16) : '',
+        scheduleAt: existingCampaign.scheduleAt ? new Date(existingCampaign.scheduleAt).toISOString() : '',
         discountId: existingCampaign.discountId || null,
         senderId: existingCampaign.senderId || '',
       });
@@ -203,15 +203,21 @@ export default function CampaignCreate() {
         if (isScheduled && formData.scheduleAt) {
           try {
             // Convert scheduled time from shop's timezone to UTC
+            // The date picker gives us an ISO string (from GlassDateTimePicker)
             let scheduleAtUTC;
             try {
-              const dateStr = formData.scheduleAt;
-              const [datePart, timePart] = dateStr.split('T');
-              const [year, month, day] = datePart.split('-').map(Number);
-              const [hour, minute] = timePart.split(':').map(Number);
+              // Parse the ISO string to get the date components
+              const selectedDate = new Date(formData.scheduleAt);
+              const year = selectedDate.getUTCFullYear();
+              const month = selectedDate.getUTCMonth() + 1;
+              const day = selectedDate.getUTCDate();
+              const hour = selectedDate.getUTCHours();
+              const minute = selectedDate.getUTCMinutes();
               
+              // Create a date object representing this time in UTC first
               const utcDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
               
+              // Get what this UTC time would be displayed as in the shop's timezone
               const shopDisplay = new Intl.DateTimeFormat('en-US', {
                 timeZone: shopTimezone,
                 year: 'numeric',
@@ -228,13 +234,16 @@ export default function CampaignCreate() {
               const shopHour = parseInt(shopDisplay.find(p => p.type === 'hour').value);
               const shopMinute = parseInt(shopDisplay.find(p => p.type === 'minute').value);
               
+              // Calculate the difference between what we want (shop time) and what we got
               const desiredShopTime = new Date(year, month - 1, day, hour, minute);
               const actualShopTime = new Date(shopYear, shopMonth - 1, shopDay, shopHour, shopMinute);
               const diff = desiredShopTime.getTime() - actualShopTime.getTime();
               
+              // Adjust the UTC date by the difference
               scheduleAtUTC = new Date(utcDate.getTime() - diff).toISOString();
             } catch (error) {
-              scheduleAtUTC = new Date(formData.scheduleAt + 'Z').toISOString();
+              // Fallback: treat the date as UTC
+              scheduleAtUTC = new Date(formData.scheduleAt).toISOString();
             }
             
             await scheduleCampaign.mutateAsync({
@@ -264,15 +273,21 @@ export default function CampaignCreate() {
         // For new campaigns
         if (isScheduled && formData.scheduleAt) {
           // Convert scheduled time from shop's timezone to UTC
-          // The date picker gives us a datetime-local string (YYYY-MM-DDTHH:mm)
-          // We need to interpret this time as being in the shop's timezone, then convert to UTC
+          // The date picker gives us an ISO string (from GlassDateTimePicker)
+          // We need to interpret the user's selection as being in the shop's timezone, then convert to UTC
           let scheduleAtUTC;
           try {
-            const dateStr = formData.scheduleAt; // Format: YYYY-MM-DDTHH:mm
-            // Parse the date string to extract components
-            const [datePart, timePart] = dateStr.split('T');
-            const [year, month, day] = datePart.split('-').map(Number);
-            const [hour, minute] = timePart.split(':').map(Number);
+            // Parse the ISO string to get the date components
+            const selectedDate = new Date(formData.scheduleAt);
+            const year = selectedDate.getUTCFullYear();
+            const month = selectedDate.getUTCMonth() + 1;
+            const day = selectedDate.getUTCDate();
+            const hour = selectedDate.getUTCHours();
+            const minute = selectedDate.getUTCMinutes();
+            
+            // Create a date string in the format expected by the shop's timezone
+            // We'll use a trick: create a date in the shop's timezone by formatting it
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
             
             // Create a date object representing this time in UTC first
             const utcDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
@@ -303,7 +318,7 @@ export default function CampaignCreate() {
             scheduleAtUTC = new Date(utcDate.getTime() - diff).toISOString();
           } catch (error) {
             // Fallback: treat the date as UTC (not ideal but safe)
-            scheduleAtUTC = new Date(formData.scheduleAt + 'Z').toISOString();
+            scheduleAtUTC = new Date(formData.scheduleAt).toISOString();
           }
           
           campaignData.scheduleAt = scheduleAtUTC;

@@ -61,13 +61,29 @@ export default function DateRangePicker({
           adjustedLeft = 16;
         }
 
-        // Adjust vertical position if dropdown would go off-screen
-        let adjustedTop = top;
-        const estimatedDropdownHeight = 600; // Approximate height of the dropdown
-        if (top + estimatedDropdownHeight > viewportHeight + scrollY) {
-          // Position above the button if there's not enough space below
-          adjustedTop = rect.top + scrollY - estimatedDropdownHeight - 8;
-          // Ensure it doesn't go above viewport
+        // Adjust vertical position - check if we should open above or below
+        const spaceBelow = viewportHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        const gap = 8; // Gap between button and dropdown
+        const estimatedDropdownHeight = 500; // Approximate height of calendar + controls
+        
+        let adjustedTop;
+        if (spaceBelow >= estimatedDropdownHeight + gap) {
+          // Enough space below - position below the button
+          adjustedTop = rect.bottom + scrollY + gap;
+        } else if (spaceAbove >= estimatedDropdownHeight + gap) {
+          // Not enough space below, but enough above - position above the button
+          adjustedTop = rect.top + scrollY - estimatedDropdownHeight - gap;
+        } else {
+          // Not enough space either way - position where there's more space
+          if (spaceBelow > spaceAbove) {
+            // More space below, but still not enough - position below with max-height
+            adjustedTop = rect.bottom + scrollY + gap;
+          } else {
+            // More space above - position above with max-height
+            adjustedTop = rect.top + scrollY - estimatedDropdownHeight - gap;
+          }
+          // Ensure it doesn't go outside viewport
           if (adjustedTop < scrollY + 16) {
             adjustedTop = scrollY + 16;
           }
@@ -307,7 +323,7 @@ export default function DateRangePicker({
               maxHeight: 'calc(100vh - 32px)',
             }}
           >
-            <div className="p-2 sm:p-4 space-y-4 sm:space-y-6 overflow-y-auto max-h-[calc(100vh-64px)]">
+            <div className="p-2 sm:p-3 space-y-3 sm:space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 80px)' }}>
               {/* Preset Buttons */}
               <div>
                 <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Quick Select</p>

@@ -372,7 +372,7 @@ export default function GlassDateTimePicker({
               maxHeight: 'calc(100vh - 32px)',
             }}
           >
-            <div className="p-2 sm:p-4 space-y-4 sm:space-y-6 overflow-y-auto max-h-[calc(100vh-64px)]">
+            <div className="p-2 sm:p-3 space-y-3 sm:space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 80px)' }}>
               {/* Preset Buttons */}
               <div>
                 <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Quick Select</p>

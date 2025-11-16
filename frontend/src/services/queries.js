@@ -568,9 +568,14 @@ export const useUpdateSettings = () => {
 
   return useMutation({
     mutationFn: (data) => api.put('/settings', data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['settings'], exact: false });
       queryClient.invalidateQueries({ queryKey: ['settings', 'account'] });
+      // If currency was updated, invalidate billing packages to refetch with new currency
+      if (variables.currency !== undefined) {
+        queryClient.invalidateQueries({ queryKey: ['billing', 'packages'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['billing', 'balance'] });
+      }
     },
   });
 };

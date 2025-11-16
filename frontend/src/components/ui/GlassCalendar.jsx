@@ -60,9 +60,9 @@ export default function GlassCalendar({
   };
 
   return (
-    <div className={`glass rounded-xl border border-neutral-border/60 p-4 sm:p-6 ${className}`}>
+    <div className={`glass rounded-xl border border-neutral-border/60 p-3 sm:p-4 ${className}`}>
       {/* Calendar Header */}
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
         <button
           type="button"
           onClick={goToPreviousMonth}
@@ -71,7 +71,7 @@ export default function GlassCalendar({
         >
           <Icon name="arrowLeft" size="sm" variant="ice" />
         </button>
-        <h3 className="text-base sm:text-lg font-semibold text-neutral-text-primary">
+        <h3 className="text-sm sm:text-base font-semibold text-neutral-text-primary">
           {format(currentMonth, 'MMMM yyyy')}
         </h3>
         <button
@@ -85,11 +85,11 @@ export default function GlassCalendar({
       </div>
 
       {/* Week Day Headers */}
-      <div className="grid grid-cols-7 gap-1 mb-2">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1.5 sm:mb-2">
         {weekDays.map((day) => (
           <div
             key={day}
-            className="text-xs font-semibold text-neutral-text-secondary text-center py-2"
+            className="text-[10px] sm:text-xs font-semibold text-neutral-text-secondary text-center py-1 sm:py-2"
           >
             {day}
           </div>
@@ -97,7 +97,7 @@ export default function GlassCalendar({
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
         {days.map((day, index) => {
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const isSelected = selectedDate && isSameDay(day, selectedDate);
@@ -111,8 +111,8 @@ export default function GlassCalendar({
               onClick={() => handleDateClick(day)}
               disabled={isDisabled}
               className={`
-                aspect-square min-h-[36px] sm:min-h-[44px] rounded-lg
-                text-sm font-medium
+                aspect-square min-h-[32px] sm:min-h-[36px] md:min-h-[40px] rounded-lg
+                text-xs sm:text-sm font-medium
                 transition-all spring-smooth
                 ${!isCurrentMonth ? 'text-neutral-text-tertiary opacity-40' : 'text-neutral-text-primary'}
                 ${isSelected
@@ -136,12 +136,12 @@ export default function GlassCalendar({
       </div>
 
       {/* Today Button */}
-      <div className="mt-4 sm:mt-6 pt-4 border-t border-neutral-border/60">
+      <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-neutral-border/60">
         <GlassButton
           variant="ghost"
           size="sm"
           onClick={goToToday}
-          className="w-full justify-center"
+          className="w-full justify-center text-xs sm:text-sm"
         >
           Go to Today
         </GlassButton>
