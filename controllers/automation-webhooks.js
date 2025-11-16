@@ -30,20 +30,42 @@ export async function handleOrderCreated(req, res, _next) {
       throw new NotFoundError('Shop');
     }
 
-    // Find the customer contact
-    const contact = await prisma.contact.findFirst({
+    // Find or create the customer contact
+    let contact = await prisma.contact.findFirst({
       where: {
         shopId: shop.id,
         email: customer.email,
       },
     });
 
+    // If contact doesn't exist, create it from Shopify customer data
     if (!contact) {
-      logger.warn('Contact not found for order webhook', {
+      logger.info('Contact not found, creating from Shopify customer data', {
         shopId: shop.id,
         customerEmail: customer.email,
       });
-      throw new NotFoundError('Contact');
+
+      // Extract phone number from customer data
+      const phoneE164 = customer.phone || customer.default_address?.phone || null;
+      
+      contact = await prisma.contact.create({
+        data: {
+          shopId: shop.id,
+          email: customer.email,
+          firstName: customer.first_name || null,
+          lastName: customer.last_name || null,
+          phoneE164: phoneE164,
+          smsConsent: 'unknown', // Default to unknown, user must opt-in
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      logger.info('Contact created from Shopify webhook', {
+        contactId: contact.id,
+        shopId: shop.id,
+        email: customer.email,
+      });
     }
 
     // Queue automation job instead of processing synchronously
@@ -258,20 +280,41 @@ export async function handleOrderFulfilled(req, res, _next) {
       throw new NotFoundError('Shop');
     }
 
-    // Find the customer contact
-    const contact = await prisma.contact.findFirst({
+    // Find or create the customer contact
+    let contact = await prisma.contact.findFirst({
       where: {
         shopId: shop.id,
         email: customer.email,
       },
     });
 
+    // If contact doesn't exist, create it from Shopify customer data
     if (!contact) {
-      logger.warn('Contact not found for order fulfillment webhook', {
+      logger.info('Contact not found, creating from Shopify customer data', {
         shopId: shop.id,
         customerEmail: customer.email,
       });
-      throw new NotFoundError('Contact');
+
+      const phoneE164 = customer.phone || customer.default_address?.phone || null;
+      
+      contact = await prisma.contact.create({
+        data: {
+          shopId: shop.id,
+          email: customer.email,
+          firstName: customer.first_name || null,
+          lastName: customer.last_name || null,
+          phoneE164: phoneE164,
+          smsConsent: 'unknown',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      logger.info('Contact created from Shopify webhook', {
+        contactId: contact.id,
+        shopId: shop.id,
+        email: customer.email,
+      });
     }
 
     // Queue automation job

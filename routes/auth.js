@@ -201,6 +201,23 @@ r.get('/callback', async (req, res, _next) => {
       hasAccessToken: !!accessToken,
     });
 
+    // Register automation webhooks after successful OAuth
+    try {
+      const { registerAutomationWebhooks } = await import('../services/webhook-registration.js');
+      const webhookResult = await registerAutomationWebhooks(shopDomain);
+      logger.info('Webhook registration completed', {
+        shopDomain,
+        registered: webhookResult.registered.length,
+        errors: webhookResult.errors.length,
+      });
+    } catch (webhookError) {
+      // Don't fail OAuth if webhook registration fails - log and continue
+      logger.warn('Webhook registration failed during OAuth', {
+        shopDomain,
+        error: webhookError.message,
+      });
+    }
+
     // Find or create store with retry logic for database connection issues
     let store;
     let retries = 3;
