@@ -103,10 +103,73 @@ export async function getPackages(req, res, next) {
  */
 export async function createPurchase(req, res, next) {
   try {
-    const storeId = getStoreId(req);
+    // Log request details for debugging
+    logger.info('Create purchase request received', {
+      method: req.method,
+      path: req.path,
+      headers: {
+        authorization: req.headers.authorization ? 'Bearer ***' : undefined,
+        'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+        'x-shopify-shop': req.headers['x-shopify-shop'],
+      },
+      body: req.body,
+      storeContext: req.ctx?.store ? {
+        id: req.ctx.store.id,
+        shopDomain: req.ctx.store.shopDomain,
+      } : null,
+    });
+
+    // Get store ID - this will throw if store context is not available
+    let storeId;
+    try {
+      storeId = getStoreId(req);
+      logger.debug('Store ID retrieved', { storeId });
+    } catch (storeError) {
+      logger.error('Failed to get store ID', {
+        error: storeError.message,
+        storeContext: req.ctx?.store,
+        headers: {
+          authorization: req.headers.authorization ? 'Bearer ***' : undefined,
+          'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+        },
+      });
+      throw storeError;
+    }
+
     const { packageId, successUrl, cancelUrl, currency } = req.body;
 
-    // Validation is handled by validateBody middleware, but we can add additional checks here if needed
+    // Additional validation
+    if (!packageId) {
+      logger.warn('Missing packageId in request body', { body: req.body });
+      return res.status(400).json({
+        success: false,
+        error: 'validation_error',
+        message: 'Package ID is required',
+        code: 'VALIDATION_ERROR',
+        apiVersion: 'v1',
+      });
+    }
+
+    if (!successUrl || !cancelUrl) {
+      logger.warn('Missing URLs in request body', { body: req.body });
+      return res.status(400).json({
+        success: false,
+        error: 'validation_error',
+        message: 'Success and cancel URLs are required',
+        code: 'VALIDATION_ERROR',
+        apiVersion: 'v1',
+      });
+    }
+
+    logger.info('Creating purchase session', {
+      storeId,
+      packageId,
+      currency: currency || 'EUR',
+      successUrl,
+      cancelUrl,
+    });
+
+    // Create Stripe checkout session
     const session = await billingService.createPurchaseSession(
       storeId,
       packageId,
@@ -114,13 +177,26 @@ export async function createPurchase(req, res, next) {
       currency, // Pass currency if provided
     );
 
+    logger.info('Purchase session created successfully', {
+      storeId,
+      packageId,
+      sessionId: session.sessionId,
+    });
+
     return sendSuccess(res, session, 'Checkout session created successfully');
   } catch (error) {
     logger.error('Create purchase error', {
       error: error.message,
       stack: error.stack,
-      storeId: getStoreId(req),
+      errorName: error.name,
+      errorCode: error.code,
+      storeId: req.ctx?.store?.id,
+      storeDomain: req.ctx?.store?.shopDomain,
       body: req.body,
+      headers: {
+        authorization: req.headers.authorization ? 'Bearer ***' : undefined,
+        'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+      },
     });
     next(error);
   }

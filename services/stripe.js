@@ -41,43 +41,81 @@ export async function createStripeCheckoutSession({
       ...metadata, // Spread any additional metadata (e.g., transactionId)
     };
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: stripePriceId,
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: successUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?canceled=true`,
-      metadata: finalMetadata,
-      customer_email: `${shopDomain}@sendly.com`, // Use shop domain as email
-      billing_address_collection: 'required',
-      shipping_address_collection: {
-        allowed_countries: ['US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'CH', 'SE', 'NO', 'DK', 'FI', 'GR'],
-      },
-      payment_intent_data: {
-        statement_descriptor: 'SENDLY MARKETING',
-      },
-    });
-
-    logger.info('Stripe checkout session created', {
-      sessionId: session.id,
+    logger.debug('Creating Stripe checkout session', {
+      stripePriceId,
       shopId,
+      shopDomain,
       packageId,
       credits,
       price,
       currency,
+      successUrl,
+      cancelUrl,
     });
+
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: stripePriceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: successUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: cancelUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?canceled=true`,
+        metadata: finalMetadata,
+        customer_email: `${shopDomain}@sendly.com`, // Use shop domain as email
+        billing_address_collection: 'required',
+        shipping_address_collection: {
+          allowed_countries: ['US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'CH', 'SE', 'NO', 'DK', 'FI', 'GR'],
+        },
+        payment_intent_data: {
+          statement_descriptor: 'SENDLY MARKETING',
+        },
+      });
+
+      logger.info('Stripe checkout session created', {
+        sessionId: session.id,
+        shopId,
+        packageId,
+        credits,
+        price,
+        currency,
+      });
+    } catch (stripeError) {
+      logger.error('Stripe API error', {
+        error: stripeError.message,
+        errorType: stripeError.type,
+        errorCode: stripeError.code,
+        stripeRequestId: stripeError.requestId,
+        shopId,
+        packageId,
+        stripePriceId,
+        currency,
+      });
+
+      // Provide more helpful error messages
+      if (stripeError.type === 'StripeInvalidRequestError') {
+        if (stripeError.message.includes('price')) {
+          throw new Error(`Invalid Stripe price ID: ${stripePriceId}. Please configure the correct STRIPE_PRICE_ID environment variable.`);
+        }
+        throw new Error(`Stripe configuration error: ${stripeError.message}`);
+      }
+
+      throw stripeError;
+    }
 
     return session;
   } catch (error) {
     logger.error('Failed to create Stripe checkout session', {
       error: error.message,
+      errorName: error.name,
       shopId,
       packageId,
+      stripePriceId,
     });
     throw error;
   }

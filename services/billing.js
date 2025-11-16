@@ -134,16 +134,32 @@ export async function createPurchaseSession(storeId, packageId, returnUrls, requ
   logger.info('Creating purchase session', { storeId, packageId, requestedCurrency });
 
   // Validate package
-  const pkg = getPackageById(packageId);
+  let pkg;
+  try {
+    pkg = getPackageById(packageId);
+    logger.debug('Package found', { packageId, credits: pkg.credits });
+  } catch (packageError) {
+    logger.error('Invalid package ID', { packageId, error: packageError.message });
+    throw packageError;
+  }
 
   // Get shop details with currency
-  const shop = await prisma.shop.findUnique({
-    where: { id: storeId },
-    select: { id: true, shopDomain: true, shopName: true, currency: true },
-  });
+  let shop;
+  try {
+    shop = await prisma.shop.findUnique({
+      where: { id: storeId },
+      select: { id: true, shopDomain: true, shopName: true, currency: true },
+    });
 
-  if (!shop) {
-    throw new NotFoundError('Shop');
+    if (!shop) {
+      logger.error('Shop not found in database', { storeId });
+      throw new NotFoundError('Shop');
+    }
+
+    logger.debug('Shop found', { storeId, shopDomain: shop.shopDomain, currency: shop.currency });
+  } catch (shopError) {
+    logger.error('Failed to retrieve shop', { storeId, error: shopError.message });
+    throw shopError;
   }
 
   // Validate return URLs
@@ -166,6 +182,36 @@ export async function createPurchaseSession(storeId, packageId, returnUrls, requ
   const stripePriceId = currency === 'USD'
     ? pkg.stripePriceIdUSD
     : pkg.stripePriceIdEUR;
+
+  // Validate Stripe price ID - must start with 'price_' and be a valid Stripe price ID format
+  if (!stripePriceId) {
+    logger.error('Missing Stripe price ID', {
+      currency,
+      packageId,
+      priceIdEUR: pkg.stripePriceIdEUR,
+      priceIdUSD: pkg.stripePriceIdUSD,
+    });
+    throw new ValidationError(`Stripe price ID is not configured for ${currency}. Please set STRIPE_PRICE_ID_${pkg.credits}_${currency} environment variable.`);
+  }
+
+  // Check if it's a placeholder (fallback value) - these won't work with Stripe
+  const isPlaceholder = stripePriceId.includes('_credits_') || !stripePriceId.startsWith('price_');
+  if (isPlaceholder) {
+    logger.warn('Using placeholder Stripe price ID - this will fail with Stripe API', {
+      currency,
+      stripePriceId,
+      packageId,
+      message: 'Please configure actual Stripe price IDs in environment variables',
+    });
+    // Don't throw here - let Stripe API return the actual error for better debugging
+  }
+
+  logger.debug('Stripe configuration', {
+    currency,
+    price,
+    stripePriceId,
+    packageId,
+  });
 
   // Create billing transaction record
   const transaction = await prisma.billingTransaction.create({
