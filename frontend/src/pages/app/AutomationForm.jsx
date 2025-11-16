@@ -57,6 +57,13 @@ export default function AutomationForm() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Prevent selecting disabled/coming soon triggers
+    const selectedOption = triggerOptions.find(opt => opt.value === value);
+    if (selectedOption?.disabled) {
+      return; // Don't allow selection of disabled options
+    }
+    
     setFormData((prev) => ({ ...prev, [name]: value }));
     
     if (errors[name]) {
@@ -99,11 +106,12 @@ export default function AutomationForm() {
   };
 
   const triggerOptions = [
+    { value: 'welcome', label: 'Welcome Message' },
     { value: 'order_placed', label: 'Order Placed' },
     { value: 'order_fulfilled', label: 'Order Fulfilled' },
-    { value: 'abandoned_cart', label: 'Abandoned Cart' },
     { value: 'birthday', label: 'Birthday' },
-    { value: 'customer_registered', label: 'Customer Registered' },
+    { value: 'abandoned_cart', label: 'Abandoned Cart', note: 'Coming soon', disabled: true },
+    { value: 'customer_inactive', label: 'Customer Re-engagement', note: 'Coming soon', disabled: true },
   ];
 
   if (isEditMode && !existingAutomation) {
@@ -121,7 +129,7 @@ export default function AutomationForm() {
         description="Create or edit an SMS automation workflow"
         path={isEditMode ? `/app/automations/${id}` : '/app/automations/new'}
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
+      <div className="min-h-screen pt-4 sm:pt-6 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
         <div className="max-w-[1000px] mx-auto w-full">
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-4">
@@ -149,13 +157,25 @@ export default function AutomationForm() {
                 required
               />
 
-              <GlassSelectCustom
-                label="Trigger"
-                name="trigger"
-                value={formData.trigger}
-                onChange={handleChange}
-                options={triggerOptions}
-              />
+              <div>
+                <GlassSelectCustom
+                  label="Trigger"
+                  name="trigger"
+                  value={formData.trigger}
+                  onChange={handleChange}
+                  options={triggerOptions.map(opt => ({ 
+                    value: opt.value, 
+                    label: opt.label,
+                    disabled: opt.disabled 
+                  }))}
+                />
+                {triggerOptions.find(opt => opt.value === formData.trigger)?.note && (
+                  <p className="text-xs text-neutral-text-secondary mt-2 flex items-center gap-1">
+                    <Icon name="info" size="xs" />
+                    {triggerOptions.find(opt => opt.value === formData.trigger).note}
+                  </p>
+                )}
+              </div>
 
               <GlassTextarea
                 label="Message"

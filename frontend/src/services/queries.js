@@ -223,10 +223,15 @@ export const usePublicPackages = (currency = 'EUR') => {
  * Get billing packages (authenticated - requires store context)
  * Used for authenticated users in the app
  */
-export const useBillingPackages = () => {
+export const useBillingPackages = (currency = null) => {
   return useQuery({
-    queryKey: ['billing', 'packages'],
-    queryFn: () => api.get('/billing/packages'),
+    queryKey: ['billing', 'packages', currency],
+    queryFn: () => {
+      const url = currency 
+        ? `/billing/packages?currency=${encodeURIComponent(currency)}`
+        : '/billing/packages';
+      return api.get(url);
+    },
     retry: (failureCount, error) => {
       // Don't retry on network errors (backend not available)
       if (error?.isNetworkError || error?.status === 0) {
@@ -244,13 +249,23 @@ export const useBillingPackages = () => {
 };
 
 // Campaign Stats
-export const useCampaignStats = () => {
+export const useCampaignStats = (options = {}) => {
   return useQuery({
     queryKey: ['campaigns', 'stats'],
-    queryFn: () => api.get('/campaigns/stats/summary'),
-    staleTime: 1 * 60 * 1000, // 1 minute - stats change frequently
-    gcTime: 5 * 60 * 1000, // 5 minutes (React Query v5)
+    queryFn: async () => {
+      const response = await api.get('/campaigns/stats/summary');
+      // Normalize response structure - handle both direct data and nested data structure
+      const data = response.data?.data || response.data || response;
+      return {
+        stats: data,
+      };
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes - stats change less frequently than metrics
+    gcTime: 10 * 60 * 1000, // 10 minutes (React Query v5)
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching
+    ...options,
   });
 };
 
@@ -438,12 +453,12 @@ export const useImportContacts = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (formData) => {
+    mutationFn: (data) => {
+      // Data should be { contacts: [...] } - parsed from CSV on client side
       // Use axios for consistency with other API calls
-      // Axios automatically handles FormData and adds auth token via interceptor
-      return api.post('/contacts/import', formData, {
+      return api.post('/contacts/import', data, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': 'application/json',
         },
       });
     },

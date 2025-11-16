@@ -7,7 +7,7 @@ const GlassBadge = memo(function GlassBadge({
   className,
   ...props 
 }) {
-  const baseClasses = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm border';
+  const baseClasses = 'inline-flex items-center px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-semibold shadow-sm border';
   
   const variantClasses = {
     default: 'glass-badge-default',

@@ -266,7 +266,13 @@ export async function updateSettings(req, res, next) {
     }
 
     if (settingsData.currency !== undefined) {
-      updateData.currency = settingsData.currency;
+      // Validate currency - only EUR or USD allowed
+      const validCurrencies = ['EUR', 'USD'];
+      const normalizedCurrency = settingsData.currency.toUpperCase();
+      if (!validCurrencies.includes(normalizedCurrency)) {
+        throw new ValidationError('Currency must be EUR or USD');
+      }
+      updateData.currency = normalizedCurrency;
     }
 
     // Update settings

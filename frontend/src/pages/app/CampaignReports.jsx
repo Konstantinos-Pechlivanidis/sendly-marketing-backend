@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import GlassCard from '../../components/ui/GlassCard';
-import GlassButton from '../../components/ui/GlassButton';
 import BackButton from '../../components/ui/BackButton';
 import PageHeader from '../../components/ui/PageHeader';
 import GlassSelectCustom from '../../components/ui/GlassSelectCustom';
@@ -19,12 +18,10 @@ import ErrorState from '../../components/ui/ErrorState';
 import EmptyState from '../../components/ui/EmptyState';
 import { useCampaignReports, useCampaigns } from '../../services/queries';
 import { normalizeArrayResponse } from '../../utils/apiHelpers';
-import { useToastContext } from '../../contexts/ToastContext';
 import SEO from '../../components/SEO';
 import { format } from 'date-fns';
 
 export default function CampaignReports() {
-  const toast = useToastContext();
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
 
   const { data: campaignsData } = useCampaigns();
@@ -42,7 +39,7 @@ export default function CampaignReports() {
         description="Detailed campaign performance reports"
         path="/app/reports/campaigns"
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
+      <div className="min-h-screen pt-4 sm:pt-6 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
         <div className="max-w-[1400px] mx-auto w-full">
           {/* Header */}
           <div className="mb-8">

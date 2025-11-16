@@ -7,12 +7,12 @@ import { clsx } from 'clsx';
 export default function GlassTable({ children, className, ...props }) {
   return (
     <div 
-      className="overflow-x-auto w-full" 
+      className="overflow-x-auto w-full -mx-4 sm:mx-0" 
       role="region" 
       aria-label="Data table" 
       tabIndex={0}
     >
-      <div className="inline-block min-w-full align-middle">
+      <div className="inline-block min-w-full align-middle px-4 sm:px-0">
         <table
           className={clsx(
             'w-full border-collapse min-w-[640px] sm:min-w-0',
@@ -75,7 +75,7 @@ export function GlassTableHeaderCell({ children, className, ...props }) {
   return (
     <th
       className={clsx(
-        'px-4 py-3 text-left text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider bg-neutral-surface-secondary/50',
+        'px-3 sm:px-4 py-3 text-left text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider bg-neutral-surface-secondary/50',
         className
       )}
       {...props}
@@ -92,7 +92,7 @@ export function GlassTableCell({ children, className, ...props }) {
   return (
     <td
       className={clsx(
-        'px-4 py-3 text-sm text-neutral-text-primary whitespace-nowrap',
+        'px-3 sm:px-4 py-3 text-sm text-neutral-text-primary whitespace-nowrap',
         className
       )}
       {...props}

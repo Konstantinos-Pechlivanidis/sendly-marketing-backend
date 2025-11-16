@@ -14,7 +14,6 @@ import GlassSelectCustom from '../../components/ui/GlassSelectCustom';
 import GlassInput from '../../components/ui/GlassInput';
 import GlassPagination from '../../components/ui/GlassPagination';
 import StatusBadge from '../../components/ui/StatusBadge';
-import GlassModal from '../../components/ui/GlassModal';
 import ImportContactsModal from '../../components/contacts/ImportContactsModal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Icon from '../../components/ui/Icon';
@@ -24,7 +23,6 @@ import EmptyState from '../../components/ui/EmptyState';
 import { useContacts, useContactStats, useDeleteContact } from '../../services/queries';
 import { useToastContext } from '../../contexts/ToastContext';
 import SEO from '../../components/SEO';
-import { format } from 'date-fns';
 
 export default function Contacts() {
   const navigate = useNavigate();
@@ -102,7 +100,7 @@ export default function Contacts() {
         description="Manage your SMS marketing contacts"
         path="/app/contacts"
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
+      <div className="min-h-screen pt-4 sm:pt-6 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
         {/* Header */}
         <PageHeader
           title="Contacts"

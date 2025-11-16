@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import GlassCard from '../../components/ui/GlassCard';
-import GlassButton from '../../components/ui/GlassButton';
 import PageHeader from '../../components/ui/PageHeader';
 import GlassTable, {
   GlassTableHeader,
@@ -19,7 +18,7 @@ import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import EmptyState from '../../components/ui/EmptyState';
-import { useCampaigns, useDeleteCampaign, useSendCampaign, useScheduleCampaign } from '../../services/queries';
+import { useCampaigns, useDeleteCampaign, useSendCampaign, useCampaignStats } from '../../services/queries';
 import { useToastContext } from '../../contexts/ToastContext';
 import SEO from '../../components/SEO';
 import { format } from 'date-fns';
@@ -40,11 +39,13 @@ export default function Campaigns() {
     search: searchQuery || undefined,
   });
 
+  // Fetch campaign stats for summary cards
+  const { data: statsData } = useCampaignStats();
+
   const deleteCampaign = useDeleteCampaign();
   const sendCampaign = useSendCampaign();
-  const scheduleCampaign = useScheduleCampaign();
 
-  const campaigns = data?.campaigns || [];
+  const campaigns = useMemo(() => data?.campaigns || [], [data?.campaigns]);
   const pagination = data?.pagination || {};
 
   const handleDeleteClick = (id, name) => {
@@ -73,32 +74,77 @@ export default function Campaigns() {
     }
   };
 
-  const stats = [
-    {
-      label: 'Total',
-      value: pagination.total || 0,
-      icon: 'campaign',
-      variant: 'default',
-    },
-    {
-      label: 'Active',
-      value: campaigns.filter((c) => c.status === 'active').length,
-      icon: 'send',
-      variant: 'ice',
-    },
-    {
-      label: 'Scheduled',
-      value: campaigns.filter((c) => c.status === 'scheduled').length,
-      icon: 'schedule',
-      variant: 'ice',
-    },
-    {
-      label: 'Completed',
-      value: campaigns.filter((c) => c.status === 'completed').length,
-      icon: 'check',
-      variant: 'default',
-    },
-  ];
+  // Calculate stats from API or fallback to current page data
+  const stats = useMemo(() => {
+    if (statsData) {
+      // Use stats from API - handle both direct stats and nested stats structure
+      const statsObj = statsData.stats || statsData;
+      const byStatus = statsObj.byStatus || {};
+      
+      return [
+        {
+          label: 'Total',
+          value: statsObj.total || statsObj.totalCampaigns || 0,
+          icon: 'campaign',
+          variant: 'default',
+          color: 'neutral',
+        },
+        {
+          label: 'Active',
+          value: byStatus.sending || 0,
+          icon: 'send',
+          variant: 'ice',
+          color: 'ice',
+        },
+        {
+          label: 'Scheduled',
+          value: byStatus.scheduled || 0,
+          icon: 'schedule',
+          variant: 'ice',
+          color: 'ice',
+        },
+        {
+          label: 'Completed',
+          value: byStatus.sent || 0,
+          icon: 'check',
+          variant: 'default',
+          color: 'neutral',
+        },
+      ];
+    }
+    
+    // Fallback: calculate from current page data (less accurate but better than nothing)
+    return [
+      {
+        label: 'Total',
+        value: pagination.total || campaigns.length || 0,
+        icon: 'campaign',
+        variant: 'default',
+        color: 'neutral',
+      },
+      {
+        label: 'Active',
+        value: campaigns.filter((c) => c.status === 'sending').length,
+        icon: 'send',
+        variant: 'ice',
+        color: 'ice',
+      },
+      {
+        label: 'Scheduled',
+        value: campaigns.filter((c) => c.status === 'scheduled').length,
+        icon: 'schedule',
+        variant: 'ice',
+        color: 'ice',
+      },
+      {
+        label: 'Completed',
+        value: campaigns.filter((c) => c.status === 'sent').length,
+        icon: 'check',
+        variant: 'default',
+        color: 'neutral',
+      },
+    ];
+  }, [statsData, pagination.total, campaigns]);
 
   // Only show full loading state on initial load (no cached data)
   // If we have cached data, show it immediately even if fetching
@@ -115,7 +161,7 @@ export default function Campaigns() {
         description="Manage your SMS marketing campaigns"
         path="/app/campaigns"
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
+      <div className="min-h-screen pt-4 sm:pt-6 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
         {/* Header */}
         <PageHeader
           title="Campaigns"
@@ -139,53 +185,79 @@ export default function Campaigns() {
         {/* Stats Cards */}
         {!error && (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6 lg:mb-8">
               {stats.map((stat) => (
-                <GlassCard key={stat.label} variant={stat.variant} className="p-5 hover:shadow-glass-light-lg transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-2.5 rounded-xl bg-ice-soft/80">
-                      <Icon name={stat.icon} size="md" variant="ice" />
+                <GlassCard 
+                  key={stat.label} 
+                  variant={stat.variant} 
+                  className="p-5 sm:p-6 hover:shadow-glass-light-lg transition-all duration-200 group"
+                >
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className={`p-2.5 sm:p-3 rounded-xl transition-colors ${
+                      stat.color === 'ice' 
+                        ? 'bg-ice-soft/80 group-hover:bg-ice-soft' 
+                        : 'bg-neutral-surface-secondary/60 group-hover:bg-neutral-surface-secondary'
+                    }`}>
+                      <Icon 
+                        name={stat.icon} 
+                        size="md" 
+                        variant={stat.color === 'ice' ? 'ice' : 'default'} 
+                        className={stat.color === 'ice' ? 'text-ice-primary' : 'text-neutral-text-secondary'}
+                      />
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-neutral-text-primary mb-1">
+                  <p className={`text-2xl sm:text-3xl font-bold mb-1 transition-colors ${
+                    stat.color === 'ice' 
+                      ? 'text-ice-primary' 
+                      : 'text-neutral-text-primary'
+                  }`}>
                     {stat.value.toLocaleString()}
                   </p>
-                  <p className="text-xs font-medium text-neutral-text-secondary uppercase tracking-wider">{stat.label}</p>
+                  <p className="text-xs sm:text-sm font-medium text-neutral-text-secondary uppercase tracking-wider">
+                    {stat.label}
+                  </p>
                 </GlassCard>
               ))}
             </div>
 
             {/* Filters and Search */}
-        <GlassCard className="p-4 sm:p-6 mb-6 sm:mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <GlassInput
-              label="Search Campaigns"
-              type="text"
-              placeholder="Search by name..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
-            />
-            <GlassSelectCustom
-              label="Filter by Status"
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(1);
-              }}
-              options={[
-                { value: '', label: 'All Statuses' },
-                { value: 'draft', label: 'Draft' },
-                { value: 'scheduled', label: 'Scheduled' },
-                { value: 'active', label: 'Active' },
-                { value: 'completed', label: 'Completed' },
-                { value: 'cancelled', label: 'Cancelled' },
-              ]}
-            />
-          </div>
-        </GlassCard>
+            <GlassCard className="p-4 sm:p-6 mb-4 sm:mb-6 lg:mb-8">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon name="filter" size="sm" variant="ice" />
+                  <h3 className="text-lg font-semibold text-neutral-text-primary">Filters & Search</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <GlassInput
+                    label="Search Campaigns"
+                    type="text"
+                    placeholder="Search by name..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }}
+                  />
+                  <GlassSelectCustom
+                    label="Filter by Status"
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    options={[
+                      { value: '', label: 'All Statuses' },
+                      { value: 'draft', label: 'Draft' },
+                      { value: 'scheduled', label: 'Scheduled' },
+                      { value: 'sending', label: 'Sending' },
+                      { value: 'sent', label: 'Sent' },
+                      { value: 'failed', label: 'Failed' },
+                      { value: 'cancelled', label: 'Cancelled' },
+                    ]}
+                  />
+                </div>
+              </div>
+            </GlassCard>
 
             {/* Campaigns Table */}
             {!error && campaigns.length === 0 ? (

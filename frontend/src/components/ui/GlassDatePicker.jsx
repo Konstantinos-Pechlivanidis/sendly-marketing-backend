@@ -1,149 +1,206 @@
 import { useState, useEffect, useRef } from 'react';
-import { format } from 'date-fns';
-import GlassInput from './GlassInput';
-import GlassButton from './GlassButton';
+import { createPortal } from 'react-dom';
+import { format, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
+import GlassCalendar from './GlassCalendar';
 import Icon from './Icon';
 
 /**
  * Glass Date Picker Component
- * Custom date picker with iOS 26 styling
+ * Custom calendar-based date picker with iOS 26 styling
+ * Uses React Portal for proper z-index handling on mobile
  */
 export default function GlassDatePicker({
   label,
   name,
   value,
   onChange,
+  onBlur,
   error,
   placeholder = 'Select date',
   required,
   className,
   minDate,
   maxDate,
-  ...props
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(value ? new Date(value) : null);
-  const [tempDate, setTempDate] = useState(() => {
-    if (!value) return '';
-    try {
-      const date = new Date(value);
-      if (isNaN(date.getTime())) return '';
-      return date.toISOString().split('T')[0];
-    } catch {
-      return '';
-    }
-  });
-  const pickerRef = useRef(null);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const buttonRef = useRef(null);
+  const dropdownRef = useRef(null);
 
+  // Parse value prop to Date object
   useEffect(() => {
     if (value && value.trim()) {
       try {
         const date = new Date(value);
         if (!isNaN(date.getTime())) {
-          setSelectedDate(date);
-          setTempDate(date.toISOString().split('T')[0]);
+          // Set time to midnight (00:00:00) for date-only fields
+          const dateOnly = setMilliseconds(setSeconds(setMinutes(setHours(date, 0), 0), 0), 0);
+          setSelectedDate(dateOnly);
         } else {
           setSelectedDate(null);
-          setTempDate('');
         }
       } catch {
         setSelectedDate(null);
-        setTempDate('');
       }
     } else {
       setSelectedDate(null);
-      setTempDate('');
     }
   }, [value]);
 
-  // Close picker when clicking outside
+  // Calculate dropdown position
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
-        setIsOpen(false);
+    const updatePosition = () => {
+      if (buttonRef.current && isOpen) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        const scrollY = window.scrollY || window.pageYOffset;
+        const scrollX = window.scrollX || window.pageXOffset;
+        
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const width = rect.width;
+        const dropdownWidth = Math.min(width, 360); // Max width for calendar
+        const estimatedDropdownHeight = 400; // Approximate height of calendar
+        
+        // Calculate horizontal position
+        const left = rect.left + scrollX;
+        let adjustedLeft = left;
+        if (left + dropdownWidth > viewportWidth) {
+          adjustedLeft = viewportWidth - dropdownWidth - 16; // 16px padding from edge
+        }
+        if (adjustedLeft < 16) {
+          adjustedLeft = 16;
+        }
+
+        // Calculate vertical position - check if we should open above or below
+        const spaceBelow = viewportHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        const gap = 8; // Gap between button and dropdown
+        
+        let adjustedTop;
+        if (spaceBelow >= estimatedDropdownHeight + gap) {
+          // Enough space below - position below the button
+          adjustedTop = rect.bottom + scrollY + gap;
+        } else if (spaceAbove >= estimatedDropdownHeight + gap) {
+          // Not enough space below, but enough above - position above the button
+          adjustedTop = rect.top + scrollY - estimatedDropdownHeight - gap;
+        } else {
+          // Not enough space either way - position where there's more space
+          if (spaceBelow > spaceAbove) {
+            // More space below, but still not enough - position below with max-height
+            adjustedTop = rect.bottom + scrollY + gap;
+          } else {
+            // More space above - position above with max-height
+            adjustedTop = rect.top + scrollY - estimatedDropdownHeight - gap;
+          }
+          // Ensure it doesn't go outside viewport
+          if (adjustedTop < scrollY + 16) {
+            adjustedTop = scrollY + 16;
+          }
+        }
+
+        setDropdownPosition({
+          top: adjustedTop,
+          left: adjustedLeft,
+          width: dropdownWidth,
+        });
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+      
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
     }
   }, [isOpen]);
 
-  const handleDateChange = (e) => {
-    const dateValue = e.target.value;
-    setTempDate(dateValue);
-    
-    if (dateValue) {
-      const date = new Date(dateValue);
-      setSelectedDate(date);
-      
-      // Create a synthetic event for onChange
-      const syntheticEvent = {
-        target: {
-          name,
-          value: date.toISOString(),
-        },
-      };
-      onChange(syntheticEvent);
-    } else {
-      setSelectedDate(null);
-      const syntheticEvent = {
-        target: {
-          name,
-          value: '',
-        },
-      };
-      onChange(syntheticEvent);
-    }
-  };
+  // Close picker when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
 
-  const applyPreset = (preset) => {
-    const today = new Date();
-    let date = new Date();
+    // Use a small delay to prevent immediate closing when opening
+    let cleanup = null;
+    const timeoutId = setTimeout(() => {
+      const handleClickOutside = (event) => {
+        if (
+          buttonRef.current &&
+          dropdownRef.current &&
+          !buttonRef.current.contains(event.target) &&
+          !dropdownRef.current.contains(event.target)
+        ) {
+          setIsOpen(false);
+          // Call onBlur after closing if provided
+          if (onBlur) {
+            onBlur();
+          }
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+
+      cleanup = () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+      };
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, [isOpen, onBlur]);
+
+  const handleDateSelect = (date) => {
+    // Ensure time is set to midnight for date-only fields
+    const dateOnly = setMilliseconds(setSeconds(setMinutes(setHours(date, 0), 0), 0), 0);
+    setSelectedDate(dateOnly);
     
-    switch (preset) {
-      case 'today':
-        date = today;
-        break;
-      case 'tomorrow':
-        date.setDate(today.getDate() + 1);
-        break;
-      case 'nextWeek':
-        date.setDate(today.getDate() + 7);
-        break;
-      case 'nextMonth':
-        date.setMonth(today.getMonth() + 1);
-        break;
-      default:
-        return;
-    }
-    
-    date.setHours(0, 0, 0, 0);
-    setSelectedDate(date);
-    setTempDate(date.toISOString().split('T')[0]);
-    
+    // Create a synthetic event for onChange
     const syntheticEvent = {
       target: {
         name,
-        value: date.toISOString(),
+        value: dateOnly.toISOString(),
       },
     };
     onChange(syntheticEvent);
-    setIsOpen(false);
+    
+    // Close picker after a small delay to allow the click event to complete
+    setTimeout(() => {
+      setIsOpen(false);
+      // Call onBlur after closing if provided
+      if (onBlur) {
+        onBlur();
+      }
+    }, 100);
   };
 
-  const presets = [
-    { id: 'today', label: 'Today' },
-    { id: 'tomorrow', label: 'Tomorrow' },
-    { id: 'nextWeek', label: 'Next Week' },
-    { id: 'nextMonth', label: 'Next Month' },
-  ];
+  const handleClear = () => {
+    setSelectedDate(null);
+    const syntheticEvent = {
+      target: {
+        name,
+        value: '',
+      },
+    };
+    onChange(syntheticEvent);
+  };
 
   const displayValue = selectedDate ? format(selectedDate, 'MMM d, yyyy') : '';
 
+  // Parse minDate and maxDate to Date objects if they're strings
+  const minDateObj = minDate ? new Date(minDate) : null;
+  const maxDateObj = maxDate ? new Date(maxDate) : null;
+
   return (
-    <div className={`relative ${className}`} ref={pickerRef}>
+    <div className={`relative ${className}`}>
       <div className="space-y-2">
         {label && (
           <label htmlFor={name} className="block text-sm font-medium text-neutral-text-primary">
@@ -152,8 +209,19 @@ export default function GlassDatePicker({
           </label>
         )}
         <button
+          ref={buttonRef}
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+          onMouseDown={(e) => {
+            // Prevent blur when clicking the button
+            if (isOpen) {
+              e.preventDefault();
+            }
+          }}
           className={`
             w-full px-4 py-3 rounded-xl
             bg-neutral-surface-primary backdrop-blur-[24px]
@@ -173,11 +241,26 @@ export default function GlassDatePicker({
             <Icon name="calendar" size="sm" variant="ice" />
             <span>{displayValue || placeholder}</span>
           </span>
-          <Icon 
-            name="arrowRight" 
-            size="sm" 
-            className={`transition-transform ${isOpen ? 'rotate-90' : '-rotate-90'}`}
-          />
+          <div className="flex items-center gap-2">
+            {selectedDate && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClear();
+                }}
+                className="p-1 rounded hover:bg-neutral-surface-secondary transition-colors"
+                aria-label="Clear date"
+              >
+                <Icon name="close" size="xs" variant="neutral" />
+              </button>
+            )}
+            <Icon 
+              name="arrowRight" 
+              size="sm" 
+              className={`transition-transform ${isOpen ? 'rotate-90' : '-rotate-90'}`}
+            />
+          </div>
         </button>
         {error && (
           <p id={`${name}-error`} className="text-sm text-red-500" role="alert">
@@ -186,53 +269,39 @@ export default function GlassDatePicker({
         )}
       </div>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <>
           {/* Mobile Backdrop */}
-          <div 
-            className="fixed inset-0 bg-neutral-text-primary/20 backdrop-blur-sm z-[9] lg:hidden"
+          <div
+            className="fixed inset-0 bg-neutral-text-primary/20 backdrop-blur-sm z-[99998] lg:hidden"
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
           />
           
-          {/* Dropdown Panel */}
-          <div className="absolute top-full left-0 right-0 sm:right-auto mt-2 p-4 sm:p-6 rounded-xl glass border border-neutral-border/60 z-10 w-full sm:w-auto sm:min-w-[360px] max-w-full shadow-glass-light-lg">
-            <div className="space-y-4 sm:space-y-6">
-              {/* Preset Buttons */}
-              <div>
-                <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Quick Select</p>
-                <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
-                  {presets.map((preset) => (
-                    <GlassButton
-                      key={preset.id}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => applyPreset(preset.id)}
-                      className="justify-start text-left text-xs min-h-[44px]"
-                    >
-                      {preset.label}
-                    </GlassButton>
-                  ))}
-                </div>
-              </div>
-
-              {/* Date Input */}
-              <div className="pt-4 border-t border-neutral-border/60">
-                <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Custom Date</p>
-                <input
-                  type="date"
-                  value={tempDate}
-                  onChange={handleDateChange}
-                  min={minDate ? new Date(minDate).toISOString().split('T')[0] : undefined}
-                  max={maxDate ? new Date(maxDate).toISOString().split('T')[0] : undefined}
-                  className="w-full px-4 py-3 rounded-xl bg-neutral-surface-primary border border-neutral-border/60 text-neutral-text-primary focus-ring focus:border-ice-primary focus:shadow-glow-ice-light text-base sm:text-sm min-h-[44px]"
-                />
-              </div>
+          {/* Calendar Dropdown */}
+          <div
+            ref={dropdownRef}
+            className="fixed rounded-xl glass border border-neutral-border/60 z-[99999] shadow-glass-light-lg overflow-hidden"
+            style={{
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: dropdownPosition.width > 0 ? `${dropdownPosition.width}px` : 'auto',
+              maxWidth: 'calc(100vw - 32px)',
+              maxHeight: 'calc(100vh - 32px)',
+            }}
+          >
+            <div className="p-2 sm:p-4 overflow-y-auto max-h-[calc(100vh-64px)]">
+              <GlassCalendar
+                selectedDate={selectedDate}
+                onDateSelect={handleDateSelect}
+                minDate={minDateObj}
+                maxDate={maxDateObj}
+              />
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );
 }
-

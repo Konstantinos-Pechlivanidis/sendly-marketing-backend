@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import GlassCard from '../../components/ui/GlassCard';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Icon from '../../components/ui/Icon';
-import { API_URL, TOKEN_KEY, STORE_KEY } from '../../utils/constants';
+import { TOKEN_KEY, STORE_KEY } from '../../utils/constants';
 import api from '../../services/api';
 
 /**

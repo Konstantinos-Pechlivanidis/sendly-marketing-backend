@@ -9,7 +9,7 @@ const GlassCard = forwardRef(({
   as,
   ...props 
 }, ref) => {
-  const baseClasses = 'glass rounded-2xl p-6 transition-glass hover-lift';
+  const baseClasses = 'glass rounded-2xl p-4 sm:p-6 transition-glass hover-lift';
   
   const variantClasses = {
     default: 'glass-card-default',

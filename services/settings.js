@@ -87,6 +87,14 @@ export async function updateSettings(storeId, settingsData) {
     }
   }
 
+  // Validate currency if provided - only EUR or USD allowed
+  if (settingsData.currency !== undefined) {
+    const validCurrencies = ['EUR', 'USD'];
+    if (!validCurrencies.includes(settingsData.currency.toUpperCase())) {
+      throw new ValidationError('Currency must be EUR or USD');
+    }
+  }
+
   // Check if settings exist
   const existingSettings = await prisma.shopSettings.findUnique({
     where: { shopId: storeId },
@@ -99,7 +107,9 @@ export async function updateSettings(storeId, settingsData) {
   if (settingsData.senderNumber !== undefined) updateData.senderNumber = settingsData.senderNumber;
   if (settingsData.senderName !== undefined) updateData.senderName = settingsData.senderName;
   if (settingsData.timezone !== undefined) updateData.timezone = settingsData.timezone;
-  if (settingsData.currency !== undefined) updateData.currency = settingsData.currency;
+  if (settingsData.currency !== undefined) {
+    updateData.currency = settingsData.currency.toUpperCase();
+  }
 
   if (existingSettings) {
     // Update existing settings - only update provided fields
@@ -115,9 +125,19 @@ export async function updateSettings(storeId, settingsData) {
         senderNumber: settingsData.senderNumber || null,
         senderName: settingsData.senderName || null,
         timezone: settingsData.timezone || 'UTC',
-        currency: settingsData.currency || 'EUR',
+        currency: settingsData.currency ? settingsData.currency.toUpperCase() : 'EUR',
       },
     });
+  }
+
+  // Sync currency to shop.currency for billing compatibility
+  if (settingsData.currency !== undefined) {
+    const normalizedCurrency = settingsData.currency.toUpperCase();
+    await prisma.shop.update({
+      where: { id: storeId },
+      data: { currency: normalizedCurrency },
+    });
+    logger.info('Currency synced to shop', { storeId, currency: normalizedCurrency });
   }
 
   logger.info('Settings updated successfully', { storeId });

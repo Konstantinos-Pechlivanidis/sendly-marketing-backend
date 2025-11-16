@@ -23,13 +23,14 @@ const GlassInput = forwardRef(({
         aria-invalid={error ? 'true' : 'false'}
         aria-describedby={errorId}
         className={clsx(
-          'w-full px-4 py-3 rounded-xl',
+          'w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-base sm:text-sm',
           'bg-neutral-surface-primary backdrop-blur-[24px]',
           'border border-neutral-border/60',
           'text-neutral-text-primary placeholder:text-neutral-text-secondary/70',
           'focus-ring focus:border-ice-primary focus:shadow-glow-ice-light',
           'spring-smooth shadow-sm',
           'hover:border-neutral-border hover:shadow-md',
+          'min-h-[44px]',
           error && 'border-red-500 focus:border-red-500 focus:shadow-none',
           className
         )}

@@ -27,7 +27,7 @@ export default function GlassPagination({
   }
 
   return (
-    <div className={`flex items-center justify-center gap-2 ${className}`}>
+    <div className={`flex items-center justify-center gap-1 sm:gap-2 flex-wrap ${className}`}>
       {/* Previous Button */}
       <GlassButton
         variant="ghost"

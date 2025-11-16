@@ -65,7 +65,7 @@ export async function getPackages(req, res, next) {
   try {
     const storeId = getStoreId(req);
 
-    // Get currency from query param or shop currency
+    // Get currency from query param or shop/settings currency
     const requestedCurrency = req.query.currency;
     const validCurrencies = ['EUR', 'USD'];
 
@@ -74,14 +74,22 @@ export async function getPackages(req, res, next) {
     if (requestedCurrency && validCurrencies.includes(requestedCurrency.toUpperCase())) {
       currency = requestedCurrency.toUpperCase();
     } else {
-      // Get shop currency as fallback
+      // Get shop currency, fallback to settings currency
       const shop = await prisma.shop.findUnique({
         where: { id: storeId },
         select: { currency: true },
+        include: {
+          settings: {
+            select: { currency: true },
+          },
+        },
       });
-      currency = shop?.currency && validCurrencies.includes(shop.currency.toUpperCase())
-        ? shop.currency.toUpperCase()
-        : 'EUR';
+      
+      if (shop?.currency && validCurrencies.includes(shop.currency.toUpperCase())) {
+        currency = shop.currency.toUpperCase();
+      } else if (shop?.settings?.currency && validCurrencies.includes(shop.settings.currency.toUpperCase())) {
+        currency = shop.settings.currency.toUpperCase();
+      }
     }
 
     const packages = billingService.getPackages(currency);

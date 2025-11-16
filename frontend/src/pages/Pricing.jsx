@@ -54,7 +54,7 @@ const FALLBACK_PACKAGES = [
 export default function Pricing() {
   // Detect user's currency preference (default to EUR)
   const userCurrency = navigator.language?.includes('US') ? 'USD' : 'EUR';
-  const { data: packagesData, isLoading, error } = usePublicPackages(userCurrency);
+  const { data: packagesData, isLoading } = usePublicPackages(userCurrency);
   
   // Use fallback packages if API fails or no data
   // If we have packages from API, use them; otherwise use fallback
@@ -70,9 +70,9 @@ export default function Pricing() {
     'Analytics dashboard',
     'Shopify integration',
     'Message templates',
-    'A/B testing',
-    'Link shortening',
-    'Webhook integration',
+    'A/B testing (coming soon)',
+    'Link shortening (coming soon)',
+    'Shopify webhook integration',
     'Unlimited contacts',
     'Priority support',
   ];
@@ -294,7 +294,7 @@ export default function Pricing() {
                   <div className="text-left">
                     <h3 className="text-h3 font-semibold mb-2">Are all features really free?</h3>
                     <p className="text-body text-border-subtle">
-                      Yes! Campaign builder, automations, analytics, integrations, A/B testing—everything is free. You only pay for the SMS messages you send.
+                      Yes! Campaign builder, automations, analytics, Shopify integration, message templates—all core features are free. You only pay for the SMS messages you send. Some advanced features like A/B testing and link shortening are coming soon.
                     </p>
                   </div>
                 </div>

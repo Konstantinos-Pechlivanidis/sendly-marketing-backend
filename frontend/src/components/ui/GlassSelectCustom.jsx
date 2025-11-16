@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from './Icon';
 
 /**
@@ -17,11 +18,13 @@ export default function GlassSelectCustom({
   required,
   className,
   searchable = false,
-  ...props
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const selectRef = useRef(null);
+  const buttonRef = useRef(null);
+  const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
   const selectedOption = options.find(opt => {
@@ -41,22 +44,85 @@ export default function GlassSelectCustom({
       })
     : options;
 
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const updatePosition = () => {
+        if (!buttonRef.current) return;
+        const buttonRect = buttonRef.current.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const scrollY = window.scrollY;
+        const scrollX = window.scrollX;
+        
+        // Calculate position below button
+        let top = buttonRect.bottom + scrollY + 8; // 8px = mt-2 equivalent
+        let left = buttonRect.left + scrollX;
+        let width = buttonRect.width;
+        
+        // On mobile, use full button width
+        if (viewportWidth < 640) {
+          width = buttonRect.width;
+        }
+        
+        // Adjust if dropdown would go off-screen (for desktop)
+        if (viewportWidth >= 640) {
+          // Check if dropdown would go off right edge
+          const estimatedDropdownWidth = 200; // min-w-[200px]
+          if (left + estimatedDropdownWidth > viewportWidth + scrollX) {
+            left = viewportWidth + scrollX - estimatedDropdownWidth - 8; // 8px padding
+          }
+          
+          // Check if dropdown would go off bottom edge
+          const estimatedDropdownHeight = 240; // max-h-60 = 240px
+          if (top + estimatedDropdownHeight > viewportHeight + scrollY) {
+            // Position above button instead
+            top = buttonRect.top + scrollY - estimatedDropdownHeight - 8;
+          }
+        }
+        
+        setDropdownPosition({ top, left, width });
+      };
+
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
+    }
+  }, [isOpen]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (selectRef.current && !selectRef.current.contains(event.target)) {
+      const target = event.target;
+      const isClickOnButton = buttonRef.current?.contains(target);
+      const isClickOnDropdown = dropdownRef.current?.contains(target);
+      
+      if (!isClickOnButton && !isClickOnDropdown) {
         setIsOpen(false);
         setSearchQuery('');
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      // Use a small delay to avoid closing immediately when opening
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
+      
       // Focus search input if searchable
       if (searchable && searchInputRef.current) {
         setTimeout(() => searchInputRef.current?.focus(), 100);
       }
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
     }
   }, [isOpen, searchable]);
 
@@ -97,6 +163,7 @@ export default function GlassSelectCustom({
           </label>
         )}
         <button
+          ref={buttonRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={`
@@ -130,8 +197,23 @@ export default function GlassSelectCustom({
         )}
       </div>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl glass border border-neutral-border/60 z-10 shadow-glass-light-lg overflow-hidden">
+      {isOpen && createPortal(
+        <>
+          {/* Mobile Backdrop */}
+          <div
+            className="fixed inset-0 bg-neutral-text-primary/20 backdrop-blur-sm z-[9998] lg:hidden"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+          <div 
+            ref={dropdownRef}
+            className="fixed rounded-xl glass border border-neutral-border/60 z-[9999] shadow-glass-light-lg overflow-hidden sm:w-auto sm:min-w-[200px]"
+            style={{
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: dropdownPosition.width > 0 ? `${dropdownPosition.width}px` : 'auto',
+            }}
+          >
           {/* Search Input (if searchable) */}
           {searchable && (
             <div className="p-3 border-b border-neutral-border/60">
@@ -156,28 +238,33 @@ export default function GlassSelectCustom({
               filteredOptions.map((option, index) => {
                 const optionValue = typeof option === 'object' ? option.value : option;
                 const optionLabel = typeof option === 'object' ? option.label : option;
+                const isDisabled = typeof option === 'object' ? option.disabled : false;
                 const isSelected = optionValue === value;
 
                 return (
                   <button
                     key={optionValue || index}
                     type="button"
-                    onClick={() => handleSelect(optionValue)}
+                    onClick={() => !isDisabled && handleSelect(optionValue)}
+                    disabled={isDisabled}
                     className={`
                       w-full px-4 py-3 text-left text-sm
                       transition-colors
-                      ${isSelected 
-                        ? 'bg-ice-primary/10 text-ice-primary font-medium' 
-                        : 'text-neutral-text-primary hover:bg-neutral-surface-secondary'
+                      ${isDisabled 
+                        ? 'opacity-50 cursor-not-allowed text-neutral-text-secondary' 
+                        : isSelected 
+                          ? 'bg-ice-primary/10 text-ice-primary font-medium' 
+                          : 'text-neutral-text-primary hover:bg-neutral-surface-secondary'
                       }
                       ${index !== filteredOptions.length - 1 ? 'border-b border-neutral-border/30' : ''}
                     `}
                     role="option"
                     aria-selected={isSelected}
+                    aria-disabled={isDisabled}
                   >
                     <div className="flex items-center justify-between">
                       <span>{optionLabel}</span>
-                      {isSelected && (
+                      {isSelected && !isDisabled && (
                         <Icon name="check" size="sm" variant="ice" />
                       )}
                     </div>
@@ -186,7 +273,9 @@ export default function GlassSelectCustom({
               })
             )}
           </div>
-        </div>
+          </div>
+        </>,
+        document.body
       )}
     </div>
   );

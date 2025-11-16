@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { clsx } from 'clsx';
+import { useEffect, useCallback } from 'react';
 import GlassModal from './GlassModal';
 import GlassButton from './GlassButton';
 import Icon from './Icon';
@@ -21,10 +20,10 @@ export default function ConfirmDialog({
   destructive = false,
   className,
 }) {
-  const handleConfirm = () => {
+  const handleConfirm = useCallback(() => {
     onConfirm();
     onClose();
-  };
+  }, [onConfirm, onClose]);
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -60,22 +59,22 @@ export default function ConfirmDialog({
     >
       <div className="text-center">
         {destructive && (
-          <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-red-50 border border-red-200">
+          <div className="flex justify-center mb-3 sm:mb-4">
+            <div className="p-2.5 sm:p-3 rounded-full bg-red-50 border border-red-200">
               <Icon name="error" size="lg" variant="default" className="text-red-500" />
             </div>
           </div>
         )}
         
-        <h2 className="text-2xl font-bold mb-3 text-neutral-text-primary">{title}</h2>
+        <h2 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-neutral-text-primary">{title}</h2>
         
         {message && (
-          <p className="text-sm text-neutral-text-secondary mb-6">
+          <p className="text-sm text-neutral-text-secondary mb-4 sm:mb-6 px-2">
             {message}
           </p>
         )}
         
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <GlassButton
             variant="ghost"
             size="lg"

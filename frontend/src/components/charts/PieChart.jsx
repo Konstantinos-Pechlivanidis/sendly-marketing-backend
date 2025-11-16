@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { PieChart as RechartsPieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 /**
@@ -5,12 +6,24 @@ import { PieChart as RechartsPieChart, Pie, Cell, Tooltip, ResponsiveContainer, 
  * Wrapper around Recharts PieChart with glass styling
  */
 export default function PieChart({ data, dataKey = 'value', nameKey = 'name', colors = ['#99B5D7', '#C09DAE', '#6686A9', '#B3CDDA', '#7C5A67'], ...props }) {
+  const [outerRadius, setOuterRadius] = useState(100);
+
+  useEffect(() => {
+    const updateRadius = () => {
+      setOuterRadius(window.innerWidth >= 640 ? 100 : 80);
+    };
+    
+    updateRadius();
+    window.addEventListener('resize', updateRadius);
+    return () => window.removeEventListener('resize', updateRadius);
+  }, []);
+
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="p-3 rounded-lg glass border border-glass-border backdrop-blur-[24px]">
-          <p className="text-sm font-medium text-primary-light mb-1">{payload[0].payload[nameKey]}</p>
-          <p className="text-sm" style={{ color: payload[0].color }}>
+        <div className="p-2 sm:p-3 rounded-lg glass border border-neutral-border/60 backdrop-blur-[24px] shadow-glass-light">
+          <p className="text-xs sm:text-sm font-medium text-neutral-text-primary mb-1">{payload[0].payload[nameKey]}</p>
+          <p className="text-xs sm:text-sm text-neutral-text-secondary" style={{ color: payload[0].color }}>
             {payload[0].name || 'Value'}: {payload[0].value}
           </p>
         </div>
@@ -20,7 +33,7 @@ export default function PieChart({ data, dataKey = 'value', nameKey = 'name', co
   };
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
       <RechartsPieChart {...props}>
         <Pie
           data={data}
@@ -28,7 +41,7 @@ export default function PieChart({ data, dataKey = 'value', nameKey = 'name', co
           cy="50%"
           labelLine={false}
           label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-          outerRadius={100}
+          outerRadius={outerRadius}
           fill="#8884d8"
           dataKey={dataKey}
         >
@@ -38,7 +51,8 @@ export default function PieChart({ data, dataKey = 'value', nameKey = 'name', co
         </Pie>
         <Tooltip content={<CustomTooltip />} />
         <Legend 
-          wrapperStyle={{ color: '#E5E5E5', fontSize: '12px' }}
+          wrapperStyle={{ color: '#14161C', fontSize: '11px' }}
+          iconSize={12}
         />
       </RechartsPieChart>
     </ResponsiveContainer>

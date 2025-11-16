@@ -15,12 +15,12 @@ export default function SkeletonLoader({
   };
 
   return (
-    <div className={clsx('space-y-3 animate-pulse', className)}>
+    <div className={clsx('space-y-2 sm:space-y-3 animate-pulse', className)}>
       {Array.from({ length: lines }).map((_, idx) => (
         <div
           key={idx}
           className={clsx(
-            'h-4 rounded-lg',
+            'h-3 sm:h-4 rounded-lg',
             variants[variant],
             idx === lines - 1 ? 'w-3/4' : 'w-full'
           )}

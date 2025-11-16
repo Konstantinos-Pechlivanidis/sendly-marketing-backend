@@ -8,7 +8,8 @@
 const GSM_7BIT_CHARS = /^[@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&'()*+,\-.\/0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà]*$/;
 
 // Characters that count as 2 in GSM 7-bit
-const GSM_7BIT_EXTENDED = /[^{|}~€\\]/;
+// Note: This constant is kept for potential future use
+// const GSM_7BIT_EXTENDED = /[^{|}~€\\]/;
 
 /**
  * Check if text uses only GSM 7-bit characters

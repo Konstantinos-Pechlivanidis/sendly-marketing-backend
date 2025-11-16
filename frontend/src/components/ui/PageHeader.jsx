@@ -21,14 +21,14 @@ export default function PageHeader({
   children,
 }) {
   return (
-    <div className={clsx('mb-6 sm:mb-8', className)}>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
+    <div className={clsx('mb-4 sm:mb-6 lg:mb-8', className)}>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 lg:gap-6">
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 text-neutral-text-primary tracking-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1.5 sm:mb-2 text-neutral-text-primary tracking-tight leading-tight">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-sm sm:text-base text-neutral-text-secondary">
+            <p className="text-sm sm:text-base text-neutral-text-secondary leading-relaxed">
               {subtitle}
             </p>
           )}

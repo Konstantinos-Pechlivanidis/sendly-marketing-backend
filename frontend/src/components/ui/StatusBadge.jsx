@@ -11,9 +11,13 @@ const StatusBadge = memo(function StatusBadge({ status, className }) {
     // Campaign statuses
     draft: { label: 'Draft', variant: 'default', color: 'neutral-text-secondary' },
     scheduled: { label: 'Scheduled', variant: 'ice', color: 'ice-deep' },
+    sending: { label: 'Sending', variant: 'ice', color: 'ice-deep' },
+    sent: { label: 'Sent', variant: 'ice', color: 'ice-deep' },
+    failed: { label: 'Failed', variant: 'default', color: 'red-600' },
+    cancelled: { label: 'Cancelled', variant: 'default', color: 'red-600' },
+    // Legacy/backward compatibility
     active: { label: 'Active', variant: 'ice', color: 'ice-deep' },
     completed: { label: 'Completed', variant: 'default', color: 'neutral-text-secondary' },
-    cancelled: { label: 'Cancelled', variant: 'default', color: 'red-600' },
     
     // Contact consent statuses
     opted_in: { label: 'Opted In', variant: 'ice', color: 'ice-deep' },
@@ -24,10 +28,8 @@ const StatusBadge = memo(function StatusBadge({ status, className }) {
     // Automation statuses
     paused: { label: 'Paused', variant: 'default', color: 'neutral-text-secondary' },
     
-    // Message statuses
-    sent: { label: 'Sent', variant: 'ice', color: 'ice-deep' },
+    // Message statuses (sent and failed already defined above for campaigns)
     delivered: { label: 'Delivered', variant: 'ice', color: 'ice-deep' },
-    failed: { label: 'Failed', variant: 'default', color: 'red-600' },
   };
 
   const config = statusConfig[status?.toLowerCase()] || {

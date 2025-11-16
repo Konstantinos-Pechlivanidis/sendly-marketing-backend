@@ -857,6 +857,12 @@ export async function sendCampaign(storeId, campaignId) {
  * @param {string} campaignId - Campaign ID
  * @param {Object} scheduleData - Schedule data
  * @returns {Promise<Object>} Updated campaign
+ * 
+ * Note: scheduleAt should be provided as an ISO 8601 datetime string in UTC.
+ * The frontend should convert the user's selected time (in their shop's timezone)
+ * to UTC before sending to this endpoint. When a scheduler processes scheduled
+ * campaigns, it should use the shop's timezone setting to determine the correct
+ * send time.
  */
 export async function scheduleCampaign(storeId, campaignId, scheduleData) {
   logger.info('Scheduling campaign', { storeId, campaignId, scheduleData });
@@ -875,9 +881,20 @@ export async function scheduleCampaign(storeId, campaignId, scheduleData) {
 
   const scheduleAt = new Date(scheduleData.scheduleAt);
 
+  if (isNaN(scheduleAt.getTime())) {
+    throw new ValidationError('Invalid schedule date format. Please use ISO 8601 format.');
+  }
+
   if (scheduleAt <= new Date()) {
     throw new ValidationError('Schedule date must be in the future');
   }
+
+  // Get shop timezone for logging (for future scheduler implementation)
+  const shopSettings = await prisma.shopSettings.findUnique({
+    where: { shopId: storeId },
+    select: { timezone: true },
+  });
+  const shopTimezone = shopSettings?.timezone || 'UTC';
 
   // Update campaign
   const updated = await prisma.campaign.update({
@@ -889,7 +906,12 @@ export async function scheduleCampaign(storeId, campaignId, scheduleData) {
     },
   });
 
-  logger.info('Campaign scheduled successfully', { storeId, campaignId, scheduleAt });
+  logger.info('Campaign scheduled successfully', {
+    storeId,
+    campaignId,
+    scheduleAt: scheduleAt.toISOString(),
+    shopTimezone,
+  });
 
   return updated;
 }

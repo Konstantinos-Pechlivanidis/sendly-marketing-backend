@@ -8,10 +8,10 @@ export default function BarChart({ data, dataKey, name, fill = '#99B5D7', ...pro
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="p-3 rounded-lg glass border border-glass-border backdrop-blur-[24px]">
-          <p className="text-sm font-medium text-primary-light mb-1">{payload[0].payload.name || name}</p>
+        <div className="p-2 sm:p-3 rounded-lg glass border border-neutral-border/60 backdrop-blur-[24px] shadow-glass-light">
+          <p className="text-xs sm:text-sm font-medium text-neutral-text-primary mb-1">{payload[0].payload.name || name}</p>
           {payload.map((entry, index) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
+            <p key={index} className="text-xs sm:text-sm text-neutral-text-secondary" style={{ color: entry.color }}>
               {entry.name}: {entry.value}
             </p>
           ))}
@@ -22,21 +22,24 @@ export default function BarChart({ data, dataKey, name, fill = '#99B5D7', ...pro
   };
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
       <RechartsBarChart data={data} {...props}>
         <CartesianGrid strokeDasharray="3 3" stroke="#94A9B4" opacity={0.3} />
         <XAxis 
           dataKey="name" 
           stroke="#94A9B4"
-          style={{ fontSize: '12px' }}
+          style={{ fontSize: '11px' }}
+          tick={{ fontSize: '11px' }}
         />
         <YAxis 
           stroke="#94A9B4"
-          style={{ fontSize: '12px' }}
+          style={{ fontSize: '11px' }}
+          tick={{ fontSize: '11px' }}
         />
         <Tooltip content={<CustomTooltip />} />
         <Legend 
-          wrapperStyle={{ color: '#E5E5E5', fontSize: '12px' }}
+          wrapperStyle={{ color: '#14161C', fontSize: '11px' }}
+          iconSize={12}
         />
         <Bar 
           dataKey={dataKey} 

@@ -1,13 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import GlassCard from '../../components/ui/GlassCard';
-import GlassButton from '../../components/ui/GlassButton';
 import PageHeader from '../../components/ui/PageHeader';
 import Icon from '../../components/ui/Icon';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import { useDashboard } from '../../services/queries';
-import { TOKEN_KEY, STORE_KEY } from '../../utils/constants';
 import { useStoreInfo } from '../../hooks/useStoreInfo';
 import SEO from '../../components/SEO';
 
@@ -19,18 +16,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const storeInfo = useStoreInfo();
   // Use cached data when available - only show loading on initial load
-  const { data: dashboardData, isLoading, isFetching, error } = useDashboard({
+  const { data: dashboardData, isLoading, error } = useDashboard({
     refetchInterval: false, // Disable auto-refetch - data is cached and fresh for 2 minutes
   });
-
-  // Authentication is handled by ProtectedRoute component
-  // No need for redundant check here
-
-  const handleLogout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(STORE_KEY);
-    navigate('/login', { replace: true });
-  };
 
   // Only show full loading state on initial load (no cached data)
   // If we have cached data, show it immediately even if fetching
@@ -47,7 +35,7 @@ export default function Dashboard() {
         description="Manage your SMS marketing campaigns and grow your Shopify store."
         path="/app/dashboard"
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
+      <div className="min-h-screen pt-4 sm:pt-6 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
         {/* Header */}
         <PageHeader
           title="Dashboard"
@@ -66,7 +54,7 @@ export default function Dashboard() {
 
         {/* Dashboard Content - Show cached data immediately, update in background */}
         {dashboardData && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8 lg:mb-10">
               {/* Credits Balance */}
               <GlassCard variant="ice" className="p-6 hover:shadow-glass-light-lg transition-shadow">
                 <div className="flex items-center justify-between mb-4">
@@ -126,7 +114,7 @@ export default function Dashboard() {
           )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           <GlassCard 
             variant="ice" 
             className="p-6 group hover:scale-[1.02] hover:shadow-glass-light-lg transition-all cursor-pointer focus-ring" 

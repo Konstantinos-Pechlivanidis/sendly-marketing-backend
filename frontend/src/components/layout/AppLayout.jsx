@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import GlassCard from '../ui/GlassCard';
 import GlassButton from '../ui/GlassButton';
 import Icon from '../ui/Icon';
 import { TOKEN_KEY, STORE_KEY } from '../../utils/constants';
@@ -149,7 +148,7 @@ export default function AppLayout({ children }) {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 animate-fade-in">
+        <div className="lg:hidden fixed inset-0 z-40">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-neutral-text-primary/40 backdrop-blur-sm animate-fade-in"
@@ -159,7 +158,7 @@ export default function AppLayout({ children }) {
           
           {/* Sidebar */}
           <div 
-            className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-neutral-surface-primary backdrop-blur-[40px] -webkit-backdrop-blur-[40px] border-l border-neutral-border/40 shadow-glass-light-lg flex flex-col transform transition-transform duration-300 ease-out"
+            className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-neutral-surface-primary backdrop-blur-[40px] -webkit-backdrop-blur-[40px] border-l border-neutral-border/40 shadow-glass-light-lg flex flex-col transform transition-transform duration-300 ease-out animate-slide-in-right"
             role="dialog"
             aria-modal="true"
             aria-label="Navigation menu"

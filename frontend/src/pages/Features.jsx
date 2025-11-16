@@ -56,7 +56,7 @@ export default function Features() {
       icon: 'test',
       title: 'A/B Testing',
       description: 'Test different messages to find what works best for your audience.',
-      badge: 'Pro',
+      badge: 'Coming Soon',
     },
     {
       icon: 'compliance',
@@ -67,6 +67,7 @@ export default function Features() {
       icon: 'link',
       title: 'Link Shortening',
       description: 'Track clicks with built-in link shortening and analytics.',
+      badge: 'Coming Soon',
     },
     {
       icon: 'import',
@@ -76,7 +77,8 @@ export default function Features() {
     {
       icon: 'webhook',
       title: 'Webhook Integration',
-      description: 'Connect Sendly with your favorite tools via webhooks.',
+      description: 'Shopify webhooks for order and cart events. General webhook support coming soon.',
+      badge: 'Shopify Only',
     },
   ];
 

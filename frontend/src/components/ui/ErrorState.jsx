@@ -37,7 +37,7 @@ export default function ErrorState({
   return (
     <GlassCard 
       variant={variant} 
-      className={clsx('p-6 border border-red-200 bg-red-50/50', className)}
+      className={clsx('p-4 sm:p-6 border border-red-200 bg-red-50/50', className)}
     >
       <div className="flex items-start gap-3">
         <Icon 
@@ -46,9 +46,9 @@ export default function ErrorState({
           variant="default" 
           className="text-red-500 flex-shrink-0" 
         />
-        <div className="flex-1">
-          <h3 className="text-xl font-semibold mb-2 text-red-500">{title}</h3>
-          <p className="text-sm text-neutral-text-secondary mb-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg sm:text-xl font-semibold mb-1.5 sm:mb-2 text-red-500">{title}</h3>
+          <p className="text-sm text-neutral-text-secondary mb-3 sm:mb-4">
             {message || 'An error occurred. Please try again.'}
           </p>
           {showRetry && (action || actionLabel || onAction || onRetry) && (

@@ -6,7 +6,6 @@ import PageHeader from '../../components/ui/PageHeader';
 import BackButton from '../../components/ui/BackButton';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Icon from '../../components/ui/Icon';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -14,7 +13,6 @@ import {
   useCampaign,
   useDeleteCampaign,
   useSendCampaign,
-  useScheduleCampaign,
   useCampaignMetrics,
 } from '../../services/queries';
 import { useToastContext } from '../../contexts/ToastContext';
@@ -31,7 +29,6 @@ export default function CampaignDetail() {
   const { data: metrics } = useCampaignMetrics(id);
   const deleteCampaign = useDeleteCampaign();
   const sendCampaign = useSendCampaign();
-  const scheduleCampaign = useScheduleCampaign();
 
   const handleDelete = async () => {
     try {
@@ -62,7 +59,7 @@ export default function CampaignDetail() {
 
   if (error || !campaign) {
     return (
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
+      <div className="min-h-screen pt-4 sm:pt-6 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
         <div className="max-w-[1200px] mx-auto w-full">
           <ErrorState
             title="Campaign Not Found"
@@ -86,7 +83,7 @@ export default function CampaignDetail() {
         description="View campaign details and metrics"
         path={`/app/campaigns/${id}`}
       />
-      <div className="min-h-screen pt-6 pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
+      <div className="min-h-screen pt-4 sm:pt-6 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 bg-neutral-bg-base w-full max-w-full">
         <div className="max-w-[1200px] mx-auto w-full">
           {/* Header */}
           <div className="mb-8">

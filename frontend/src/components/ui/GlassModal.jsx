@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
 import GlassCard from './GlassCard';
-import GlassButton from './GlassButton';
 import Icon from './Icon';
 
 /**
@@ -120,7 +119,7 @@ export default function GlassModal({
 
   return (
     <div
-      className="fixed inset-0 z-60 flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -144,16 +143,16 @@ export default function GlassModal({
         aria-labelledby={title ? 'modal-title' : undefined}
         tabIndex={-1}
         className={clsx(
-          'relative z-10 w-full animate-scale-in',
+          'relative z-10 w-full my-4 animate-scale-in max-h-[calc(100vh-2rem)] overflow-y-auto',
           sizeClasses[size],
           className
         )}
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-neutral-border/60">
+          <div className="flex items-center justify-between mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-neutral-border/60">
             {title && (
-              <h2 id="modal-title" className="text-2xl font-bold text-neutral-text-primary">{title}</h2>
+              <h2 id="modal-title" className="text-xl sm:text-2xl font-bold text-neutral-text-primary">{title}</h2>
             )}
             {showCloseButton && (
               <button

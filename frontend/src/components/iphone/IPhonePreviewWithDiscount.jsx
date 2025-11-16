@@ -35,14 +35,13 @@ export default function IPhonePreviewWithDiscount({
       .replace(/\{\{discount_code\}\}/gi, discountCode);
     
     // Replace unsubscribe link if it exists in the message
-    const unsubscribeUrl = `${API_URL}/unsubscribe/${unsubscribeToken}`;
     processed = processed.replace(/unsubscribe/gi, (match) => {
       // Keep the text but make it a link in the display
       return match;
     });
     
     return processed;
-  }, [message, firstName, discountCode, unsubscribeToken]);
+  }, [message, firstName, discountCode]);
 
   const smsInfo = useMemo(() => countSMSCharacters(processedMessage), [processedMessage]);
   const messageParts = useMemo(() => {
@@ -85,7 +84,6 @@ export default function IPhonePreviewWithDiscount({
     ? 'linear-gradient(180deg, #FFFFFF 0%, #F5F7FA 45%, #EDF0F4 100%)'
     : 'linear-gradient(180deg, #020202 0%, #191819 45%, #262425 100%)';
   const statusBarText = isLightMode ? 'text-neutral-text-primary' : 'text-white/90';
-  const emptyMessageText = isLightMode ? 'text-neutral-text-secondary' : 'text-white/40';
   const counterText = isLightMode ? 'text-neutral-text-secondary' : 'text-white/60';
   const homeIndicator = isLightMode ? 'bg-neutral-text-primary/20' : 'bg-white/30';
 
