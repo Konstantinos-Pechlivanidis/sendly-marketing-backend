@@ -20,22 +20,33 @@ import { logger } from '../utils/logger.js';
 export function validateBody(schema) {
   return async (req, res, next) => {
     try {
+      // Ensure we have a body (even if empty)
+      if (!req.body || typeof req.body !== 'object') {
+        req.body = {};
+      }
+
       const validated = await schema.parseAsync(req.body);
       req.body = validated;
       next();
     } catch (error) {
-      if (error.name === 'ZodError') {
-        const errors = Array.isArray(error.errors) ? error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
-        })) : [{ field: null, message: error.message || 'Unknown validation error' }];
+      if (error.name === 'ZodError' || error.issues) {
+        // Handle both ZodError and error.issues format
+        const zodErrors = error.issues || error.errors || [];
+        const errors = Array.isArray(zodErrors) && zodErrors.length > 0
+          ? zodErrors.map(err => ({
+              field: (err.path || []).join('.') || null,
+              message: err.message || 'Validation error',
+            }))
+          : [{ field: null, message: error.message || 'Validation failed' }];
 
         logger.warn('Validation error', {
           path: req.path,
+          method: req.method,
           errors,
           body: req.body,
         });
 
+        // Ensure we always return JSON, not HTML
         return next(new ValidationError('Validation failed', errors));
       }
       next(error);

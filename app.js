@@ -124,7 +124,7 @@ app.use(
   }),
 );
 
-// Body parsing
+// Body parsing with error handling
 app.use(
   express.json({
     limit: '5mb',
@@ -135,6 +135,20 @@ app.use(
   }),
 );
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// Handle JSON parsing errors
+app.use((error, req, res, next) => {
+  if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+    // JSON parsing error
+    return res.status(400).json({
+      success: false,
+      error: 'invalid_json',
+      message: 'Invalid JSON in request body',
+      path: req.originalUrl || req.url,
+    });
+  }
+  next(error);
+});
 
 // Logging
 app.use(

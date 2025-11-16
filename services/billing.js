@@ -130,8 +130,8 @@ export function getPackageById(packageId) {
  * @param {Object} returnUrls - Success and cancel URLs
  * @returns {Promise<Object>} Checkout session
  */
-export async function createPurchaseSession(storeId, packageId, returnUrls) {
-  logger.info('Creating purchase session', { storeId, packageId });
+export async function createPurchaseSession(storeId, packageId, returnUrls, requestedCurrency = null) {
+  logger.info('Creating purchase session', { storeId, packageId, requestedCurrency });
 
   // Validate package
   const pkg = getPackageById(packageId);
@@ -151,8 +151,17 @@ export async function createPurchaseSession(storeId, packageId, returnUrls) {
     throw new ValidationError('Success and cancel URLs are required');
   }
 
-  // Select currency and price based on shop currency
-  const currency = shop.currency || 'EUR';
+  // Select currency: use requested currency if provided and valid, otherwise use shop currency, fallback to EUR
+  // Only allow EUR or USD
+  const validCurrencies = ['EUR', 'USD'];
+  let currency = 'EUR';
+  
+  if (requestedCurrency && validCurrencies.includes(requestedCurrency.toUpperCase())) {
+    currency = requestedCurrency.toUpperCase();
+  } else if (shop.currency && validCurrencies.includes(shop.currency.toUpperCase())) {
+    currency = shop.currency.toUpperCase();
+  }
+  
   const price = currency === 'USD' ? pkg.priceUSD : pkg.priceEUR;
   const stripePriceId = currency === 'USD'
     ? pkg.stripePriceIdUSD

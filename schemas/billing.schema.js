@@ -16,6 +16,11 @@ const transactionTypeSchema = z.enum(['purchase', 'debit', 'credit', 'refund', '
 // Transaction status
 const transactionStatusSchema = z.enum(['pending', 'completed', 'failed']);
 
+// Currency schema
+const currencySchema = z.enum(['EUR', 'USD'], {
+  errorMap: () => ({ message: 'Currency must be EUR or USD' }),
+}).optional().default('EUR');
+
 /**
  * Create Purchase Session Schema
  */
@@ -24,11 +29,26 @@ export const createPurchaseSchema = z.object({
   successUrl: z.string()
     .trim()
     .min(1, 'Success URL is required')
-    .url('Success URL must be a valid URL'),
+    .refine((val) => {
+      try {
+        new URL(val);
+        return true;
+      } catch {
+        return false;
+      }
+    }, { message: 'Success URL must be a valid URL' }),
   cancelUrl: z.string()
     .trim()
     .min(1, 'Cancel URL is required')
-    .url('Cancel URL must be a valid URL'),
+    .refine((val) => {
+      try {
+        new URL(val);
+        return true;
+      } catch {
+        return false;
+      }
+    }, { message: 'Cancel URL must be a valid URL' }),
+  currency: currencySchema, // Optional currency selection (EUR or USD)
 });
 
 /**
@@ -80,5 +100,6 @@ export default {
   createPurchaseSchema,
   transactionHistoryQuerySchema,
   billingHistoryQuerySchema,
+  currencySchema,
 };
 

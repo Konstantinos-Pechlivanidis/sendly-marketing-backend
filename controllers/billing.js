@@ -66,13 +66,25 @@ export async function getPackages(req, res, next) {
   try {
     const storeId = getStoreId(req);
 
-    // Get shop currency
-    const shop = await prisma.shop.findUnique({
-      where: { id: storeId },
-      select: { currency: true },
-    });
+    // Get currency from query param or shop currency
+    const requestedCurrency = req.query.currency;
+    const validCurrencies = ['EUR', 'USD'];
+    
+    // Validate requested currency if provided
+    let currency = 'EUR';
+    if (requestedCurrency && validCurrencies.includes(requestedCurrency.toUpperCase())) {
+      currency = requestedCurrency.toUpperCase();
+    } else {
+      // Get shop currency as fallback
+      const shop = await prisma.shop.findUnique({
+        where: { id: storeId },
+        select: { currency: true },
+      });
+      currency = shop?.currency && validCurrencies.includes(shop.currency.toUpperCase())
+        ? shop.currency.toUpperCase()
+        : 'EUR';
+    }
 
-    const currency = shop?.currency || 'EUR';
     const packages = billingService.getPackages(currency);
 
     return sendSuccess(res, { packages, currency });
@@ -93,26 +105,21 @@ export async function getPackages(req, res, next) {
 export async function createPurchase(req, res, next) {
   try {
     const storeId = getStoreId(req);
-    const { packageId, successUrl, cancelUrl } = req.body;
+    const { packageId, successUrl, cancelUrl, currency } = req.body;
 
-    if (!packageId) {
-      throw new ValidationError('Package ID is required to create purchase session');
-    }
-
-    if (!successUrl || !cancelUrl) {
-      throw new ValidationError('Success and cancel URLs are required');
-    }
-
+    // Validation is handled by validateBody middleware, but we can add additional checks here if needed
     const session = await billingService.createPurchaseSession(
       storeId,
       packageId,
       { successUrl, cancelUrl },
+      currency, // Pass currency if provided
     );
 
     return sendSuccess(res, session, 'Checkout session created successfully');
   } catch (error) {
     logger.error('Create purchase error', {
       error: error.message,
+      stack: error.stack,
       storeId: getStoreId(req),
       body: req.body,
     });
