@@ -72,6 +72,8 @@ export async function campaigns(req, res, next) {
     const campaignPerformance = await getCampaignPerformance(storeId, { from, to, status, type });
 
     // Get paginated campaigns list
+    // Validate status using same logic as campaigns service
+    const validStatuses = ['draft', 'scheduled', 'sending', 'sent', 'failed', 'cancelled'];
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const campaigns = await prisma.campaign.findMany({
       where: {
@@ -82,7 +84,8 @@ export async function campaigns(req, res, next) {
             lte: new Date(to),
           },
         }),
-        ...(status && { status }),
+        // Only filter by status if it's a valid campaign status (same validation as campaigns service)
+        ...(status && validStatuses.includes(status) && { status }),
         ...(type && { type }),
       },
       select: {
@@ -113,7 +116,8 @@ export async function campaigns(req, res, next) {
             lte: new Date(to),
           },
         }),
-        ...(status && { status }),
+        // Only filter by status if it's a valid campaign status (same validation as campaigns service)
+        ...(status && validStatuses.includes(status) && { status }),
         ...(type && { type }),
       },
     });
@@ -122,7 +126,7 @@ export async function campaigns(req, res, next) {
       campaigns: campaigns.map(campaign => ({
         id: campaign.id,
         name: campaign.name,
-        status: campaign.status,
+        status: campaign.status, // Campaign status: draft, scheduled, sending, sent, failed, cancelled
         scheduleType: campaign.scheduleType,
         createdAt: campaign.createdAt,
         updatedAt: campaign.updatedAt,
@@ -130,14 +134,18 @@ export async function campaigns(req, res, next) {
       })),
       totalCount,
       campaignStats: {
-        totalSent: campaignPerformance.summary.totalMessages,
-        totalDelivered: campaignPerformance.summary.delivered,
-        totalFailed: campaignPerformance.summary.failed,
-        avgDeliveryRate: campaignPerformance.summary.deliveryRate,
+        totalSent: campaignPerformance.summary.totalSent || campaignPerformance.summary.totalMessages || 0,
+        totalDelivered: campaignPerformance.summary.totalDelivered || campaignPerformance.summary.delivered || 0,
+        totalFailed: campaignPerformance.summary.totalFailed || campaignPerformance.summary.failed || 0,
+        avgDeliveryRate: campaignPerformance.summary.deliveryRate || 0,
+        byStatus: campaignPerformance.campaignStats?.byStatus || campaignPerformance.statusBreakdown?.reduce((acc, item) => {
+          acc[item.status] = item.count;
+          return acc;
+        }, {}) || {},
       },
       topPerformers: campaignPerformance.topPerformers,
       trends: campaignPerformance.trends,
-      statusBreakdown: campaignPerformance.statusBreakdown,
+      statusBreakdown: campaignPerformance.statusBreakdown, // Array of {status, count}
       pagination: {
         page: parseInt(page),
         pageSize: parseInt(limit),

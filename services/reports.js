@@ -20,7 +20,9 @@ export async function getCampaignPerformance(storeId, filters = {}) {
   const { from, to, status, type } = filters;
 
   try {
-    // Build where clause
+    // Build where clause - use same status validation as campaigns service
+    // Valid campaign statuses: draft, scheduled, sending, sent, failed, cancelled
+    const validStatuses = ['draft', 'scheduled', 'sending', 'sent', 'failed', 'cancelled'];
     const whereClause = {
       shopId: storeId,
       ...(from && to && {
@@ -29,46 +31,76 @@ export async function getCampaignPerformance(storeId, filters = {}) {
           lte: new Date(to),
         },
       }),
-      ...(status && { status }),
+      // Only filter by status if it's a valid campaign status (same validation as campaigns service)
+      ...(status && validStatuses.includes(status) && { status }),
       ...(type && { type }),
     };
 
-    // Get campaign counts and basic stats
+    // Get campaign counts and basic stats - group by campaign status
     const campaignStats = await prisma.campaign.groupBy({
       by: ['status'],
       where: whereClause,
       _count: { id: true },
     });
 
-    // Get message logs for campaigns
-    const messageStats = await prisma.messageLog.groupBy({
-      by: ['status'],
+    // Build status breakdown with all possible campaign statuses
+    // Ensure all 6 statuses are always included (same as getCampaignStats in campaigns service)
+    const statusBreakdown = {
+      draft: campaignStats.find(s => s.status === 'draft')?._count?.id || 0,
+      scheduled: campaignStats.find(s => s.status === 'scheduled')?._count?.id || 0,
+      sending: campaignStats.find(s => s.status === 'sending')?._count?.id || 0,
+      sent: campaignStats.find(s => s.status === 'sent')?._count?.id || 0,
+      failed: campaignStats.find(s => s.status === 'failed')?._count?.id || 0,
+      cancelled: campaignStats.find(s => s.status === 'cancelled')?._count?.id || 0,
+    };
+
+    // Calculate metrics from CampaignMetrics (aggregated from CampaignRecipient)
+    // This is more accurate than counting MessageLog entries
+    // Only count metrics from campaigns that have been sent (sending, sent, or failed status)
+    const campaignsWithMetrics = await prisma.campaign.findMany({
       where: {
-        shopId: storeId,
-        campaignId: { not: null },
-        ...(from && to && {
-          createdAt: {
-            gte: new Date(from),
-            lte: new Date(to),
-          },
-        }),
+        ...whereClause,
+        status: {
+          in: ['sending', 'sent', 'failed'], // Only count metrics from active/completed campaigns
+        },
+        metrics: { isNot: null }, // Only campaigns with metrics
       },
-      _count: { status: true },
+      select: {
+        metrics: {
+          select: {
+            totalSent: true,
+            totalDelivered: true,
+            totalFailed: true,
+          },
+        },
+      },
     });
 
-    const sent = messageStats.find(s => s.status === 'sent')?._count?.status || 0;
-    const delivered = messageStats.find(s => s.status === 'delivered')?._count?.status || 0;
-    const failed = messageStats.find(s => s.status === 'failed')?._count?.status || 0;
+    // Aggregate metrics across all campaigns
+    const sent = campaignsWithMetrics.reduce((sum, c) => sum + (c.metrics?.totalSent || 0), 0);
+    const delivered = campaignsWithMetrics.reduce((sum, c) => sum + (c.metrics?.totalDelivered || 0), 0);
+    const failed = campaignsWithMetrics.reduce((sum, c) => sum + (c.metrics?.totalFailed || 0), 0);
     const deliveryRate = sent > 0 ? (delivered / sent) * 100 : 0;
 
-    // Get top performing campaigns
+    // Get top performing campaigns - only include campaigns that have been sent (sent or failed status)
     const topCampaigns = await prisma.campaign.findMany({
-      where: whereClause,
+      where: {
+        ...whereClause,
+        status: {
+          in: ['sent', 'failed', 'sending'], // Only show campaigns that have been sent or are sending
+        },
+      },
       select: {
         id: true,
         name: true,
         status: true,
         createdAt: true,
+        metrics: {
+          select: {
+            totalDelivered: true,
+            totalSent: true,
+          },
+        },
         _count: {
           select: {
             messages: {
@@ -77,55 +109,86 @@ export async function getCampaignPerformance(storeId, filters = {}) {
           },
         },
       },
-      orderBy: {
-        messages: {
-          _count: 'desc',
+      orderBy: [
+        {
+          metrics: {
+            totalDelivered: 'desc',
+          },
         },
-      },
+        {
+          createdAt: 'desc',
+        },
+      ],
       take: 5,
     });
 
-    // Get daily message trends
-    const dailyTrends = await prisma.messageLog.groupBy({
-      by: ['createdAt'],
+    // Get daily message trends from CampaignRecipient (more accurate than MessageLog)
+    // Only from active/completed campaigns (sending, sent, failed)
+    const dailyTrends = await prisma.campaignRecipient.groupBy({
+      by: ['sentAt'],
       where: {
-        shopId: storeId,
-        campaignId: { not: null },
-        ...(from && to && {
-          createdAt: {
-            gte: new Date(from),
-            lte: new Date(to),
+        campaign: {
+          shopId: storeId,
+          status: {
+            in: ['sending', 'sent', 'failed'], // Only count recipients from active/completed campaigns
           },
-        }),
+          ...(from && to && {
+            createdAt: {
+              gte: new Date(from),
+              lte: new Date(to),
+            },
+          }),
+        },
+        sentAt: { not: null }, // Only count recipients that were actually sent
       },
       _count: { id: true },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { sentAt: 'asc' },
     });
+
+    // Calculate total campaigns (all statuses)
+    const totalCampaigns = campaignStats.reduce((sum, stat) => sum + stat._count.id, 0);
+
+    // Calculate active campaigns (sending, sent, failed)
+    const activeCampaigns = statusBreakdown.sending + statusBreakdown.sent + statusBreakdown.failed;
 
     return {
       summary: {
-        totalCampaigns: campaignStats.reduce((sum, stat) => sum + stat._count.id, 0),
+        totalCampaigns,
+        activeCampaigns, // Campaigns that have been sent or are sending
         totalMessages: sent,
+        totalSent: sent, // Alias for consistency
         delivered,
+        totalDelivered: delivered, // Alias for consistency
         failed,
+        totalFailed: failed, // Alias for consistency
         deliveryRate: Math.round(deliveryRate * 100) / 100,
         creditsUsed: sent,
       },
       topPerformers: topCampaigns.map(campaign => ({
         id: campaign.id,
         name: campaign.name,
-        status: campaign.status,
-        delivered: campaign._count.messages,
+        status: campaign.status, // Campaign status (sent, failed, sending)
+        delivered: campaign.metrics?.totalDelivered || campaign._count.messages || 0,
+        sent: campaign.metrics?.totalSent || 0,
         createdAt: campaign.createdAt,
       })),
-      trends: dailyTrends.map(trend => ({
-        date: trend.createdAt.toISOString().split('T')[0],
-        messages: trend._count.id,
+      trends: dailyTrends
+        .filter(trend => trend.sentAt) // Filter out null dates
+        .map(trend => ({
+          date: trend.sentAt.toISOString().split('T')[0],
+          messages: trend._count.id,
+        })),
+      statusBreakdown: Object.entries(statusBreakdown).map(([status, count]) => ({
+        status,
+        count,
       })),
-      statusBreakdown: campaignStats.map(stat => ({
-        status: stat.status,
-        count: stat._count.id,
-      })),
+      campaignStats: {
+        // Alias for backward compatibility
+        totalSent: sent,
+        totalDelivered: delivered,
+        totalFailed: failed,
+        byStatus: statusBreakdown,
+      },
     };
   } catch (error) {
     logger.error('Failed to get campaign performance', { storeId, error: error.message });
