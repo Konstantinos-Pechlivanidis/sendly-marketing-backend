@@ -3,7 +3,6 @@ import { logger } from '../utils/logger.js';
 import billingService from '../services/billing.js';
 import prisma from '../services/prisma.js';
 import { sendSuccess, sendPaginated } from '../utils/response.js';
-import { ValidationError } from '../utils/errors.js';
 
 /**
  * Billing Controller
@@ -69,7 +68,7 @@ export async function getPackages(req, res, next) {
     // Get currency from query param or shop currency
     const requestedCurrency = req.query.currency;
     const validCurrencies = ['EUR', 'USD'];
-    
+
     // Validate requested currency if provided
     let currency = 'EUR';
     if (requestedCurrency && validCurrencies.includes(requestedCurrency.toUpperCase())) {

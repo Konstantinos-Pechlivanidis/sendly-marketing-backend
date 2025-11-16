@@ -155,13 +155,13 @@ export async function createPurchaseSession(storeId, packageId, returnUrls, requ
   // Only allow EUR or USD
   const validCurrencies = ['EUR', 'USD'];
   let currency = 'EUR';
-  
+
   if (requestedCurrency && validCurrencies.includes(requestedCurrency.toUpperCase())) {
     currency = requestedCurrency.toUpperCase();
   } else if (shop.currency && validCurrencies.includes(shop.currency.toUpperCase())) {
     currency = shop.currency.toUpperCase();
   }
-  
+
   const price = currency === 'USD' ? pkg.priceUSD : pkg.priceEUR;
   const stripePriceId = currency === 'USD'
     ? pkg.stripePriceIdUSD

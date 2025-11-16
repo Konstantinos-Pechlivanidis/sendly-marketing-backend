@@ -34,9 +34,9 @@ export function validateBody(schema) {
         const zodErrors = error.issues || error.errors || [];
         const errors = Array.isArray(zodErrors) && zodErrors.length > 0
           ? zodErrors.map(err => ({
-              field: (err.path || []).join('.') || null,
-              message: err.message || 'Validation error',
-            }))
+            field: (err.path || []).join('.') || null,
+            message: err.message || 'Validation error',
+          }))
           : [{ field: null, message: error.message || 'Validation failed' }];
 
         logger.warn('Validation error', {

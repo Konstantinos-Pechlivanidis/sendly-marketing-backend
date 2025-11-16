@@ -43,9 +43,19 @@ export async function resolveStore(req, res, next) {
             logger.debug('Store resolved from app JWT token', { storeId, shopDomain });
           } else {
             logger.warn('Store not found for storeId from JWT token', { storeId });
+            // If store not found but token has shopDomain, use it as fallback
+            if (decoded.shopDomain) {
+              shopDomain = decoded.shopDomain;
+              logger.debug('Using shopDomain from JWT token as fallback', { shopDomain });
+            }
           }
         } else {
           logger.warn('JWT token decoded but no storeId found', { decoded });
+          // If token has shopDomain but no storeId, use it
+          if (decoded.shopDomain) {
+            shopDomain = decoded.shopDomain;
+            logger.debug('Using shopDomain from JWT token (no storeId)', { shopDomain });
+          }
         }
       } catch (jwtError) {
         // Not our app token, might be Shopify session token from App Bridge
@@ -96,7 +106,8 @@ export async function resolveStore(req, res, next) {
     // Method 2: Shopify Headers (backward compatible)
     // Check multiple possible sources for shop domain
     // Note: Express converts headers to lowercase, so we only check lowercase
-    if (!store) {
+    // If store was not found from token, or if shopDomain is not set, check headers
+    if (!store || !shopDomain) {
       const possibleShopDomain =
         req.headers['x-shopify-shop-domain'] ||
         req.headers['x-shopify-shop'] ||
@@ -122,16 +133,32 @@ export async function resolveStore(req, res, next) {
         }
       }
 
+      // Prioritize header shopDomain if provided (especially if store wasn't found from token)
       if (possibleShopDomain) {
-        shopDomain = possibleShopDomain;
-
+        const headerShopDomain = possibleShopDomain;
         // Normalize shop domain
-        if (shopDomain && !shopDomain.includes('.')) {
-          shopDomain = `${shopDomain}.myshopify.com`;
+        const normalizedHeaderDomain = headerShopDomain.includes('.')
+          ? headerShopDomain
+          : `${headerShopDomain}.myshopify.com`;
+
+        // Always use header shopDomain if:
+        // 1. Store was not found from token (even if shopDomain was set from token)
+        // 2. Header is explicitly provided (X-Shopify-Shop-Domain)
+        // 3. No shopDomain was set from token
+        if (!store || req.headers['x-shopify-shop-domain'] || !shopDomain) {
+          shopDomain = normalizedHeaderDomain;
+          logger.debug('Using shopDomain from header', {
+            shopDomain,
+            hadStoreFromToken: !!store,
+            hadShopDomainFromToken: !!shopDomain,
+            headerSource: req.headers['x-shopify-shop-domain'] ? 'x-shopify-shop-domain' : 'other',
+          });
         }
       } else if (shopDomainFromPath) {
-        shopDomain = shopDomainFromPath;
-      } else {
+        if (!shopDomain) {
+          shopDomain = shopDomainFromPath;
+        }
+      } else if (!shopDomain) {
         // Try to extract from Shopify App Bridge session or JWT
         const shopifySession = req.session?.shopify || req.session?.shop;
         if (shopifySession) {
@@ -143,7 +170,7 @@ export async function resolveStore(req, res, next) {
       }
 
       // Final validation - ensure shopDomain is a valid string
-      if (!shopDomain || typeof shopDomain !== 'string') {
+      if (!shopDomain || typeof shopDomain !== 'string' || shopDomain.trim() === '') {
         // No shop domain provided - shop domain is required in production
         logger.warn('No shop domain provided in headers, query, or body', {
           method: req.method,
@@ -161,28 +188,46 @@ export async function resolveStore(req, res, next) {
           possibleShopDomain,
           nodeEnv: process.env.NODE_ENV,
           hasToken: !!req.headers.authorization,
+          storeResolved: !!store,
+          shopDomainFromToken: shopDomain,
         });
 
         // In production, shop domain is required - fail if not provided
         logger.error('Shop domain is required in production mode');
       }
 
-      // Ensure shopDomain is a valid string after all attempts
-      if (!shopDomain || typeof shopDomain !== 'string') {
+      // Normalize shopDomain (ensure it's a valid string)
+      if (shopDomain && typeof shopDomain === 'string') {
+        shopDomain = shopDomain.trim();
+        // Ensure it has .myshopify.com suffix if it doesn't already
+        if (shopDomain && !shopDomain.includes('.')) {
+          shopDomain = `${shopDomain}.myshopify.com`;
+        }
+      }
+
+      // Final validation - ensure shopDomain is a valid non-empty string after normalization
+      if (!shopDomain || typeof shopDomain !== 'string' || shopDomain.trim() === '') {
         logger.error('Invalid shopDomain after all attempts', {
           shopDomain,
           type: typeof shopDomain,
+          method: req.method,
+          path: req.path,
           headers: Object.keys(req.headers).filter(h => h.toLowerCase().includes('shop')),
           headerValues: {
             'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
             'x-shopify-shop': req.headers['x-shopify-shop'],
+            'x-shopify-shop-name': req.headers['x-shopify-shop-name'],
+            'authorization': req.headers.authorization ? 'Bearer ***' : undefined,
           },
+          hadToken: !!req.headers.authorization,
+          storeResolved: !!store,
         });
         return res.status(400).json({
           success: false,
           error: 'Invalid shop domain',
           message: 'Unable to determine shop domain from request. Please provide X-Shopify-Shop-Domain header or Bearer token.',
           code: 'INVALID_SHOP_DOMAIN',
+          apiVersion: 'v1',
         });
       }
 
