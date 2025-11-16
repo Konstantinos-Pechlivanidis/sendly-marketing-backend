@@ -52,12 +52,8 @@ export default function GlassSelectCustom({
         const buttonRect = buttonRef.current.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const scrollY = window.scrollY;
-        const scrollX = window.scrollX;
         
-        // Calculate position below button
-        let top = buttonRect.bottom + scrollY + 8; // 8px = mt-2 equivalent
-        let left = buttonRect.left + scrollX;
+        // Calculate width (viewport-relative for fixed positioning)
         let width = buttonRect.width;
         
         // On mobile, use full button width
@@ -65,26 +61,53 @@ export default function GlassSelectCustom({
           width = buttonRect.width;
         }
         
-        // Adjust if dropdown would go off-screen (for desktop)
-        if (viewportWidth >= 640) {
-          // Check if dropdown would go off right edge
-          const estimatedDropdownWidth = 200; // min-w-[200px]
-          if (left + estimatedDropdownWidth > viewportWidth + scrollX) {
-            left = viewportWidth + scrollX - estimatedDropdownWidth - 8; // 8px padding
+        // Calculate horizontal position (viewport-relative for fixed positioning)
+        let adjustedLeft = buttonRect.left;
+        const estimatedDropdownWidth = viewportWidth < 640 ? width : Math.max(width, 200); // min-w-[200px] on desktop
+        
+        if (adjustedLeft + estimatedDropdownWidth > viewportWidth) {
+          adjustedLeft = viewportWidth - estimatedDropdownWidth - 16; // 16px padding from edge
+        }
+        if (adjustedLeft < 16) {
+          adjustedLeft = 16;
+        }
+        
+        // Calculate vertical position - check if we should open above or below
+        const spaceBelow = viewportHeight - buttonRect.bottom;
+        const spaceAbove = buttonRect.top;
+        const gap = 8; // Gap between button and dropdown
+        const estimatedDropdownHeight = 240; // max-h-60 = 240px (can be more with many options)
+        
+        let adjustedTop;
+        if (spaceBelow >= estimatedDropdownHeight + gap) {
+          // Enough space below - position below the button (viewport-relative)
+          adjustedTop = buttonRect.bottom + gap;
+        } else if (spaceAbove >= estimatedDropdownHeight + gap) {
+          // Not enough space below, but enough above - position above the button
+          adjustedTop = buttonRect.top - estimatedDropdownHeight - gap;
+        } else {
+          // Not enough space either way - position where there's more space
+          if (spaceBelow > spaceAbove) {
+            // More space below - position below with max-height constraint
+            adjustedTop = buttonRect.bottom + gap;
+          } else {
+            // More space above - position above with max-height constraint
+            adjustedTop = buttonRect.top - estimatedDropdownHeight - gap;
           }
-          
-          // Check if dropdown would go off bottom edge
-          const estimatedDropdownHeight = 240; // max-h-60 = 240px
-          if (top + estimatedDropdownHeight > viewportHeight + scrollY) {
-            // Position above button instead
-            top = buttonRect.top + scrollY - estimatedDropdownHeight - 8;
+          // Ensure it doesn't go outside viewport
+          if (adjustedTop < 16) {
+            adjustedTop = 16;
+          }
+          if (adjustedTop + estimatedDropdownHeight > viewportHeight - 16) {
+            adjustedTop = viewportHeight - estimatedDropdownHeight - 16;
           }
         }
         
-        setDropdownPosition({ top, left, width });
+        setDropdownPosition({ top: adjustedTop, left: adjustedLeft, width });
       };
 
       updatePosition();
+      // Update position on scroll and resize to keep it aligned with the button
       window.addEventListener('scroll', updatePosition, true);
       window.addEventListener('resize', updatePosition);
 
@@ -212,6 +235,9 @@ export default function GlassSelectCustom({
               top: `${dropdownPosition.top}px`,
               left: `${dropdownPosition.left}px`,
               width: dropdownPosition.width > 0 ? `${dropdownPosition.width}px` : 'auto',
+              maxWidth: 'calc(100vw - 32px)',
+              maxHeight: 'calc(100vh - 32px)',
+              position: 'fixed', // Explicitly set fixed positioning
             }}
           >
           {/* Search Input (if searchable) */}

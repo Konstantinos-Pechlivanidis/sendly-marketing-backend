@@ -55,12 +55,14 @@ export default function Billing() {
   const history = historyResponse.transactions || historyResponse.items || [];
   const pagination = historyResponse.pagination || {};
 
-  // Update selected currency when settings or balance currency changes
+  // Update selected currency when settings currency changes (immediately sync)
   useEffect(() => {
-    if (defaultCurrency && selectedCurrency !== defaultCurrency) {
-      setSelectedCurrency(defaultCurrency);
+    if (settingsCurrency && settingsCurrency !== selectedCurrency) {
+      // Only auto-update if user hasn't manually selected a different currency
+      // But if settings change, we should update to match settings
+      setSelectedCurrency(settingsCurrency);
     }
-  }, [defaultCurrency, selectedCurrency]);
+  }, [settingsCurrency]); // React to settings changes immediately
 
   // Refetch packages when currency changes
   useEffect(() => {

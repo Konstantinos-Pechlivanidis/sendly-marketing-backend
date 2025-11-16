@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { format, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import GlassCalendar from './GlassCalendar';
 import GlassButton from './GlassButton';
+import GlassTimePicker from './GlassTimePicker';
 import Icon from './Icon';
 
 /**
@@ -179,40 +180,24 @@ export default function GlassDateTimePicker({
   };
 
   const handleTimeChange = (e) => {
-    const timeValue = e.target.value;
+    const timeValue = e.target.value; // Format: "HH:mm"
     setTempTime(timeValue);
     
-    if (selectedDateTime) {
-      const [hours, minutes] = timeValue.split(':').map(Number);
-      const newDateTime = setMilliseconds(
-        setSeconds(
-          setMinutes(
-            setHours(selectedDateTime, hours || 9),
-            minutes || 0
-          ),
-          0
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    const baseDate = selectedDateTime || new Date();
+    
+    const newDateTime = setMilliseconds(
+      setSeconds(
+        setMinutes(
+          setHours(baseDate, hours || 9),
+          minutes || 0
         ),
         0
-      );
-      setSelectedDateTime(newDateTime);
-      updateDateTime(newDateTime);
-    } else {
-      // If no date selected yet, use today's date with the selected time
-      const today = new Date();
-      const [hours, minutes] = timeValue.split(':').map(Number);
-      const newDateTime = setMilliseconds(
-        setSeconds(
-          setMinutes(
-            setHours(today, hours || 9),
-            minutes || 0
-          ),
-          0
-        ),
-        0
-      );
-      setSelectedDateTime(newDateTime);
-      updateDateTime(newDateTime);
-    }
+      ),
+      0
+    );
+    setSelectedDateTime(newDateTime);
+    updateDateTime(newDateTime);
   };
 
   const updateDateTime = (dateTime) => {
@@ -404,14 +389,12 @@ export default function GlassDateTimePicker({
                 />
               </div>
 
-              {/* Time Input */}
+              {/* Time Picker */}
               <div className="pt-4 border-t border-neutral-border/60">
                 <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Select Time</p>
-                <input
-                  type="time"
+                <GlassTimePicker
                   value={tempTime}
                   onChange={handleTimeChange}
-                  className="w-full px-4 py-3 rounded-xl bg-neutral-surface-primary border border-neutral-border/60 text-neutral-text-primary focus-ring focus:border-ice-primary focus:shadow-glow-ice-light text-base sm:text-sm min-h-[44px]"
                 />
               </div>
             </div>
