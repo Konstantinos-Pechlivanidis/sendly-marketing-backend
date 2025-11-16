@@ -27,7 +27,28 @@ export async function createStripeCheckoutSession({
 }) {
   try {
     if (!stripe) {
+      logger.error('Stripe is not initialized', {
+        hasStripeSecretKey: !!process.env.STRIPE_SECRET_KEY,
+        shopId,
+        packageId,
+      });
       throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+    }
+
+    // Validate required parameters
+    if (!stripePriceId) {
+      logger.error('Missing stripePriceId', { shopId, packageId, currency });
+      throw new Error('Stripe price ID is required');
+    }
+
+    if (!shopId) {
+      logger.error('Missing shopId', { packageId, currency });
+      throw new Error('Shop ID is required');
+    }
+
+    if (!shopDomain) {
+      logger.error('Missing shopDomain', { shopId, packageId });
+      throw new Error('Shop domain is required');
     }
 
     // Merge provided metadata with required fields

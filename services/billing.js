@@ -227,23 +227,64 @@ export async function createPurchaseSession(storeId, packageId, returnUrls, requ
   });
 
   // Create Stripe checkout session
-  const session = await createStripeCheckoutSession({
-    packageId,
-    credits: pkg.credits,
-    price,
-    currency,
-    stripePriceId, // Use selected price ID based on currency
-    shopId: storeId,
-    shopDomain: shop.shopDomain,
-    successUrl: returnUrls.successUrl,
-    cancelUrl: returnUrls.cancelUrl,
-    metadata: {
+  let session;
+  try {
+    logger.debug('Calling Stripe checkout session creation', {
+      storeId,
+      shopDomain: shop.shopDomain,
+      packageId,
+      stripePriceId,
+      currency,
+    });
+
+    session = await createStripeCheckoutSession({
+      packageId,
+      credits: pkg.credits,
+      price,
+      currency,
+      stripePriceId, // Use selected price ID based on currency
+      shopId: storeId,
+      shopDomain: shop.shopDomain,
+      successUrl: returnUrls.successUrl,
+      cancelUrl: returnUrls.cancelUrl,
+      metadata: {
+        storeId,
+        packageId,
+        transactionId: transaction.id,
+        credits: pkg.credits.toString(),
+      },
+    });
+
+    logger.debug('Stripe checkout session created', {
+      sessionId: session?.id,
+      sessionUrl: session?.url,
+    });
+  } catch (stripeError) {
+    logger.error('Failed to create Stripe checkout session', {
+      error: stripeError.message,
+      errorName: stripeError.name,
+      errorStack: stripeError.stack,
       storeId,
       packageId,
-      transactionId: transaction.id,
-      credits: pkg.credits.toString(),
-    },
-  });
+      stripePriceId,
+      currency,
+    });
+
+    // Clean up the transaction record if Stripe session creation fails
+    try {
+      await prisma.billingTransaction.delete({
+        where: { id: transaction.id },
+      });
+      logger.debug('Cleaned up failed transaction record', { transactionId: transaction.id });
+    } catch (cleanupError) {
+      logger.warn('Failed to clean up transaction record', {
+        transactionId: transaction.id,
+        error: cleanupError.message,
+      });
+    }
+
+    throw stripeError;
+  }
 
   // Update transaction with Stripe session ID
   await prisma.billingTransaction.update({

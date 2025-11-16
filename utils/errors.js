@@ -103,6 +103,13 @@ export const asyncHandler = (fn) => {
 
 // Global error handler
 export const globalErrorHandler = async (error, req = {}, res, _next) => {
+  // Ensure we always return JSON, even if there's an error in the error handler
+  if (!res || typeof res.status !== 'function') {
+    // Fallback if res is not a valid Express response
+    console.error('Invalid response object in error handler:', error);
+    return;
+  }
+
   let err = error;
 
   // Convert non-AppError instances to AppError
@@ -156,11 +163,21 @@ export const globalErrorHandler = async (error, req = {}, res, _next) => {
     });
   }
 
-  // Send error response
+  // Send error response - ensure JSON format
   const statusCode = err.statusCode || 500;
   const response = formatErrorResponse(err, req);
 
-  res.status(statusCode).json(response);
+  // Ensure we set Content-Type to JSON
+  if (!res.headersSent) {
+    res.setHeader('Content-Type', 'application/json');
+    res.status(statusCode).json(response);
+  } else {
+    // If headers already sent, log the error but can't send response
+    console.error('Cannot send error response - headers already sent', {
+      message: err.message,
+      statusCode,
+    });
+  }
 };
 
 // 404 handler

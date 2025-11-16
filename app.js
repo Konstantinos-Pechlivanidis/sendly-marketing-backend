@@ -194,9 +194,19 @@ app.use('/webhooks/stripe', stripeWebhookRoutes); // Stripe webhooks
 // Admin routes (special handling)
 app.use('/admin/templates', resolveStore, requireStore, adminTemplatesRoutes);
 
-// Error handling
+// Error handling - ensure JSON responses
 app.use(notFoundHandler);
-app.use(globalErrorHandler);
+
+// Global error handler - must be last
+app.use((error, req, res, next) => {
+  // Ensure we always return JSON, not HTML
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  // Call our custom error handler
+  return globalErrorHandler(error, req, res, next);
+});
 
 // Note: Graceful shutdown is handled in index.js
 // This ensures proper cleanup of all connections (Redis, Prisma, etc.)
