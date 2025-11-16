@@ -889,7 +889,7 @@ export async function scheduleCampaign(storeId, campaignId, scheduleData) {
     throw new ValidationError('Schedule date must be in the future');
   }
 
-  // Get shop timezone for logging (for future scheduler implementation)
+  // Get shop timezone for logging and future scheduler implementation
   const shopSettings = await prisma.shopSettings.findUnique({
     where: { shopId: storeId },
     select: { timezone: true },
@@ -897,6 +897,10 @@ export async function scheduleCampaign(storeId, campaignId, scheduleData) {
   const shopTimezone = shopSettings?.timezone || 'UTC';
 
   // Update campaign
+  // Note: scheduleAt is stored in UTC. When a scheduler processes scheduled campaigns,
+  // it should check campaigns where status='scheduled' and scheduleAt <= now(),
+  // then call sendCampaign() for each. The scheduler should respect the shop's
+  // timezone setting when determining the correct send time (though scheduleAt is in UTC).
   const updated = await prisma.campaign.update({
     where: { id: campaignId },
     data: {
@@ -911,6 +915,7 @@ export async function scheduleCampaign(storeId, campaignId, scheduleData) {
     campaignId,
     scheduleAt: scheduleAt.toISOString(),
     shopTimezone,
+    note: 'scheduleAt is stored in UTC. Frontend converts shop timezone to UTC before sending.',
   });
 
   return updated;
