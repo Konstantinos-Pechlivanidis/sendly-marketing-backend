@@ -4,6 +4,7 @@ import { ValidationError, NotFoundError } from '../utils/errors.js';
 import { validateAndConsumeCredits, InsufficientCreditsError, refundCredits } from './credit-validation.js';
 import { smsQueue } from '../queue/index.js';
 import { appendUnsubscribeLink } from '../utils/unsubscribe.js';
+import { replacePlaceholders } from '../utils/personalization.js';
 
 /**
  * Campaigns Service
@@ -45,9 +46,14 @@ async function resolveRecipients(shopId, audience) {
   if (base) {
     const contacts = await prisma.contact.findMany({
       where: { shopId, ...base },
-      select: { id: true, phoneE164: true },
+      select: { id: true, phoneE164: true, firstName: true, lastName: true },
     });
-    return contacts.map(c => ({ contactId: c.id, phoneE164: c.phoneE164 }));
+    return contacts.map(c => ({ 
+      contactId: c.id, 
+      phoneE164: c.phoneE164,
+      firstName: c.firstName,
+      lastName: c.lastName,
+    }));
   }
 
   // Handle segment-based audience
@@ -79,12 +85,17 @@ async function resolveRecipients(shopId, audience) {
       },
       include: {
         contact: {
-          select: { id: true, phoneE164: true },
+          select: { id: true, phoneE164: true, firstName: true, lastName: true },
         },
       },
     });
 
-    return members.map(m => ({ contactId: m.contactId, phoneE164: m.contact.phoneE164 }));
+    return members.map(m => ({ 
+      contactId: m.contactId, 
+      phoneE164: m.contact.phoneE164,
+      firstName: m.contact.firstName,
+      lastName: m.contact.lastName,
+    }));
   }
 
   return [];
@@ -108,14 +119,19 @@ async function* streamRecipients(shopId, audience, batchSize = 1000) {
     while (true) {
       const batch = await prisma.contact.findMany({
         where: { shopId, ...base },
-        select: { id: true, phoneE164: true },
+        select: { id: true, phoneE164: true, firstName: true, lastName: true },
         take: batchSize,
         skip: offset,
       });
 
       if (batch.length === 0) break;
 
-      yield batch.map(c => ({ contactId: c.id, phoneE164: c.phoneE164 }));
+      yield batch.map(c => ({ 
+        contactId: c.id, 
+        phoneE164: c.phoneE164,
+        firstName: c.firstName,
+        lastName: c.lastName,
+      }));
       offset += batchSize;
     }
   } else if (audience.startsWith('segment:')) {
@@ -144,7 +160,7 @@ async function* streamRecipients(shopId, audience, batchSize = 1000) {
         },
         include: {
           contact: {
-            select: { id: true, phoneE164: true },
+            select: { id: true, phoneE164: true, firstName: true, lastName: true },
           },
         },
         take: batchSize,
@@ -153,7 +169,12 @@ async function* streamRecipients(shopId, audience, batchSize = 1000) {
 
       if (batch.length === 0) break;
 
-      yield batch.map(m => ({ contactId: m.contactId, phoneE164: m.contact.phoneE164 }));
+      yield batch.map(m => ({ 
+        contactId: m.contactId, 
+        phoneE164: m.contact.phoneE164,
+        firstName: m.contact.firstName,
+        lastName: m.contact.lastName,
+      }));
       offset += batchSize;
     }
   }
@@ -778,9 +799,18 @@ export async function sendCampaign(storeId, campaignId) {
         const frontendBaseUrl = process.env.FRONTEND_URL || process.env.FRONTEND_BASE_URL || 'https://sendly-marketing-frontend.onrender.com';
 
         const smsJobs = recipientBatch.map(recipient => {
+          // Replace personalization placeholders with contact data
+          const personalizedMessage = replacePlaceholders(
+            campaign.message,
+            {
+              firstName: recipient.firstName,
+              lastName: recipient.lastName,
+            },
+          );
+
           // Append unsubscribe link to message
           const messageWithUnsubscribe = appendUnsubscribeLink(
-            campaign.message,
+            personalizedMessage,
             recipient.contactId,
             storeId,
             recipient.phoneE164,
@@ -841,9 +871,18 @@ export async function sendCampaign(storeId, campaignId) {
       const frontendBaseUrl = process.env.FRONTEND_URL || process.env.FRONTEND_BASE_URL || 'https://sendly-marketing-frontend.onrender.com';
 
       const smsJobs = recipients.map(recipient => {
+        // Replace personalization placeholders with contact data
+        const personalizedMessage = replacePlaceholders(
+          campaign.message,
+          {
+            firstName: recipient.firstName,
+            lastName: recipient.lastName,
+          },
+        );
+
         // Append unsubscribe link to message
         const messageWithUnsubscribe = appendUnsubscribeLink(
-          campaign.message,
+          personalizedMessage,
           recipient.contactId,
           storeId,
           recipient.phoneE164,
