@@ -1,5 +1,4 @@
 import { logger } from '../utils/logger.js';
-import { getShopifySession } from './shopify.js';
 import prisma from './prisma.js';
 
 /**
@@ -9,7 +8,6 @@ import prisma from './prisma.js';
  */
 export async function registerAutomationWebhooks(shopDomain) {
   try {
-    const session = await getShopifySession(shopDomain);
     const shop = await prisma.shop.findUnique({
       where: { shopDomain },
       select: { id: true, accessToken: true },
@@ -131,7 +129,6 @@ export async function registerAutomationWebhooks(shopDomain) {
  */
 export async function listWebhooks(shopDomain) {
   try {
-    const session = await getShopifySession(shopDomain);
     const shop = await prisma.shop.findUnique({
       where: { shopDomain },
       select: { accessToken: true },

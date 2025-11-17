@@ -22,7 +22,6 @@ export default function GlassDateTimePicker({
   value, // ISO string from parent
   onChange,
   error,
-  placeholder = 'Select date and time',
   required,
   className,
   minDate,

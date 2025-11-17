@@ -473,7 +473,7 @@ export default function CampaignCreate() {
                               className="w-full px-4 py-3 text-left text-sm text-neutral-text-primary hover:bg-neutral-surface-secondary transition-colors border-b border-neutral-border/30"
                             >
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs bg-neutral-surface-secondary px-2 py-1 rounded">{{first_name}}</span>
+                                <span className="font-mono text-xs bg-neutral-surface-secondary px-2 py-1 rounded">{'{{first_name}}'}</span>
                                 <span>First Name</span>
                               </div>
                             </button>
@@ -501,7 +501,7 @@ export default function CampaignCreate() {
                               className="w-full px-4 py-3 text-left text-sm text-neutral-text-primary hover:bg-neutral-surface-secondary transition-colors"
                             >
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs bg-neutral-surface-secondary px-2 py-1 rounded">{{last_name}}</span>
+                                <span className="font-mono text-xs bg-neutral-surface-secondary px-2 py-1 rounded">{'{{last_name}}'}</span>
                                 <span>Last Name</span>
                               </div>
                             </button>

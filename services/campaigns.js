@@ -48,8 +48,8 @@ async function resolveRecipients(shopId, audience) {
       where: { shopId, ...base },
       select: { id: true, phoneE164: true, firstName: true, lastName: true },
     });
-    return contacts.map(c => ({ 
-      contactId: c.id, 
+    return contacts.map(c => ({
+      contactId: c.id,
       phoneE164: c.phoneE164,
       firstName: c.firstName,
       lastName: c.lastName,
@@ -90,8 +90,8 @@ async function resolveRecipients(shopId, audience) {
       },
     });
 
-    return members.map(m => ({ 
-      contactId: m.contactId, 
+    return members.map(m => ({
+      contactId: m.contactId,
       phoneE164: m.contact.phoneE164,
       firstName: m.contact.firstName,
       lastName: m.contact.lastName,
@@ -126,8 +126,8 @@ async function* streamRecipients(shopId, audience, batchSize = 1000) {
 
       if (batch.length === 0) break;
 
-      yield batch.map(c => ({ 
-        contactId: c.id, 
+      yield batch.map(c => ({
+        contactId: c.id,
         phoneE164: c.phoneE164,
         firstName: c.firstName,
         lastName: c.lastName,
@@ -169,8 +169,8 @@ async function* streamRecipients(shopId, audience, batchSize = 1000) {
 
       if (batch.length === 0) break;
 
-      yield batch.map(m => ({ 
-        contactId: m.contactId, 
+      yield batch.map(m => ({
+        contactId: m.contactId,
         phoneE164: m.contact.phoneE164,
         firstName: m.contact.firstName,
         lastName: m.contact.lastName,

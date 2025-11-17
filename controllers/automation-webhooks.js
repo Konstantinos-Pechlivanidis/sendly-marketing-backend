@@ -1,9 +1,4 @@
 import { logger } from '../utils/logger.js';
-import {
-  triggerAbandonedCart,
-  triggerOrderConfirmation,
-  triggerOrderFulfilled,
-} from '../services/automations.js';
 import prisma from '../services/prisma.js';
 import { sendSuccess } from '../utils/response.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
