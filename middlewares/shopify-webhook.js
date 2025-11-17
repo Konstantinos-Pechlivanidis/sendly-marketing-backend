@@ -74,8 +74,8 @@ function verifyShopifyWebhookSignature(req) {
       shopDomain,
       topic,
       path: req.path,
-      expectedHmac: calculatedHmac.substring(0, 10) + '...',
-      receivedHmac: hmacHeader.substring(0, 10) + '...',
+      expectedHmac: `${calculatedHmac.substring(0, 10)}...`,
+      receivedHmac: `${hmacHeader.substring(0, 10)}...`,
     });
   } else {
     logger.debug('Shopify webhook signature verified', {

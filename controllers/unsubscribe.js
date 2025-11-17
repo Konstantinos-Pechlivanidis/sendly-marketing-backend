@@ -63,7 +63,7 @@ export async function getUnsubscribeInfo(req, res, next) {
     logger.info('Unsubscribe info retrieved', {
       contactId,
       shopId,
-      phoneE164: phoneE164.substring(0, 5) + '***',
+      phoneE164: `${phoneE164.substring(0, 5)}***`,
     });
 
     return sendSuccess(res, {
@@ -85,7 +85,7 @@ export async function getUnsubscribeInfo(req, res, next) {
     logger.error('Get unsubscribe info error', {
       error: error.message,
       stack: error.stack,
-      token: req.params.token?.substring(0, 20) + '...',
+      token: `${req.params.token?.substring(0, 20)}...`,
       requestId: req.id,
       path: req.path,
       method: req.method,
@@ -136,7 +136,7 @@ export async function processUnsubscribe(req, res, next) {
     logger.info('Contact unsubscribed successfully', {
       contactId,
       shopId,
-      phoneE164: phoneE164.substring(0, 5) + '***',
+      phoneE164: `${phoneE164.substring(0, 5)}***`,
     });
 
     return sendSuccess(res, {
@@ -152,7 +152,7 @@ export async function processUnsubscribe(req, res, next) {
     logger.error('Process unsubscribe error', {
       error: error.message,
       stack: error.stack,
-      token: req.params.token?.substring(0, 20) + '...',
+      token: `${req.params.token?.substring(0, 20)}...`,
       requestId: req.id,
       path: req.path,
       method: req.method,

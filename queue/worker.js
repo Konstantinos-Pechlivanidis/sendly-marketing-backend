@@ -2,6 +2,7 @@ import { Worker } from 'bullmq';
 import { queueRedis } from '../config/redis.js';
 import { handleMittoSend } from './jobs/mittoSend.js';
 import { handleCampaignStatusUpdate, handleAllCampaignsStatusUpdate } from './jobs/deliveryStatusUpdate.js';
+import { handleCampaignSend } from './jobs/campaignSend.js';
 import {
   handleAbandonedCartTrigger,
   handleOrderConfirmationTrigger,
@@ -55,9 +56,7 @@ export const smsWorker = skipWorkers ? new MockWorker('sms-send', () => {}, {}) 
 export const campaignWorker = skipWorkers ? new MockWorker('campaign-send', () => {}, {}) : new Worker(
   'campaign-send',
   async (job) => {
-    logger.info(`Processing campaign job ${job.id}`, { jobData: job.data });
-    // TODO: Implement campaign processing logic
-    return { status: 'processed', jobId: job.id };
+    return await handleCampaignSend(job);
   },
   {
     connection: queueRedis,

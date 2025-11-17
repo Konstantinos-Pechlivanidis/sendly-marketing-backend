@@ -47,14 +47,14 @@ export async function handleOrderCreated(req, res, _next) {
 
       // Extract phone number from customer data
       const phoneE164 = customer.phone || customer.default_address?.phone || null;
-      
+
       contact = await prisma.contact.create({
         data: {
           shopId: shop.id,
           email: customer.email,
           firstName: customer.first_name || null,
           lastName: customer.last_name || null,
-          phoneE164: phoneE164,
+          phoneE164,
           smsConsent: 'unknown', // Default to unknown, user must opt-in
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -296,14 +296,14 @@ export async function handleOrderFulfilled(req, res, _next) {
       });
 
       const phoneE164 = customer.phone || customer.default_address?.phone || null;
-      
+
       contact = await prisma.contact.create({
         data: {
           shopId: shop.id,
           email: customer.email,
           firstName: customer.first_name || null,
           lastName: customer.last_name || null,
-          phoneE164: phoneE164,
+          phoneE164,
           smsConsent: 'unknown',
           createdAt: new Date(),
           updatedAt: new Date(),

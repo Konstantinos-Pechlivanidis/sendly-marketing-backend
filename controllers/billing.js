@@ -84,7 +84,7 @@ export async function getPackages(req, res, next) {
           },
         },
       });
-      
+
       if (shop?.currency && validCurrencies.includes(shop.currency.toUpperCase())) {
         currency = shop.currency.toUpperCase();
       } else if (shop?.settings?.currency && validCurrencies.includes(shop.settings.currency.toUpperCase())) {

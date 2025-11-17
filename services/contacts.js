@@ -307,7 +307,7 @@ export async function createContact(storeId, contactData) {
   if (contact.smsConsent === 'opted_in') {
     try {
       const hasWelcomeAutomation = await hasActiveAutomation(storeId, 'welcome');
-      
+
       if (hasWelcomeAutomation) {
         logger.info('Queueing welcome automation for new contact', {
           storeId,
@@ -464,8 +464,8 @@ export async function updateContact(storeId, contactId, contactData) {
       updateData.birthDate = null;
     } else {
       // Try to parse as Date object if it's already a Date
-      const birthDate = contactData.birthDate instanceof Date 
-        ? contactData.birthDate 
+      const birthDate = contactData.birthDate instanceof Date
+        ? contactData.birthDate
         : new Date(contactData.birthDate);
       if (isNaN(birthDate.getTime())) {
         throw new ValidationError('Invalid birth date format');
@@ -531,7 +531,7 @@ export async function updateContact(storeId, contactId, contactData) {
       });
       throw new NotFoundError('Contact');
     }
-    
+
     logger.error('Failed to update contact in database', {
       storeId,
       contactId,

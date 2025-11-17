@@ -5,7 +5,7 @@ import { logger } from './utils/logger.js';
 import { validateAndLogEnvironment } from './config/env-validation.js';
 import { closeRedisConnections } from './config/redis.js';
 import './queue/worker.js'; // starts BullMQ worker
-import { startPeriodicStatusUpdates } from './services/scheduler.js';
+import { startPeriodicStatusUpdates, startScheduledCampaignsProcessor } from './services/scheduler.js';
 
 // Validate environment variables on startup
 try {
@@ -28,6 +28,9 @@ const server = app.listen(PORT, () => {
 
   // Start periodic delivery status updates
   startPeriodicStatusUpdates();
+
+  // Start scheduled campaigns processor
+  startScheduledCampaignsProcessor();
 });
 
 // Graceful shutdown handler

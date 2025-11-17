@@ -62,7 +62,7 @@ export default function Billing() {
       // But if settings change, we should update to match settings
       setSelectedCurrency(settingsCurrency);
     }
-  }, [settingsCurrency]); // React to settings changes immediately
+  }, [settingsCurrency, selectedCurrency]); // React to settings changes immediately
 
   // Refetch packages when currency changes
   useEffect(() => {

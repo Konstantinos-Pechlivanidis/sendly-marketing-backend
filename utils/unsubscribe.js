@@ -26,7 +26,7 @@ export function generateUnsubscribeToken(contactId, shopId, phoneE164) {
     .digest('hex');
 
   // Combine payload and signature
-  const token = Buffer.from(payloadString).toString('base64url') + '.' + signature;
+  const token = `${Buffer.from(payloadString).toString('base64url')}.${signature}`;
 
   return token;
 }
@@ -41,7 +41,7 @@ export function verifyUnsubscribeToken(token) {
     const [payloadBase64, signature] = token.split('.');
 
     if (!payloadBase64 || !signature) {
-      logger.warn('Invalid unsubscribe token format', { token: token.substring(0, 20) + '...' });
+      logger.warn('Invalid unsubscribe token format', { token: `${token.substring(0, 20)}...` });
       return null;
     }
 
@@ -57,7 +57,7 @@ export function verifyUnsubscribeToken(token) {
       .digest('hex');
 
     if (signature !== expectedSignature) {
-      logger.warn('Invalid unsubscribe token signature', { token: token.substring(0, 20) + '...' });
+      logger.warn('Invalid unsubscribe token signature', { token: `${token.substring(0, 20)}...` });
       return null;
     }
 
@@ -67,7 +67,7 @@ export function verifyUnsubscribeToken(token) {
 
     if (tokenAge > maxAge) {
       logger.warn('Unsubscribe token expired', {
-        tokenAge: Math.floor(tokenAge / (24 * 60 * 60 * 1000)) + ' days',
+        tokenAge: `${Math.floor(tokenAge / (24 * 60 * 60 * 1000))} days`,
         contactId: payload.contactId,
       });
       return null;
@@ -77,7 +77,7 @@ export function verifyUnsubscribeToken(token) {
   } catch (error) {
     logger.error('Error verifying unsubscribe token', {
       error: error.message,
-      token: token?.substring(0, 20) + '...',
+      token: `${token?.substring(0, 20)}...`,
     });
     return null;
   }
@@ -120,7 +120,7 @@ export function appendUnsubscribeLink(message, contactId, shopId, phoneE164, bas
 
   if (totalLength > maxLength) {
     // Truncate message to fit unsubscribe link
-    const truncatedMessage = message.substring(0, maxLength - unsubscribeText.length - 3) + '...';
+    const truncatedMessage = `${message.substring(0, maxLength - unsubscribeText.length - 3)}...`;
     return truncatedMessage + unsubscribeText;
   }
 

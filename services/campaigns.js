@@ -279,11 +279,49 @@ export async function listCampaigns(storeId, filters = {}) {
   ]);
 
   // Get recipient counts for all campaigns in parallel
+  // For sent campaigns, count actual CampaignRecipient records
+  // For scheduled/draft campaigns, calculate based on audience
   const campaignsWithRecipientCounts = await Promise.all(
     campaigns.map(async (campaign) => {
-      const recipientCount = await prisma.campaignRecipient.count({
-        where: { campaignId: campaign.id },
-      });
+      let recipientCount = 0;
+
+      // If campaign has been sent (status is 'sending' or 'sent'), count actual recipients
+      if (campaign.status === 'sending' || campaign.status === 'sent' || campaign.status === 'failed') {
+        recipientCount = await prisma.campaignRecipient.count({
+          where: { campaignId: campaign.id },
+        });
+      } else {
+        // For draft/scheduled campaigns, calculate recipient count based on audience
+        const base = normalizeAudienceQuery(campaign.audience);
+        if (base) {
+          recipientCount = await prisma.contact.count({
+            where: { shopId: storeId, ...base },
+          });
+        } else if (campaign.audience.startsWith('segment:')) {
+          const segmentId = campaign.audience.split(':')[1];
+          // Validate segment belongs to shop
+          const segment = await prisma.segment.findFirst({
+            where: {
+              id: segmentId,
+              shopId: storeId,
+            },
+            select: { id: true },
+          });
+
+          if (segment) {
+            recipientCount = await prisma.segmentMembership.count({
+              where: {
+                segmentId,
+                contact: {
+                  shopId: storeId,
+                  smsConsent: 'opted_in',
+                },
+              },
+            });
+          }
+        }
+      }
+
       return {
         ...campaign,
         recipientCount,
@@ -335,12 +373,49 @@ export async function getCampaignById(storeId, campaignId) {
     throw new NotFoundError('Campaign');
   }
 
-  // Get total recipient count from CampaignRecipient records
-  const recipientCount = await prisma.campaignRecipient.count({
-    where: { campaignId },
-  });
+  // Get recipient count
+  // For sent campaigns, count actual CampaignRecipient records
+  // For scheduled/draft campaigns, calculate based on audience
+  let recipientCount = 0;
 
-  logger.info('Campaign retrieved successfully', { storeId, campaignId, recipientCount });
+  if (campaign.status === 'sending' || campaign.status === 'sent' || campaign.status === 'failed') {
+    // Count actual recipients for campaigns that have been sent
+    recipientCount = await prisma.campaignRecipient.count({
+      where: { campaignId },
+    });
+  } else {
+    // For draft/scheduled campaigns, calculate recipient count based on audience
+    const base = normalizeAudienceQuery(campaign.audience);
+    if (base) {
+      recipientCount = await prisma.contact.count({
+        where: { shopId: storeId, ...base },
+      });
+    } else if (campaign.audience.startsWith('segment:')) {
+      const segmentId = campaign.audience.split(':')[1];
+      // Validate segment belongs to shop
+      const segment = await prisma.segment.findFirst({
+        where: {
+          id: segmentId,
+          shopId: storeId,
+        },
+        select: { id: true },
+      });
+
+      if (segment) {
+        recipientCount = await prisma.segmentMembership.count({
+          where: {
+            segmentId,
+            contact: {
+              shopId: storeId,
+              smsConsent: 'opted_in',
+            },
+          },
+        });
+      }
+    }
+  }
+
+  logger.info('Campaign retrieved successfully', { storeId, campaignId, recipientCount, status: campaign.status });
 
   return {
     ...campaign,
@@ -595,15 +670,19 @@ export async function sendCampaign(storeId, campaignId) {
     throw new NotFoundError('Campaign');
   }
 
-  if (campaign.status !== 'draft') {
-    throw new ValidationError('Only draft campaigns can be sent');
+  // Allow 'draft', 'scheduled', and 'sending' campaigns to be sent
+  // 'draft' campaigns are sent immediately (Send Now)
+  // 'scheduled' campaigns are sent when their scheduleAt time arrives
+  // 'sending' status means the scheduler already queued it (prevents duplicate processing)
+  if (campaign.status !== 'draft' && campaign.status !== 'scheduled' && campaign.status !== 'sending') {
+    throw new ValidationError('Only draft, scheduled, or sending campaigns can be sent');
   }
 
   // Get recipient count first (for credit validation)
   // Use efficient count query first, then resolve recipients for actual sending
   let recipients = [];
   let recipientCount = 0;
-  
+
   // First, get count using efficient count query
   const base = normalizeAudienceQuery(campaign.audience);
   if (base) {
@@ -697,7 +776,7 @@ export async function sendCampaign(storeId, campaignId) {
         // Queue SMS jobs in batch
         // Get frontend base URL for unsubscribe links
         const frontendBaseUrl = process.env.FRONTEND_URL || process.env.FRONTEND_BASE_URL || 'https://sendly-marketing-frontend.onrender.com';
-        
+
         const smsJobs = recipientBatch.map(recipient => {
           // Append unsubscribe link to message
           const messageWithUnsubscribe = appendUnsubscribeLink(
@@ -705,7 +784,7 @@ export async function sendCampaign(storeId, campaignId) {
             recipient.contactId,
             storeId,
             recipient.phoneE164,
-            frontendBaseUrl
+            frontendBaseUrl,
           );
 
           return {
@@ -760,7 +839,7 @@ export async function sendCampaign(storeId, campaignId) {
       // Queue SMS jobs in batches
       // Get frontend base URL for unsubscribe links
       const frontendBaseUrl = process.env.FRONTEND_URL || process.env.FRONTEND_BASE_URL || 'https://sendly-marketing-frontend.onrender.com';
-      
+
       const smsJobs = recipients.map(recipient => {
         // Append unsubscribe link to message
         const messageWithUnsubscribe = appendUnsubscribeLink(
@@ -768,7 +847,7 @@ export async function sendCampaign(storeId, campaignId) {
           recipient.contactId,
           storeId,
           recipient.phoneE164,
-          frontendBaseUrl
+          frontendBaseUrl,
         );
 
         return {
@@ -857,7 +936,7 @@ export async function sendCampaign(storeId, campaignId) {
  * @param {string} campaignId - Campaign ID
  * @param {Object} scheduleData - Schedule data
  * @returns {Promise<Object>} Updated campaign
- * 
+ *
  * Note: scheduleAt should be provided as an ISO 8601 datetime string in UTC.
  * The frontend should convert the user's selected time (in their shop's timezone)
  * to UTC before sending to this endpoint. When a scheduler processes scheduled

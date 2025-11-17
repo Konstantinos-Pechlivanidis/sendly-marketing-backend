@@ -63,7 +63,7 @@ export async function resolveStore(req, res, next) {
           error: jwtError.message,
           errorName: jwtError.name,
         });
-        
+
         try {
           const shopifySession = await verifyShopifySessionToken(token);
 

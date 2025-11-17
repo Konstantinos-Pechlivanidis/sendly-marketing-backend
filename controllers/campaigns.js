@@ -316,7 +316,6 @@ export async function retryFailed(req, res, next) {
  */
 export async function updateDeliveryStatus(req, res, next) {
   try {
-    const storeId = getStoreId(req);
     const { id } = req.params;
 
     const deliveryStatusService = await import('../services/delivery-status.js');

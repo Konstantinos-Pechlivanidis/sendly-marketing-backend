@@ -21,7 +21,6 @@ export default function DateRangePicker({
   const [activePicker, setActivePicker] = useState('start'); // 'start' or 'end'
   const [tempStartDate, setTempStartDate] = useState(startDate);
   const [tempEndDate, setTempEndDate] = useState(endDate);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const buttonRef = useRef(null);
   const dropdownRef = useRef(null);
 
@@ -34,75 +33,13 @@ export default function DateRangePicker({
     setTempEndDate(endDate);
   }, [endDate]);
 
-  // Calculate dropdown position
+  // Prevent body scroll when modal is open
   useEffect(() => {
-    const updatePosition = () => {
-      if (buttonRef.current && isOpen) {
-        const rect = buttonRef.current.getBoundingClientRect();
-        
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const width = rect.width;
-        const dropdownWidth = Math.min(Math.max(width, 360), 420); // Min 360px, max 420px
-        const estimatedDropdownHeight = 500; // Approximate height of calendar + controls
-        
-        // Calculate horizontal position (viewport-relative for fixed positioning)
-        let adjustedLeft = rect.left;
-        if (rect.left + dropdownWidth > viewportWidth) {
-          adjustedLeft = viewportWidth - dropdownWidth - 16; // 16px padding from edge
-        }
-        if (adjustedLeft < 16) {
-          adjustedLeft = 16;
-        }
-
-        // Calculate vertical position - check if we should open above or below
-        const spaceBelow = viewportHeight - rect.bottom;
-        const spaceAbove = rect.top;
-        const gap = 8; // Gap between button and dropdown
-        
-        let adjustedTop;
-        if (spaceBelow >= estimatedDropdownHeight + gap) {
-          // Enough space below - position below the button (viewport-relative)
-          adjustedTop = rect.bottom + gap;
-        } else if (spaceAbove >= estimatedDropdownHeight + gap) {
-          // Not enough space below, but enough above - position above the button
-          adjustedTop = rect.top - estimatedDropdownHeight - gap;
-        } else {
-          // Not enough space either way - position where there's more space
-          if (spaceBelow > spaceAbove) {
-            // More space below - position below with max-height constraint
-            adjustedTop = rect.bottom + gap;
-          } else {
-            // More space above - position above with max-height constraint
-            adjustedTop = rect.top - estimatedDropdownHeight - gap;
-          }
-          // Ensure it doesn't go outside viewport
-          if (adjustedTop < 16) {
-            adjustedTop = 16;
-          }
-          if (adjustedTop + estimatedDropdownHeight > viewportHeight - 16) {
-            adjustedTop = viewportHeight - estimatedDropdownHeight - 16;
-          }
-        }
-
-        setDropdownPosition({
-          top: adjustedTop,
-          left: adjustedLeft,
-          width: dropdownWidth,
-        });
-      }
-    };
-
     if (isOpen) {
-      updatePosition();
-      // Update position on scroll and resize to keep it aligned with the button
-      window.addEventListener('scroll', updatePosition, true);
-      window.addEventListener('resize', updatePosition);
-      
+      document.body.style.overflow = 'hidden';
       return () => {
-        window.removeEventListener('scroll', updatePosition, true);
-        window.removeEventListener('resize', updatePosition);
-      };
+        document.body.style.overflow = 'unset';
+  };
     }
   }, [isOpen]);
 
@@ -300,28 +237,40 @@ export default function DateRangePicker({
       </button>
 
       {isOpen && createPortal(
-        <>
-          {/* Mobile Backdrop */}
-          <div
-            className="fixed inset-0 bg-neutral-text-primary/20 backdrop-blur-sm z-[99998] lg:hidden"
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsOpen(false);
+            }
+          }}
+          role="presentation"
+        >
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-neutral-text-primary/30 backdrop-blur-md animate-fade-in"
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
           />
           
-          {/* Date Range Picker Dropdown */}
+          {/* Modal Content */}
           <div
             ref={dropdownRef}
-            className="fixed rounded-xl glass border border-neutral-border/60 z-[99999] shadow-glass-light-lg overflow-hidden"
-            style={{
-              top: `${dropdownPosition.top}px`,
-              left: `${dropdownPosition.left}px`,
-              width: dropdownPosition.width > 0 ? `${dropdownPosition.width}px` : 'auto',
-              maxWidth: 'calc(100vw - 32px)',
-              maxHeight: 'calc(100vh - 32px)',
-              position: 'fixed', // Explicitly set fixed positioning
-            }}
+            className="relative z-10 w-full max-w-2xl rounded-xl glass border border-neutral-border/60 shadow-glass-light-lg overflow-hidden animate-scale-in max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-2 sm:p-3 space-y-3 sm:space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 80px)' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-neutral-border/60">
+              <h3 className="text-lg font-semibold text-neutral-text-primary">Select date range</h3>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-2 rounded-lg hover:bg-neutral-surface-secondary transition-colors focus-ring min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Close"
+              >
+                <Icon name="close" size="sm" variant="neutral" />
+              </button>
+            </div>
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto flex-1" style={{ maxHeight: 'calc(90vh - 80px)' }}>
               {/* Preset Buttons */}
               <div>
                 <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Quick Select</p>
@@ -388,10 +337,10 @@ export default function DateRangePicker({
                     minDate={tempStartDate || undefined}
                   />
                 )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </>,
+        </div>,
         document.body
       )}
     </div>

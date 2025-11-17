@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { format, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import GlassCalendar from './GlassCalendar';
@@ -9,12 +9,17 @@ import Icon from './Icon';
 /**
  * Glass Date Time Picker Component
  * Custom calendar-based date and time picker with iOS 26 styling
- * Uses React Portal for proper z-index handling on mobile
+ * 
+ * Architecture:
+ * - Date selection opens calendar modal
+ * - Time selection opens separate time picker modal
+ * - Date and time stored separately to avoid timezone issues
+ * - Only combined when creating ISO string for parent
  */
 export default function GlassDateTimePicker({
   label,
   name,
-  value,
+  value, // ISO string from parent
   onChange,
   error,
   placeholder = 'Select date and time',
@@ -23,125 +28,82 @@ export default function GlassDateTimePicker({
   minDate,
   maxDate,
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedDateTime, setSelectedDateTime] = useState(null);
-  const [tempTime, setTempTime] = useState('09:00');
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
-  const buttonRef = useRef(null);
-  const dropdownRef = useRef(null);
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
+  const [isTimeModalOpen, setIsTimeModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null); // Date object (date only, time ignored)
+  const [selectedTime, setSelectedTime] = useState('09:00'); // "HH:mm" format string
+  const dateButtonRef = useRef(null);
+  const timeButtonRef = useRef(null);
+  const dateModalRef = useRef(null);
+  const timeModalRef = useRef(null);
+  const previousValueRef = useRef(value);
 
-  // Parse value prop to Date object
+  // Parse value prop and extract date and time separately
   useEffect(() => {
+    // Only update if value actually changed
+    if (previousValueRef.current === value) {
+      return;
+    }
+    previousValueRef.current = value;
+    
     if (value && value.trim()) {
       try {
         const date = new Date(value);
         if (!isNaN(date.getTime())) {
-          setSelectedDateTime(date);
-          // Extract time in HH:mm format
+          // Extract date (year, month, day) - create a new date with just the date part
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          const day = date.getDate();
+          const dateOnly = new Date(year, month, day);
+          setSelectedDate(dateOnly);
+          
+          // Extract time as "HH:mm" - use local time methods
           const hours = date.getHours().toString().padStart(2, '0');
           const minutes = date.getMinutes().toString().padStart(2, '0');
-          setTempTime(`${hours}:${minutes}`);
+          const timeString = `${hours}:${minutes}`;
+          setSelectedTime(timeString);
         } else {
-          setSelectedDateTime(null);
-          setTempTime('09:00');
+          setSelectedDate(null);
+          setSelectedTime('09:00');
         }
       } catch {
-        setSelectedDateTime(null);
-        setTempTime('09:00');
+        setSelectedDate(null);
+        setSelectedTime('09:00');
       }
     } else {
-      setSelectedDateTime(null);
-      setTempTime('09:00');
+      setSelectedDate(null);
+      setSelectedTime('09:00');
     }
   }, [value]);
 
-  // Calculate dropdown position
+  // Prevent body scroll when modals are open
   useEffect(() => {
-    const updatePosition = () => {
-      if (buttonRef.current && isOpen) {
-        const rect = buttonRef.current.getBoundingClientRect();
-        
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const width = rect.width;
-        const dropdownWidth = Math.min(Math.max(width, 400), 420); // Min 400px, max 420px for calendar + time
-        const estimatedDropdownHeight = 500; // Approximate height of calendar + time picker
-        
-        // Calculate horizontal position (viewport-relative for fixed positioning)
-        let adjustedLeft = rect.left;
-        if (rect.left + dropdownWidth > viewportWidth) {
-          adjustedLeft = viewportWidth - dropdownWidth - 16; // 16px padding from edge
-        }
-        if (adjustedLeft < 16) {
-          adjustedLeft = 16;
-        }
-
-        // Calculate vertical position - check if we should open above or below
-        const spaceBelow = viewportHeight - rect.bottom;
-        const spaceAbove = rect.top;
-        const gap = 8; // Gap between button and dropdown
-        
-        let adjustedTop;
-        if (spaceBelow >= estimatedDropdownHeight + gap) {
-          // Enough space below - position below the button (viewport-relative)
-          adjustedTop = rect.bottom + gap;
-        } else if (spaceAbove >= estimatedDropdownHeight + gap) {
-          // Not enough space below, but enough above - position above the button
-          adjustedTop = rect.top - estimatedDropdownHeight - gap;
-        } else {
-          // Not enough space either way - position where there's more space
-          if (spaceBelow > spaceAbove) {
-            // More space below - position below with max-height constraint
-            adjustedTop = rect.bottom + gap;
-          } else {
-            // More space above - position above with max-height constraint
-            adjustedTop = rect.top - estimatedDropdownHeight - gap;
-          }
-          // Ensure it doesn't go outside viewport
-          if (adjustedTop < 16) {
-            adjustedTop = 16;
-          }
-          if (adjustedTop + estimatedDropdownHeight > viewportHeight - 16) {
-            adjustedTop = viewportHeight - estimatedDropdownHeight - 16;
-          }
-        }
-
-        setDropdownPosition({
-          top: adjustedTop,
-          left: adjustedLeft,
-          width: dropdownWidth,
-        });
-      }
-    };
-
-    if (isOpen) {
-      updatePosition();
-      // Update position on scroll and resize to keep it aligned with the button
-      window.addEventListener('scroll', updatePosition, true);
-      window.addEventListener('resize', updatePosition);
-      
+    if (isDateModalOpen || isTimeModalOpen) {
+      document.body.style.overflow = 'hidden';
       return () => {
-        window.removeEventListener('scroll', updatePosition, true);
-        window.removeEventListener('resize', updatePosition);
+        document.body.style.overflow = 'unset';
       };
     }
-  }, [isOpen]);
+  }, [isDateModalOpen, isTimeModalOpen]);
 
-  // Close picker when clicking outside
+  // Close date modal when clicking outside
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isDateModalOpen) return;
 
-    // Use a small delay to prevent immediate closing when opening
     let cleanup = null;
     const timeoutId = setTimeout(() => {
       const handleClickOutside = (event) => {
+        // Don't close if clicking on hour/minute picker modals (they have higher z-index)
+        const isHourMinutePicker = event.target.closest('[data-hour-minute-picker="true"]');
+        if (isHourMinutePicker) return;
+
         if (
-          buttonRef.current &&
-          dropdownRef.current &&
-          !buttonRef.current.contains(event.target) &&
-          !dropdownRef.current.contains(event.target)
+          dateButtonRef.current &&
+          dateModalRef.current &&
+          !dateButtonRef.current.contains(event.target) &&
+          !dateModalRef.current.contains(event.target)
         ) {
-          setIsOpen(false);
+          setIsDateModalOpen(false);
         }
       };
 
@@ -160,56 +122,144 @@ export default function GlassDateTimePicker({
         cleanup();
       }
     };
-  }, [isOpen]);
+  }, [isDateModalOpen]);
 
-  const handleDateSelect = (date) => {
-    // Update date but keep existing time, or use tempTime if no existing time
-    const [hours, minutes] = tempTime.split(':').map(Number);
-    const newDateTime = setMilliseconds(
-      setSeconds(
-        setMinutes(
-          setHours(date, hours || 9),
-          minutes || 0
-        ),
-        0
-      ),
-      0
-    );
-    setSelectedDateTime(newDateTime);
-    updateDateTime(newDateTime);
-  };
+  // Close time modal when clicking outside
+  // Note: We don't use this for the time modal since it has its own backdrop handler
+  // This is kept for consistency but the backdrop onClick handles closing
+  useEffect(() => {
+    if (!isTimeModalOpen) return;
 
-  const handleTimeChange = (e) => {
-    const timeValue = e.target.value; // Format: "HH:mm"
-    setTempTime(timeValue);
-    
-    const [hours, minutes] = timeValue.split(':').map(Number);
-    const baseDate = selectedDateTime || new Date();
-    
-    const newDateTime = setMilliseconds(
-      setSeconds(
-        setMinutes(
-          setHours(baseDate, hours || 9),
-          minutes || 0
-        ),
-        0
-      ),
-      0
-    );
-    setSelectedDateTime(newDateTime);
-    updateDateTime(newDateTime);
-  };
+    let cleanup = null;
+    const timeoutId = setTimeout(() => {
+      const handleClickOutside = (event) => {
+        // Check if click is on hour/minute picker modals (they have higher z-index)
+        // If so, don't close the main time modal
+        const target = event.target;
+        const isHourMinutePicker = target.closest('[data-hour-minute-picker]');
+        
+        if (
+          timeButtonRef.current &&
+          timeModalRef.current &&
+          !timeButtonRef.current.contains(target) &&
+          !timeModalRef.current.contains(target) &&
+          !isHourMinutePicker
+        ) {
+          setIsTimeModalOpen(false);
+        }
+      };
 
-  const updateDateTime = (dateTime) => {
-    const syntheticEvent = {
-      target: {
-        name,
-        value: dateTime.toISOString(),
-      },
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+
+      cleanup = () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+      };
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (cleanup) {
+        cleanup();
+      }
     };
-    onChange(syntheticEvent);
+  }, [isTimeModalOpen]);
+
+  // Combine date and time into a single Date object and notify parent
+  const updateParent = (date, time) => {
+    try {
+      // Parse time string
+      const [hours, minutes] = time.split(':').map(Number);
+      if (isNaN(hours) || isNaN(minutes)) return;
+      
+      // Use the provided date, or default to today if no date selected
+      let baseDate = date;
+      if (!baseDate) {
+        baseDate = new Date();
+        // If minDate is set and today is before minDate, use minDate instead
+        const minDateValue = minDate ? new Date(minDate) : null;
+        if (minDateValue && baseDate < minDateValue) {
+          baseDate = new Date(minDateValue);
+        }
+      }
+      
+      // Create new date-time by combining date and time
+      const newDateTime = setMilliseconds(
+        setSeconds(
+          setMinutes(
+            setHours(new Date(baseDate), hours || 9),
+            minutes || 0
+          ),
+          0
+        ),
+        0
+      );
+      
+      // Convert to ISO string and notify parent
+      const isoString = newDateTime.toISOString();
+      const syntheticEvent = {
+        target: {
+          name,
+          value: isoString,
+        },
+      };
+      
+      if (onChange && typeof onChange === 'function') {
+        onChange(syntheticEvent);
+      }
+    } catch (error) {
+      console.error('Error in updateParent:', error);
+    }
   };
 
+  // Handle date selection
+  const handleDateSelect = (date) => {
+    try {
+      // Update selected date
+      const newDate = new Date(date);
+      setSelectedDate(newDate);
+      
+      // Update parent with new date + current time
+      updateParent(newDate, selectedTime);
+      
+      // Close date modal
+      setIsDateModalOpen(false);
+    } catch (error) {
+      console.error('Error in handleDateSelect:', error);
+    }
+  };
+
+  // Handle time selection - opens separate modal
+  const handleTimeButtonClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsTimeModalOpen(true);
+  };
+
+  // Handle time change from time picker modal (called when Save is pressed)
+  const handleTimeChange = (e) => {
+    try {
+      const timeValue = e?.target?.value || ''; // Format: "HH:mm"
+      if (!timeValue || !timeValue.includes(':')) return;
+      
+      // Update selected time immediately
+      setSelectedTime(timeValue);
+      
+      // Update parent with current date + new time
+      setSelectedDate(currentDate => {
+        updateParent(currentDate || new Date(), timeValue);
+        return currentDate; // Return unchanged
+      });
+      
+      // Close time modal after Save is pressed
+      setIsTimeModalOpen(false);
+    } catch (error) {
+      console.error('Error in handleTimeChange:', error);
+    }
+  };
+
+  // Apply preset
   const applyPreset = (preset) => {
     const now = new Date();
     let date = new Date();
@@ -234,12 +284,19 @@ export default function GlassDateTimePicker({
         return;
     }
     
-    setSelectedDateTime(date);
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    const dateOnly = new Date(year, month, day);
+    
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
-    setTempTime(`${hours}:${minutes}`);
-    updateDateTime(date);
-    setIsOpen(false);
+    const timeString = `${hours}:${minutes}`;
+    
+    setSelectedDate(dateOnly);
+    setSelectedTime(timeString);
+    updateParent(dateOnly, timeString);
+    setIsDateModalOpen(false);
   };
 
   const presets = [
@@ -250,8 +307,8 @@ export default function GlassDateTimePicker({
   ];
 
   const handleClear = () => {
-    setSelectedDateTime(null);
-    setTempTime('09:00');
+    setSelectedDate(null);
+    setSelectedTime('09:00');
     const syntheticEvent = {
       target: {
         name,
@@ -261,7 +318,43 @@ export default function GlassDateTimePicker({
     onChange(syntheticEvent);
   };
 
-  const displayValue = selectedDateTime ? format(selectedDateTime, 'MMM d, yyyy h:mm a') : '';
+  // Calculate display value - shows both date and time clearly
+  const displayValue = useMemo(() => {
+    if (selectedDate) {
+      // Combine date and time for display
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const displayDate = new Date(selectedDate);
+      displayDate.setHours(hours || 9, minutes || 0, 0, 0);
+      return format(displayDate, 'MMM d, yyyy h:mm a');
+    }
+    // If we have a time selected but no date, show just the time
+    if (selectedTime && selectedTime !== '09:00') {
+      try {
+        const [hours, minutes] = selectedTime.split(':').map(Number);
+        const timeDate = new Date();
+        timeDate.setHours(hours, minutes, 0, 0);
+        return `Time: ${format(timeDate, 'h:mm a')}`;
+      } catch {
+        return '';
+      }
+    }
+    return '';
+  }, [selectedDate, selectedTime]);
+
+  // Format time for display in button
+  const displayTime = useMemo(() => {
+    if (selectedTime && selectedTime !== '09:00') {
+      try {
+        const [hours, minutes] = selectedTime.split(':').map(Number);
+        const timeDate = new Date();
+        timeDate.setHours(hours, minutes, 0, 0);
+        return format(timeDate, 'h:mm a');
+      } catch {
+        return 'Select Time';
+      }
+    }
+    return 'Select Time';
+  }, [selectedTime]);
 
   // Parse minDate and maxDate to Date objects if they're strings
   const minDateObj = minDate ? new Date(minDate) : null;
@@ -276,60 +369,102 @@ export default function GlassDateTimePicker({
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
         )}
-        <button
-          ref={buttonRef}
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsOpen(!isOpen);
-          }}
-          onMouseDown={(e) => {
-            // Prevent blur when clicking the button
-            if (isOpen) {
+        
+        {/* Date and Time Selection Buttons */}
+        <div className="flex gap-2">
+          {/* Date Selection Button */}
+          <button
+            ref={dateButtonRef}
+            type="button"
+            onClick={(e) => {
               e.preventDefault();
-            }
-          }}
-          className={`
-            w-full px-4 py-3 rounded-xl
-            bg-neutral-surface-primary backdrop-blur-[24px]
-            border ${error ? 'border-red-500/50 focus:border-red-500' : 'border-neutral-border/60 focus:border-ice-primary'}
-            text-neutral-text-primary
-            focus-ring focus:shadow-glow-ice-light
-            spring-smooth shadow-sm
-            hover:border-neutral-border hover:shadow-md
-            text-left flex items-center justify-between
-            min-h-[44px]
-            ${!displayValue && 'text-neutral-text-secondary'}
-          `}
-          aria-label={label || 'Select date and time'}
-          aria-expanded={isOpen}
-        >
-          <span className="flex items-center gap-2">
-            <Icon name="calendar" size="sm" variant="ice" />
-            <span>{displayValue || placeholder}</span>
-          </span>
-          <div className="flex items-center gap-2">
-            {selectedDateTime && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClear();
-                }}
-                className="p-1 rounded hover:bg-neutral-surface-secondary transition-colors"
-                aria-label="Clear date and time"
-              >
-                <Icon name="close" size="xs" variant="neutral" />
-              </button>
-            )}
+              e.stopPropagation();
+              setIsDateModalOpen(!isDateModalOpen);
+            }}
+            onMouseDown={(e) => {
+              if (isDateModalOpen) {
+                e.preventDefault();
+              }
+            }}
+            className={`
+              flex-1 px-4 py-3 rounded-xl
+              bg-neutral-surface-primary backdrop-blur-[24px]
+              border ${error ? 'border-red-500/50 focus:border-red-500' : 'border-neutral-border/60 focus:border-ice-primary'}
+              text-neutral-text-primary
+              focus-ring focus:shadow-glow-ice-light
+              spring-smooth shadow-sm
+              hover:border-neutral-border hover:shadow-md
+              text-left flex items-center justify-between
+              min-h-[44px]
+              ${!selectedDate && 'text-neutral-text-secondary'}
+            `}
+            aria-label="Select date"
+            aria-expanded={isDateModalOpen}
+          >
+            <span className="flex items-center gap-2">
+              <Icon name="calendar" size="sm" variant="ice" />
+              <span>{selectedDate ? format(selectedDate, 'MMM d, yyyy') : 'Select Date'}</span>
+            </span>
             <Icon 
               name="arrowRight" 
               size="sm" 
-              className={`transition-transform ${isOpen ? 'rotate-90' : '-rotate-90'}`}
+              className={`transition-transform ${isDateModalOpen ? 'rotate-90' : '-rotate-90'}`}
             />
+          </button>
+
+          {/* Time Selection Button */}
+          <button
+            ref={timeButtonRef}
+            type="button"
+            onClick={handleTimeButtonClick}
+            className={`
+              flex-1 px-4 py-3 rounded-xl
+              bg-neutral-surface-primary backdrop-blur-[24px]
+              border ${error ? 'border-red-500/50 focus:border-red-500' : selectedTime !== '09:00' ? 'border-ice-primary/50 focus:border-ice-primary' : 'border-neutral-border/60 focus:border-ice-primary'}
+              text-neutral-text-primary
+              focus-ring focus:shadow-glow-ice-light
+              spring-smooth shadow-sm
+              hover:border-neutral-border hover:shadow-md
+              text-left flex items-center justify-between
+              min-h-[44px]
+              ${selectedTime === '09:00' && 'text-neutral-text-secondary'}
+              ${selectedTime !== '09:00' && 'bg-ice-primary/5'}
+            `}
+            aria-label="Select time"
+            aria-expanded={isTimeModalOpen}
+          >
+            <span className="flex items-center gap-2">
+              <Icon name="schedule" size="sm" variant="ice" />
+              <span>{displayTime}</span>
+            </span>
+            <Icon 
+              name="arrowRight" 
+              size="sm" 
+              className={`transition-transform ${isTimeModalOpen ? 'rotate-90' : '-rotate-90'}`}
+            />
+          </button>
+        </div>
+
+        {/* Display Combined Value */}
+        {displayValue && (
+          <div className="px-3 py-2 rounded-lg bg-ice-primary/10 border border-ice-primary/30">
+            <p className="text-sm text-ice-primary font-medium">
+              {displayValue}
+            </p>
           </div>
-        </button>
+        )}
+
+        {/* Clear Button */}
+        {(selectedDate || selectedTime !== '09:00') && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="text-sm text-neutral-text-secondary hover:text-neutral-text-primary transition-colors"
+          >
+            Clear selection
+          </button>
+        )}
+
         {error && (
           <p id={`${name}-error`} className="text-sm text-red-500" role="alert">
             {error}
@@ -337,29 +472,43 @@ export default function GlassDateTimePicker({
         )}
       </div>
 
-      {isOpen && createPortal(
-        <>
-          {/* Mobile Backdrop */}
+      {/* Date Selection Modal */}
+      {isDateModalOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsDateModalOpen(false);
+            }
+          }}
+          role="presentation"
+        >
+          {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-neutral-text-primary/20 backdrop-blur-sm z-[99998] lg:hidden"
-            onClick={() => setIsOpen(false)}
+            className="absolute inset-0 bg-neutral-text-primary/30 backdrop-blur-md animate-fade-in"
+            onClick={() => setIsDateModalOpen(false)}
             aria-hidden="true"
           />
           
-          {/* Date Time Picker Dropdown */}
+          {/* Modal Content */}
           <div
-            ref={dropdownRef}
-            className="fixed rounded-xl glass border border-neutral-border/60 z-[99999] shadow-glass-light-lg overflow-hidden"
-            style={{
-              top: `${dropdownPosition.top}px`,
-              left: `${dropdownPosition.left}px`,
-              width: dropdownPosition.width > 0 ? `${dropdownPosition.width}px` : 'auto',
-              maxWidth: 'calc(100vw - 32px)',
-              maxHeight: 'calc(100vh - 32px)',
-              position: 'fixed', // Explicitly set fixed positioning
-            }}
+            ref={dateModalRef}
+            className="relative z-10 w-full max-w-lg rounded-xl glass border border-neutral-border/60 shadow-glass-light-lg overflow-hidden animate-scale-in max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-2 sm:p-3 space-y-3 sm:space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 80px)' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-neutral-border/60">
+              <h3 className="text-lg font-semibold text-neutral-text-primary">Select Date</h3>
+              <button
+                onClick={() => setIsDateModalOpen(false)}
+                className="p-2 rounded-lg hover:bg-neutral-surface-secondary transition-colors focus-ring min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Close"
+              >
+                <Icon name="close" size="sm" variant="neutral" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto flex-1" style={{ maxHeight: 'calc(90vh - 80px)' }}>
               {/* Preset Buttons */}
               <div>
                 <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Quick Select</p>
@@ -382,24 +531,98 @@ export default function GlassDateTimePicker({
               <div className="pt-4 border-t border-neutral-border/60">
                 <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Select Date</p>
                 <GlassCalendar
-                  selectedDate={selectedDateTime}
+                  selectedDate={selectedDate}
                   onDateSelect={handleDateSelect}
                   minDate={minDateObj}
                   maxDate={maxDateObj}
                 />
               </div>
-
-              {/* Time Picker */}
-              <div className="pt-4 border-t border-neutral-border/60">
-                <p className="text-xs font-semibold text-neutral-text-secondary uppercase tracking-wider mb-3">Select Time</p>
-                <GlassTimePicker
-                  value={tempTime}
-                  onChange={handleTimeChange}
-                />
-              </div>
             </div>
           </div>
-        </>,
+        </div>,
+        document.body
+      )}
+
+      {/* Time Selection Modal - Separate Modal */}
+      {isTimeModalOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-4 animate-fade-in"
+          onClick={(e) => {
+            // Only close if clicking directly on the backdrop, not on child elements
+            if (e.target === e.currentTarget) {
+              setIsTimeModalOpen(false);
+            }
+          }}
+          onMouseDown={(e) => {
+            // Prevent mousedown from closing modal if clicking inside
+            if (e.target !== e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+          role="presentation"
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-neutral-text-primary/30 backdrop-blur-md animate-fade-in"
+            onClick={(e) => {
+              // Only close if clicking directly on backdrop
+              if (e.target === e.currentTarget) {
+                setIsTimeModalOpen(false);
+              }
+            }}
+            onMouseDown={(e) => {
+              // Prevent mousedown from propagating
+              if (e.target !== e.currentTarget) {
+                e.stopPropagation();
+              }
+            }}
+            aria-hidden="true"
+          />
+          
+          {/* Modal Content */}
+          <div
+            ref={timeModalRef}
+            className="relative z-10 w-full max-w-md rounded-xl glass border border-neutral-border/60 shadow-glass-light-lg overflow-hidden animate-scale-in max-h-[90vh] flex flex-col"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Prevent clicks inside modal from closing it
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-neutral-border/60">
+              <h3 className="text-lg font-semibold text-neutral-text-primary">Select Time</h3>
+              <button
+                onClick={() => setIsTimeModalOpen(false)}
+                className="p-2 rounded-lg hover:bg-neutral-surface-secondary transition-colors focus-ring min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Close"
+              >
+                <Icon name="close" size="sm" variant="neutral" />
+              </button>
+            </div>
+
+            {/* Time Picker */}
+            <div 
+              className="p-4 sm:p-6 overflow-y-auto flex-1" 
+              style={{ maxHeight: 'calc(90vh - 80px)' }}
+              onClick={(e) => {
+                // Prevent clicks inside time picker from closing modal
+                e.stopPropagation();
+              }}
+              onMouseDown={(e) => {
+                // Prevent mousedown from closing modal
+                e.stopPropagation();
+              }}
+            >
+              <GlassTimePicker
+                value={selectedTime}
+                onChange={handleTimeChange}
+              />
+            </div>
+          </div>
+        </div>,
         document.body
       )}
     </div>
