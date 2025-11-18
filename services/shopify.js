@@ -150,6 +150,82 @@ function getGraphQLClient(api) {
 }
 
 /**
+ * Normalize discount data to a consistent structure
+ * @param {Object} node - Discount node from GraphQL response
+ * @param {Object} discount - Discount codeDiscount object
+ * @returns {Object} Normalized discount object
+ */
+function normalizeDiscountData(node, discount) {
+  // Extract discount code
+  const code = discount.codes?.edges?.[0]?.node?.code || 'N/A';
+
+  // Determine discount type and value
+  let type = 'unknown';
+  let valueLabel = '';
+
+  if (discount.__typename === 'DiscountCodeBasic') {
+    // Check customerGets to determine discount value
+    if (discount.customerGets) {
+      if (discount.customerGets.percentage !== undefined) {
+        type = 'percentage';
+        valueLabel = `${discount.customerGets.percentage}% off`;
+      } else if (discount.customerGets.amount) {
+        type = 'fixed_amount';
+        const amount = discount.customerGets.amount.amount;
+        const currency = discount.customerGets.amount.currencyCode;
+        valueLabel = `${amount} ${currency} off`;
+      }
+    }
+  } else if (discount.__typename === 'DiscountCodeBxgy') {
+    type = 'buy_x_get_y';
+    valueLabel = 'Buy X Get Y';
+  } else if (discount.__typename === 'DiscountCodeFreeShipping') {
+    type = 'free_shipping';
+    valueLabel = 'Free shipping';
+  }
+
+  // Format validity label
+  let validityLabel = '';
+  if (discount.endsAt) {
+    const endDate = new Date(discount.endsAt);
+    if (!isNaN(endDate.getTime())) {
+      validityLabel = `Valid until ${endDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })}`;
+    }
+  } else if (discount.startsAt) {
+    const startDate = new Date(discount.startsAt);
+    if (!isNaN(startDate.getTime()) && startDate > new Date()) {
+      validityLabel = `Starts ${startDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })}`;
+    }
+  }
+
+  // Check if expired
+  const isExpired = discount.endsAt ? new Date(discount.endsAt) < new Date() : false;
+
+  return {
+    id: node.id,
+    code,
+    title: discount.title || 'Untitled Discount',
+    type,
+    valueLabel,
+    validityLabel,
+    status: discount.status || 'UNKNOWN',
+    isActive: discount.status === 'ACTIVE' && !isExpired,
+    isExpired,
+    startsAt: discount.startsAt || null,
+    endsAt: discount.endsAt || null,
+    usageLimit: discount.usageLimit || null,
+  };
+}
+
+/**
  * Get discount codes for a shop
  * @param {string} shopDomain - Shop domain
  * @returns {Promise<Array>}
@@ -164,6 +240,7 @@ export async function getDiscountCodes(shopDomain) {
     const client = new GraphqlClient({ session });
 
     // GraphQL query to get discount codes
+    // Fetches comprehensive discount data including type, value, validity, and status
     const query = `
       query getDiscountCodes($first: Int!) {
         codeDiscountNodes(first: $first) {
@@ -191,7 +268,6 @@ export async function getDiscountCodes(shopDomain) {
                     ... on DiscountCustomerSegments {
                       segments {
                         id
-                        title
                       }
                     }
                   }
@@ -260,22 +336,11 @@ export async function getDiscountCodes(shopDomain) {
       },
     });
 
+    // Normalize discount data to a consistent structure
     const discountCodes = response.body.data.codeDiscountNodes.edges.map(edge => {
       const node = edge.node;
       const discount = node.codeDiscount;
-
-      return {
-        id: node.id,
-        title: discount.title,
-        code: discount.codes.edges[0]?.node.code || 'N/A',
-        status: discount.status,
-        startsAt: discount.startsAt,
-        endsAt: discount.endsAt,
-        usageLimit: discount.usageLimit,
-        type: discount.__typename,
-        isActive: discount.status === 'ACTIVE',
-        isExpired: discount.endsAt ? new Date(discount.endsAt) < new Date() : false,
-      };
+      return normalizeDiscountData(node, discount);
     });
 
     logger.info('Discount codes retrieved', {
@@ -307,12 +372,52 @@ export async function getDiscountCode(shopDomain, discountId) {
 
     const client = new GraphqlClient({ session });
 
+    // Enhanced query to fetch comprehensive discount data
     const query = `
       query getDiscountCode($id: ID!) {
         codeDiscountNode(id: $id) {
           id
           codeDiscount {
             ... on DiscountCodeBasic {
+              title
+              codes(first: 1) {
+                edges {
+                  node {
+                    code
+                  }
+                }
+              }
+              status
+              startsAt
+              endsAt
+              usageLimit
+              customerGets {
+                ... on DiscountPercentage {
+                  percentage
+                }
+                ... on DiscountAmount {
+                  amount {
+                    amount
+                    currencyCode
+                  }
+                }
+              }
+            }
+            ... on DiscountCodeBxgy {
+              title
+              codes(first: 1) {
+                edges {
+                  node {
+                    code
+                  }
+                }
+              }
+              status
+              startsAt
+              endsAt
+              usageLimit
+            }
+            ... on DiscountCodeFreeShipping {
               title
               codes(first: 1) {
                 edges {
@@ -344,16 +449,8 @@ export async function getDiscountCode(shopDomain, discountId) {
     }
 
     const discount = node.codeDiscount;
-    return {
-      id: node.id,
-      title: discount.title,
-      code: discount.codes.edges[0]?.node.code || 'N/A',
-      status: discount.status,
-      startsAt: discount.startsAt,
-      endsAt: discount.endsAt,
-      usageLimit: discount.usageLimit,
-      isActive: discount.status === 'ACTIVE',
-    };
+    // Use the same normalization function for consistency
+    return normalizeDiscountData(node, discount);
   } catch (error) {
     logger.error('Failed to get discount code', {
       shopDomain,

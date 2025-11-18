@@ -40,7 +40,7 @@ export default function CampaignCreate() {
   const scheduleCampaign = useScheduleCampaign();
   const { data: existingCampaign, isLoading: isLoadingCampaign } = useCampaign(id);
   const { data: audiencesData } = useAudiences();
-  const { data: discountsData } = useDiscounts();
+  const { data: discountsData, isLoading: isLoadingDiscounts, error: discountsError } = useDiscounts();
   const { data: settingsData } = useSettings();
   const toast = useToastContext();
   
@@ -51,6 +51,17 @@ export default function CampaignCreate() {
   // Check for template from Templates page
   const templateFromState = location.state?.template;
 
+  const [formData, setFormData] = useState({
+    name: templateFromState?.name || '',
+    message: templateFromState?.message || '',
+    audience: 'all',
+    scheduleType: 'immediate',
+    scheduleAt: '',
+    discountId: null,
+    senderId: '',
+  });
+  const [isPlaceholderMenuOpen, setIsPlaceholderMenuOpen] = useState(false);
+  
   // Close placeholder menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -63,17 +74,6 @@ export default function CampaignCreate() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isPlaceholderMenuOpen]);
-  
-  const [formData, setFormData] = useState({
-    name: templateFromState?.name || '',
-    message: templateFromState?.message || '',
-    audience: 'all',
-    scheduleType: 'immediate',
-    scheduleAt: '',
-    discountId: null,
-    senderId: '',
-  });
-  const [isPlaceholderMenuOpen, setIsPlaceholderMenuOpen] = useState(false);
   
   const [errors, setErrors] = useState({});
   const [isScheduled, setIsScheduled] = useState(false);
@@ -324,7 +324,7 @@ export default function CampaignCreate() {
     return options;
   }, [audiencesData]);
 
-  // Prepare discount options
+  // Prepare discount options with rich labels showing code, title, value, and validity
   const discountOptions = useMemo(() => {
     const options = [
       { value: '', label: 'No Discount Code' },
@@ -333,9 +333,45 @@ export default function CampaignCreate() {
     if (discountsData) {
       const discounts = normalizeArrayResponse(discountsData, 'discounts');
       discounts.forEach((discount) => {
+        // Build rich label: "{code} — {title} ({valueLabel}, {validityLabel})"
+        const parts = [];
+        
+        // Add code
+        if (discount.code && discount.code !== 'N/A') {
+          parts.push(discount.code);
+        }
+        
+        // Add title
+        if (discount.title) {
+          if (parts.length > 0) {
+            parts.push('—', discount.title);
+          } else {
+            parts.push(discount.title);
+          }
+        }
+        
+        // Add value and validity in parentheses
+        const details = [];
+        if (discount.valueLabel) {
+          details.push(discount.valueLabel);
+        }
+        if (discount.validityLabel) {
+          details.push(discount.validityLabel);
+        }
+        
+        let label = parts.join(' ');
+        if (details.length > 0) {
+          label += ` (${details.join(', ')})`;
+        }
+        
+        // Fallback to simple label if no rich data available
+        if (!label || label.trim() === '') {
+          label = discount.code || discount.title || discount.id || 'Unknown Discount';
+        }
+        
         options.push({
           value: discount.id,
-          label: `${discount.code || discount.name}${discount.value ? ` (${discount.value}${discount.type === 'percentage' ? '%' : ''})` : ''}`,
+          label: label,
         });
       });
     }
@@ -498,11 +534,48 @@ export default function CampaignCreate() {
                                   textarea.setSelectionRange(newPosition, newPosition);
                                 }, 10);
                               }}
-                              className="w-full px-4 py-3 text-left text-sm text-neutral-text-primary hover:bg-neutral-surface-secondary transition-colors"
+                              className="w-full px-4 py-3 text-left text-sm text-neutral-text-primary hover:bg-neutral-surface-secondary transition-colors border-b border-neutral-border/30"
                             >
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-xs bg-neutral-surface-secondary px-2 py-1 rounded">{'{{last_name}}'}</span>
                                 <span>Last Name</span>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                // Check if discount is selected
+                                if (!formData.discountId) {
+                                  toast.warning('Please select a discount code first from the Discount Code dropdown.');
+                                  setIsPlaceholderMenuOpen(false);
+                                  return;
+                                }
+                                
+                                const textarea = document.getElementById('message');
+                                const start = textarea.selectionStart || formData.message.length;
+                                const end = textarea.selectionEnd || formData.message.length;
+                                const placeholder = '{{discount_code}}';
+                                const newMessage = 
+                                  formData.message.substring(0, start) + 
+                                  placeholder + 
+                                  formData.message.substring(end);
+                                setFormData(prev => ({ ...prev, message: newMessage }));
+                                setIsPlaceholderMenuOpen(false);
+                                setTimeout(() => {
+                                  textarea.focus();
+                                  const newPosition = start + placeholder.length;
+                                  textarea.setSelectionRange(newPosition, newPosition);
+                                }, 10);
+                              }}
+                              className="w-full px-4 py-3 text-left text-sm text-neutral-text-primary hover:bg-neutral-surface-secondary transition-colors"
+                              disabled={!formData.discountId}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs bg-neutral-surface-secondary px-2 py-1 rounded">{'{{discount_code}}'}</span>
+                                <span className={formData.discountId ? '' : 'opacity-50'}>Discount Code</span>
                               </div>
                             </button>
                           </div>
@@ -516,7 +589,7 @@ export default function CampaignCreate() {
                       onChange={handleChange}
                       error={errors.message}
                       rows={8}
-                      placeholder="Type your SMS message here... Use {{first_name}} and {{last_name}} for personalization."
+                      placeholder="Type your SMS message here... Use {{first_name}}, {{last_name}}, and {{discount_code}} for personalization."
                       required
                     />
                   </div>
@@ -542,7 +615,7 @@ export default function CampaignCreate() {
                     </div>
                   </div>
 
-                  {discountOptions.length > 1 && (
+                  <div>
                     <GlassSelectCustom
                       label="Discount Code (Optional)"
                       name="discountId"
@@ -555,9 +628,32 @@ export default function CampaignCreate() {
                       }}
                       options={discountOptions}
                       searchable={discountOptions.length > 5}
-                      placeholder="Select a discount code..."
+                      placeholder={
+                        isLoadingDiscounts 
+                          ? "Loading discounts..." 
+                          : discountOptions.length === 1 
+                            ? "No discounts available" 
+                            : "Select a discount code..."
+                      }
+                      disabled={isLoadingDiscounts || discountOptions.length === 1}
                     />
-                  )}
+                    {isLoadingDiscounts && (
+                      <p className="mt-1 text-xs text-neutral-text-secondary flex items-center gap-1">
+                        <LoadingSpinner size="sm" />
+                        Loading discounts...
+                      </p>
+                    )}
+                    {discountsError && !isLoadingDiscounts && (
+                      <p className="mt-1 text-xs text-amber-500">
+                        Unable to load discounts. You can still create the campaign without a discount code.
+                      </p>
+                    )}
+                    {!isLoadingDiscounts && !discountsError && discountOptions.length === 1 && (
+                      <p className="mt-1 text-xs text-neutral-text-secondary">
+                        No discount codes available in your Shopify store.
+                      </p>
+                    )}
+                  </div>
 
                   <div>
                     <button

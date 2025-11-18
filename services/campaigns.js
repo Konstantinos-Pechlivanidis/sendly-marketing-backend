@@ -5,6 +5,7 @@ import { validateAndConsumeCredits, InsufficientCreditsError, refundCredits } fr
 import { smsQueue } from '../queue/index.js';
 import { appendUnsubscribeLink } from '../utils/unsubscribe.js';
 import { replacePlaceholders } from '../utils/personalization.js';
+import { getDiscountCode } from './shopify.js';
 
 /**
  * Campaigns Service
@@ -774,6 +775,44 @@ export async function sendCampaign(storeId, campaignId) {
   let totalQueued = 0;
   let totalRecipientsCreated = 0;
 
+  // Fetch discount code if campaign has a discountId (fetch once, use for all recipients)
+  let discountCode = '';
+  if (campaign.discountId) {
+    try {
+      // Get shop domain from store
+      const store = await prisma.shop.findUnique({
+        where: { id: storeId },
+        select: { shopDomain: true },
+      });
+
+      if (store?.shopDomain) {
+        const discount = await getDiscountCode(store.shopDomain, campaign.discountId);
+        discountCode = discount?.code || '';
+        logger.info('Discount code fetched for campaign', {
+          storeId,
+          campaignId,
+          discountId: campaign.discountId,
+          discountCode,
+        });
+      } else {
+        logger.warn('Shop domain not found, cannot fetch discount code', {
+          storeId,
+          campaignId,
+          discountId: campaign.discountId,
+        });
+      }
+    } catch (error) {
+      // Log error but continue sending campaign without discount code
+      logger.error('Failed to fetch discount code for campaign', {
+        storeId,
+        campaignId,
+        discountId: campaign.discountId,
+        error: error.message,
+      });
+      // Continue with empty discount code
+    }
+  }
+
   try {
     if (USE_STREAMING) {
       logger.info('Using stream processing for large campaign', {
@@ -799,12 +838,13 @@ export async function sendCampaign(storeId, campaignId) {
         const frontendBaseUrl = process.env.FRONTEND_URL || process.env.FRONTEND_BASE_URL || 'https://sendly-marketing-frontend.onrender.com';
 
         const smsJobs = recipientBatch.map(recipient => {
-          // Replace personalization placeholders with contact data
+          // Replace personalization placeholders with contact data and discount code
           const personalizedMessage = replacePlaceholders(
             campaign.message,
             {
               firstName: recipient.firstName,
               lastName: recipient.lastName,
+              discountCode,
             },
           );
 
@@ -871,12 +911,13 @@ export async function sendCampaign(storeId, campaignId) {
       const frontendBaseUrl = process.env.FRONTEND_URL || process.env.FRONTEND_BASE_URL || 'https://sendly-marketing-frontend.onrender.com';
 
       const smsJobs = recipients.map(recipient => {
-        // Replace personalization placeholders with contact data
+        // Replace personalization placeholders with contact data and discount code
         const personalizedMessage = replacePlaceholders(
           campaign.message,
           {
             firstName: recipient.firstName,
             lastName: recipient.lastName,
+            discountCode,
           },
         );
 
