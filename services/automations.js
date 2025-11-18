@@ -299,21 +299,10 @@ export async function processDailyBirthdayAutomations() {
   try {
     logger.info('Starting daily birthday automation check...');
 
-    // Get today's date (MM-DD format for matching birthdays)
-    const today = new Date();
-    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
-    const todayDay = String(today.getDate()).padStart(2, '0');
-
-    logger.info('Checking for birthdays', {
-      month: todayMonth,
-      day: todayDay,
-      date: today.toISOString(),
-    });
-
-    // Find all contacts with birthday today
-    const contactsWithBirthdayToday = await prisma.contact.findMany({
+    // Find all contacts with birthdays
+    const contactsWithBirthdays = await prisma.contact.findMany({
       where: {
-        birthday: {
+        birthDate: {
           not: null,
         },
         smsConsent: 'opted_in',
@@ -327,7 +316,6 @@ export async function processDailyBirthdayAutomations() {
                 isActive: true,
                 automation: {
                   triggerEvent: 'birthday',
-                  isSystemDefault: true,
                 },
               },
               include: {
@@ -339,15 +327,36 @@ export async function processDailyBirthdayAutomations() {
       },
     });
 
-    // Filter contacts whose birthday is today
-    const birthdayContacts = contactsWithBirthdayToday.filter(contact => {
-      if (!contact.birthday) return false;
+    // Filter contacts whose birthday is today in their shop's timezone
+    const birthdayContacts = contactsWithBirthdays.filter(contact => {
+      if (!contact.birthDate) return false;
 
-      const birthDate = new Date(contact.birthday);
+      // Get shop timezone (default to UTC if not set)
+      const shopTimezone = contact.shop.settings?.timezone || 'UTC';
+
+      // Get today's date in shop timezone
+      const todayInShopTimezone = new Date(new Date().toLocaleString('en-US', { timeZone: shopTimezone }));
+      const todayMonth = String(todayInShopTimezone.getMonth() + 1).padStart(2, '0');
+      const todayDay = String(todayInShopTimezone.getDate()).padStart(2, '0');
+
+      // Get birthday date (stored as Date, extract month and day)
+      const birthDate = new Date(contact.birthDate);
       const birthMonth = String(birthDate.getMonth() + 1).padStart(2, '0');
       const birthDay = String(birthDate.getDate()).padStart(2, '0');
 
-      return birthMonth === todayMonth && birthDay === todayDay;
+      const isBirthdayToday = birthMonth === todayMonth && birthDay === todayDay;
+
+      if (isBirthdayToday) {
+        logger.debug('Contact has birthday today', {
+          contactId: contact.id,
+          shopId: contact.shopId,
+          shopTimezone,
+          birthDate: contact.birthDate,
+          todayInShopTimezone: todayInShopTimezone.toISOString(),
+        });
+      }
+
+      return isBirthdayToday;
     });
 
     logger.info(`Found ${birthdayContacts.length} contacts with birthday today`);

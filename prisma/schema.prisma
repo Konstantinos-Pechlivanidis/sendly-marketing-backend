@@ -30,6 +30,7 @@ model Shop {
   transactions        WalletTransaction[]
   billingTransactions BillingTransaction[]
   settings            ShopSettings?
+  eventProcessingStates EventProcessingState[]
 
   @@index([status, createdAt])
   @@index([country])
@@ -255,6 +256,20 @@ model AutomationLog {
 
   @@index([storeId, status])
   @@index([automationId, triggeredAt])
+}
+
+model EventProcessingState {
+  id              String   @id @default(cuid())
+  shopId          String
+  automationType  String   // 'welcome', 'order_placed', 'order_fulfilled'
+  lastEventId     String?  // Last processed Shopify event GID
+  lastProcessedAt DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, automationType])
+  @@index([shopId, automationType])
 }
 
 model DiscountLink {
