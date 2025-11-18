@@ -22,8 +22,22 @@ export async function getShopifyDiscounts(req, res, next) {
         shopDomain,
         error: shopifyError.message,
         stack: shopifyError.stack,
+        operation: 'getShopifyDiscounts',
       });
-      // Return empty array instead of failing completely
+
+      // In development, return 5xx error to catch issues early
+      // In production, return empty array to prevent breaking the UI
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      if (isDevelopment) {
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to fetch discounts from Shopify',
+          message: shopifyError.message,
+          shopDomain,
+        });
+      }
+
+      // Production: return empty array to prevent breaking the UI
       discountCodes = [];
     }
 

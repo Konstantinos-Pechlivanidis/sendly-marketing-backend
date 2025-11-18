@@ -164,15 +164,16 @@ function normalizeDiscountData(node, discount) {
   let valueLabel = '';
 
   if (discount.__typename === 'DiscountCodeBasic') {
-    // Check customerGets to determine discount value
-    if (discount.customerGets) {
-      if (discount.customerGets.percentage !== undefined) {
+    // Check customerGets.value to determine discount value (fragments are nested in value field)
+    if (discount.customerGets?.value) {
+      const value = discount.customerGets.value;
+      if (value.percentage !== undefined) {
         type = 'percentage';
-        valueLabel = `${discount.customerGets.percentage}% off`;
-      } else if (discount.customerGets.amount) {
+        valueLabel = `${value.percentage}% off`;
+      } else if (value.amount) {
         type = 'fixed_amount';
-        const amount = discount.customerGets.amount.amount;
-        const currency = discount.customerGets.amount.currencyCode;
+        const amount = value.amount.amount;
+        const currency = value.amount.currencyCode;
         valueLabel = `${amount} ${currency} off`;
       }
     }
@@ -283,13 +284,15 @@ export async function getDiscountCodes(shopDomain) {
                     }
                   }
                   customerGets {
-                    ... on DiscountPercentage {
-                      percentage
-                    }
-                    ... on DiscountAmount {
-                      amount {
-                        amount
-                        currencyCode
+                    value {
+                      ... on DiscountPercentage {
+                        percentage
+                      }
+                      ... on DiscountAmount {
+                        amount {
+                          amount
+                          currencyCode
+                        }
                       }
                     }
                   }
@@ -336,6 +339,26 @@ export async function getDiscountCodes(shopDomain) {
       },
     });
 
+    // Check for GraphQL errors in response
+    if (response.body.errors && response.body.errors.length > 0) {
+      const graphqlErrors = response.body.errors.map(err => err.message).join('; ');
+      logger.error('Shopify GraphQL errors in getDiscountCodes', {
+        shopDomain,
+        errors: response.body.errors,
+        errorMessages: graphqlErrors,
+      });
+      throw new Error(`Shopify GraphQL error: ${graphqlErrors}`);
+    }
+
+    // Check if data exists
+    if (!response.body.data || !response.body.data.codeDiscountNodes) {
+      logger.error('Invalid response structure from Shopify GraphQL', {
+        shopDomain,
+        responseStructure: Object.keys(response.body),
+      });
+      throw new Error('Invalid response structure from Shopify API');
+    }
+
     // Normalize discount data to a consistent structure
     const discountCodes = response.body.data.codeDiscountNodes.edges.map(edge => {
       const node = edge.node;
@@ -353,6 +376,7 @@ export async function getDiscountCodes(shopDomain) {
     logger.error('Failed to get discount codes', {
       shopDomain,
       error: error.message,
+      stack: error.stack,
     });
     throw error;
   }
@@ -392,13 +416,15 @@ export async function getDiscountCode(shopDomain, discountId) {
               endsAt
               usageLimit
               customerGets {
-                ... on DiscountPercentage {
-                  percentage
-                }
-                ... on DiscountAmount {
-                  amount {
-                    amount
-                    currencyCode
+                value {
+                  ... on DiscountPercentage {
+                    percentage
+                  }
+                  ... on DiscountAmount {
+                    amount {
+                      amount
+                      currencyCode
+                    }
                   }
                 }
               }
@@ -443,11 +469,29 @@ export async function getDiscountCode(shopDomain, discountId) {
       },
     });
 
-    const node = response.body.data.codeDiscountNode;
-    if (!node) {
+    // Check for GraphQL errors in response
+    if (response.body.errors && response.body.errors.length > 0) {
+      const graphqlErrors = response.body.errors.map(err => err.message).join('; ');
+      logger.error('Shopify GraphQL errors in getDiscountCode', {
+        shopDomain,
+        discountId,
+        errors: response.body.errors,
+        errorMessages: graphqlErrors,
+      });
+      throw new Error(`Shopify GraphQL error: ${graphqlErrors}`);
+    }
+
+    // Check if data exists
+    if (!response.body.data || !response.body.data.codeDiscountNode) {
+      logger.error('Discount code not found or invalid response structure', {
+        shopDomain,
+        discountId,
+        responseStructure: Object.keys(response.body),
+      });
       throw new Error('Discount code not found');
     }
 
+    const node = response.body.data.codeDiscountNode;
     const discount = node.codeDiscount;
     // Use the same normalization function for consistency
     return normalizeDiscountData(node, discount);
@@ -456,6 +500,7 @@ export async function getDiscountCode(shopDomain, discountId) {
       shopDomain,
       discountId,
       error: error.message,
+      stack: error.stack,
     });
     throw error;
   }
