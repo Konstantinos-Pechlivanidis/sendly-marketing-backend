@@ -285,13 +285,13 @@ export async function getDiscountCodes(shopDomain) {
                   }
                   customerGets {
                     value {
-                      ... on DiscountPercentage {
-                        percentage
-                      }
-                      ... on DiscountAmount {
-                        amount {
-                          amount
-                          currencyCode
+                    ... on DiscountPercentage {
+                      percentage
+                    }
+                    ... on DiscountAmount {
+                      amount {
+                        amount
+                        currencyCode
                         }
                       }
                     }

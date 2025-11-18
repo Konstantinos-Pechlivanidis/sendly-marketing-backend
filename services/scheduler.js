@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger.js';
 import { allCampaignsStatusQueue, campaignQueue } from '../queue/index.js';
 import prisma from './prisma.js';
+import { processDailyBirthdayAutomations } from './automations.js';
 
 /**
  * Scheduler Service
@@ -237,9 +238,83 @@ export function startPeriodicStatusUpdates() {
   });
 }
 
+/**
+ * Start daily birthday automation scheduler
+ * Runs once per day at midnight UTC (or configurable time)
+ * This should be called on application startup
+ */
+export function startBirthdayAutomationScheduler() {
+  // Skip in test mode
+  if (process.env.NODE_ENV === 'test' && process.env.SKIP_QUEUES === 'true') {
+    logger.info('Skipping birthday automation scheduler in test mode');
+    return;
+  }
+
+  // Calculate time until next midnight UTC
+  function getTimeUntilMidnight() {
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setUTCHours(24, 0, 0, 0); // Next midnight UTC
+    return midnight.getTime() - now.getTime();
+  }
+
+  function scheduleNextRun() {
+    const timeUntilMidnight = getTimeUntilMidnight();
+
+    setTimeout(() => {
+      processDailyBirthdayAutomations()
+        .then((result) => {
+          logger.info('Daily birthday automation check completed', {
+            total: result.total,
+            sent: result.sent,
+            skipped: result.skipped,
+            failed: result.failed,
+          });
+        })
+        .catch((error) => {
+          logger.error('Error in daily birthday automation check', {
+            error: error.message,
+            stack: error.stack,
+          });
+        });
+
+      // Schedule next run (24 hours from now)
+      scheduleNextRun();
+    }, timeUntilMidnight);
+  }
+
+  // Initial delay: wait until next midnight, or run immediately if within 1 hour of midnight
+  const timeUntilMidnight = getTimeUntilMidnight();
+  const oneHour = 60 * 60 * 1000;
+
+  if (timeUntilMidnight < oneHour) {
+    // Run immediately if we're close to midnight
+    logger.info('Running birthday automation check immediately (close to midnight)');
+    processDailyBirthdayAutomations()
+      .then((result) => {
+        logger.info('Initial birthday automation check completed', result);
+      })
+      .catch((error) => {
+        logger.error('Error in initial birthday automation check', {
+          error: error.message,
+        });
+      });
+    // Then schedule for next midnight (24 hours from now)
+    setTimeout(scheduleNextRun, 24 * 60 * 60 * 1000);
+  } else {
+    // Schedule for next midnight
+    scheduleNextRun();
+  }
+
+  logger.info('Birthday automation scheduler started', {
+    nextRun: 'midnight UTC',
+  });
+}
+
 export default {
   startPeriodicStatusUpdates,
   startScheduledCampaignsProcessor,
   processScheduledCampaigns,
+  startBirthdayAutomationScheduler,
 };
 

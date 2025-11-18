@@ -5,7 +5,7 @@ import { logger } from './utils/logger.js';
 import { validateAndLogEnvironment } from './config/env-validation.js';
 import { closeRedisConnections } from './config/redis.js';
 import './queue/worker.js'; // starts BullMQ worker
-import { startPeriodicStatusUpdates, startScheduledCampaignsProcessor } from './services/scheduler.js';
+import { startPeriodicStatusUpdates, startScheduledCampaignsProcessor, startBirthdayAutomationScheduler } from './services/scheduler.js';
 import { startEventPoller } from './workers/event-poller.js';
 
 // Validate environment variables on startup
@@ -35,6 +35,9 @@ const server = app.listen(PORT, () => {
 
   // Start event poller for automation triggers
   startEventPoller();
+
+  // Start birthday automation scheduler (runs daily at midnight UTC)
+  startBirthdayAutomationScheduler();
 });
 
 // Graceful shutdown handler
