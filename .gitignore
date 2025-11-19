@@ -30,6 +30,9 @@ pids/
 dist/
 build/
 
+# Shopify Extension (separate repository)
+shopify-extension/
+
 # Dependency directories
 jspm_packages/
 
@@ -98,3 +101,6 @@ Thumbs.db
 # Build outputs
 dist/
 build/
+
+# Shopify Extension (separate repository)
+shopify-extension/
