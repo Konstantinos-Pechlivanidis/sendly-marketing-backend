@@ -38,6 +38,7 @@ import shopifyRoutes from './routes/shopify.js';
 import docsRoutes from './routes/docs.js';
 import authRoutes from './routes/auth.js';
 import unsubscribeRoutes from './routes/unsubscribe.js';
+import optInRoutes from './routes/opt-in.js';
 // import { setDevShop } from './middlewares/dev-shop.js'; // Not used in current implementation
 import { resolveStore, requireStore } from './middlewares/store-resolution.js';
 
@@ -90,13 +91,16 @@ app.use(
       const allowedOrigins = [
         'https://admin.shopify.com',
         'https://investments-brand-numerous-voters.trycloudflare.com', // New Cloudflare frontend
-        ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+        ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : []),
       ];
 
-      // Allow all myshopify.com subdomains
-      const isShopifyDomain = origin.match(/^https:\/\/[a-zA-Z0-9-]+\.myshopify\.com$/);
+      // Allow all myshopify.com subdomains (for storefront theme extensions)
+      const isShopifyStorefront = origin.match(/^https:\/\/[a-zA-Z0-9-]+\.myshopify\.com$/);
 
-      if (allowedOrigins.includes(origin) || isShopifyDomain) {
+      // Allow Shopify admin domains (for embedded apps)
+      const isShopifyAdmin = origin.match(/^https:\/\/admin\.shopify\.com$/);
+
+      if (allowedOrigins.includes(origin) || isShopifyStorefront || isShopifyAdmin) {
         callback(null, true);
       } else {
         logger.warn(`CORS blocked origin: ${origin}`);
@@ -117,7 +121,9 @@ app.use(
       'X-Store-ID',
       'X-Client-Version',
       'X-Client-Platform',
-      'X-Requested-With', // Added missing header
+      'X-Requested-With',
+      'Accept',
+      'Origin',
     ],
     exposedHeaders: ['X-Request-ID', 'X-Rate-Limit-Remaining', 'X-Rate-Limit-Reset'],
     maxAge: 86400, // 24 hours for preflight cache
@@ -162,6 +168,7 @@ app.use(
 // mount
 app.use('/', mittoRoutes); // Mitto webhooks (no auth)
 app.use('/', coreRoutes); // health, webhooks, auth helpers
+app.use('/api/opt-in', optInRoutes); // Public opt-in endpoint (no auth)
 if (process.env.NODE_ENV !== 'production') app.use('/', docsRoutes); // Swagger UI (dev only)
 
 // Authentication routes (no store context required - handles authentication)

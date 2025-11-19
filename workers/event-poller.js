@@ -1,7 +1,7 @@
 import { logger } from '../utils/logger.js';
 import prisma from '../services/prisma.js';
 import { queryEvents, getCustomerFromEvent, getOrderFromEvent, getFulfillmentFromEvent } from '../services/shopify-events.js';
-import { mapEventToAutomationType, extractEventData, shouldTriggerAutomation } from '../services/event-automation-mapper.js';
+import { shouldTriggerAutomation } from '../services/event-automation-mapper.js';
 import { getMinOccurredAt, isEventProcessed, batchMarkEventsProcessed } from '../services/event-deduplication.js';
 import { automationQueue } from '../queue/index.js';
 import { getExpectedEventForAutomation } from '../services/event-automation-mapper.js';
@@ -98,7 +98,7 @@ async function processShopEvents(shop) {
             }
 
             // Get event data based on subject type
-            let eventData = {};
+            const eventData = {};
             if (event.subjectType === 'CUSTOMER') {
               const customer = await getCustomerFromEvent(shop.shopDomain, event);
               if (customer) {
@@ -141,9 +141,6 @@ async function processShopEvents(shop) {
               });
               continue;
             }
-
-            // Extract event data for automation
-            const extractedData = extractEventData(event, shop.shopDomain, eventData);
 
             // Find or create contact
             let contactId = null;
@@ -248,39 +245,51 @@ async function processShopEvents(shop) {
             }
 
             // Prepare job data based on automation type
-            let jobData = {
+            const baseJobData = {
               shopId: shop.id,
               contactId,
               automationId: userAutomation.id,
             };
 
+            let jobData;
             if (automationType === 'welcome') {
-              jobData.welcomeData = {
-                customerEmail: eventData.customer?.email,
-                customerName: `${eventData.customer?.firstName || ''} ${eventData.customer?.lastName || ''}`.trim(),
+              jobData = {
+                ...baseJobData,
+                welcomeData: {
+                  customerEmail: eventData.customer?.email,
+                  customerName: `${eventData.customer?.firstName || ''} ${eventData.customer?.lastName || ''}`.trim(),
+                },
               };
             } else if (automationType === 'order_placed') {
-              jobData.orderData = {
-                orderNumber: eventData.order?.name,
-                customerEmail: eventData.order?.email,
-                customerName: eventData.order?.customer
-                  ? `${eventData.order.customer.firstName || ''} ${eventData.order.customer.lastName || ''}`.trim()
-                  : '',
-                lineItems: eventData.order?.lineItems || [],
-                totalPrice: eventData.order?.totalPrice,
-                currency: eventData.order?.currency,
+              jobData = {
+                ...baseJobData,
+                orderData: {
+                  orderNumber: eventData.order?.name,
+                  customerEmail: eventData.order?.email,
+                  customerName: eventData.order?.customer
+                    ? `${eventData.order.customer.firstName || ''} ${eventData.order.customer.lastName || ''}`.trim()
+                    : '',
+                  lineItems: eventData.order?.lineItems || [],
+                  totalPrice: eventData.order?.totalPrice,
+                  currency: eventData.order?.currency,
+                },
               };
             } else if (automationType === 'order_fulfilled') {
-              jobData.orderData = {
-                orderNumber: eventData.fulfillment?.order?.name,
-                customerEmail: eventData.fulfillment?.order?.email,
-                customerName: eventData.fulfillment?.order?.customer
-                  ? `${eventData.fulfillment.order.customer.firstName || ''} ${eventData.fulfillment.order.customer.lastName || ''}`.trim()
-                  : '',
-                fulfillmentStatus: eventData.fulfillment?.status,
-                trackingNumber: eventData.fulfillment?.trackingNumber,
-                trackingUrls: eventData.fulfillment?.trackingUrls || [],
+              jobData = {
+                ...baseJobData,
+                orderData: {
+                  orderNumber: eventData.fulfillment?.order?.name,
+                  customerEmail: eventData.fulfillment?.order?.email,
+                  customerName: eventData.fulfillment?.order?.customer
+                    ? `${eventData.fulfillment.order.customer.firstName || ''} ${eventData.fulfillment.order.customer.lastName || ''}`.trim()
+                    : '',
+                  fulfillmentStatus: eventData.fulfillment?.status,
+                  trackingNumber: eventData.fulfillment?.trackingNumber,
+                  trackingUrls: eventData.fulfillment?.trackingUrls || [],
+                },
               };
+            } else {
+              jobData = baseJobData;
             }
 
             // Queue automation job

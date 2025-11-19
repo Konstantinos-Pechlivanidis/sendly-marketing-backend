@@ -754,6 +754,12 @@ export async function importContacts(storeId, contactsData) {
   return results;
 }
 
+export {
+  normalizePhone,
+  isValidPhoneE164,
+  isValidEmail,
+};
+
 export default {
   listContacts,
   getContactById,
@@ -763,5 +769,8 @@ export default {
   getContactStats,
   getBirthdayContacts,
   importContacts,
+  normalizePhone,
+  isValidPhoneE164,
+  isValidEmail,
 };
 
