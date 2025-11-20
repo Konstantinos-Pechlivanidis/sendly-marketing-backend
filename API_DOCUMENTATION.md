@@ -1243,8 +1243,8 @@ Create a new automation rule.
 {
   "name": "Birthday Greeting",
   "trigger": "birthday",
-  "templateId": "tmpl123",
-  "enabled": true
+  "message": "Happy birthday {{firstName}}! Use code {{discountCode}} for 20% off.",
+  "status": "active"
 }
 ```
 
@@ -1253,10 +1253,47 @@ Create a new automation rule.
 const automation = await api.post('/automations', {
   name: 'Birthday Greeting',
   trigger: 'birthday',
-  templateId: 'tmpl123',
-  enabled: true
+  message: 'Happy birthday {{firstName}}!',
+  status: 'active'
 });
 ```
+
+---
+
+### Update Automation
+**PUT** `/automations/:id`
+
+Update an existing automation (message content or status).
+
+**Request Body:**
+```json
+{
+  "message": "Updated birthday message",
+  "status": "paused"
+}
+```
+
+**Frontend Usage:**
+```javascript
+const updated = await api.put('/automations/auto123', {
+  message: 'Updated birthday message',
+  status: 'paused'
+});
+```
+
+---
+
+### Delete Automation
+**DELETE** `/automations/:id`
+
+Delete a user automation. System default automations cannot be deleted.
+
+**Frontend Usage:**
+```javascript
+await api.delete('/automations/auto123');
+```
+
+**Note:** Only custom automations can be deleted. System default automations are protected.
 
 ---
 
