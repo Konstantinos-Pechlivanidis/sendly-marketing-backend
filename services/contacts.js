@@ -286,19 +286,55 @@ export async function createContact(storeId, contactData) {
     );
   }
 
+  // Prepare contact data for Prisma
+  const prismaData = {
+    shopId: storeId,
+    phoneE164,
+    firstName: contactData.firstName && contactData.firstName.trim() ? contactData.firstName.trim() : null,
+    lastName: contactData.lastName && contactData.lastName.trim() ? contactData.lastName.trim() : null,
+    email: contactData.email && contactData.email.trim() ? contactData.email.trim() : null,
+    gender: contactData.gender || null,
+    smsConsent: contactData.smsConsent || 'unknown',
+    tags: contactData.tags || [],
+  };
+
+  // Handle birthDate conversion
+  if (contactData.birthDate) {
+    if (typeof contactData.birthDate === 'string' && contactData.birthDate.trim()) {
+      const birthDate = new Date(contactData.birthDate);
+      if (!isNaN(birthDate.getTime())) {
+        // Validate birth date is not in the future
+        if (birthDate > new Date()) {
+          throw new ValidationError('Birth date cannot be in the future');
+        }
+        prismaData.birthDate = birthDate;
+      } else {
+        throw new ValidationError('Invalid birth date format');
+      }
+    } else if (contactData.birthDate instanceof Date) {
+      if (contactData.birthDate > new Date()) {
+        throw new ValidationError('Birth date cannot be in the future');
+      }
+      prismaData.birthDate = contactData.birthDate;
+    }
+  } else {
+    prismaData.birthDate = null;
+  }
+
+  // Log data before creation for debugging
+  logger.info('Creating contact with data', {
+    storeId,
+    phoneE164,
+    firstName: prismaData.firstName,
+    lastName: prismaData.lastName,
+    gender: prismaData.gender,
+    birthDate: prismaData.birthDate,
+    smsConsent: prismaData.smsConsent,
+  });
+
   // Create contact
   const contact = await prisma.contact.create({
-    data: {
-      shopId: storeId,
-      phoneE164,
-      firstName: contactData.firstName || null,
-      lastName: contactData.lastName || null,
-      email: contactData.email || null,
-      gender: contactData.gender || null,
-      birthDate: contactData.birthDate ? new Date(contactData.birthDate) : null,
-      smsConsent: contactData.smsConsent || 'unknown',
-      tags: contactData.tags || [],
-    },
+    data: prismaData,
   });
 
   logger.info('Contact created successfully', { storeId, contactId: contact.id });

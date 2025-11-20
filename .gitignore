@@ -26,13 +26,6 @@ pids/
 *.seed
 *.pid.lock
 
-# Build outputs
-dist/
-build/
-
-# Shopify Extension (separate repository)
-shopify-extension/
-
 # Dependency directories
 jspm_packages/
 
@@ -97,10 +90,3 @@ jspm_packages/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# Build outputs
-dist/
-build/
-
-# Shopify Extension (separate repository)
-shopify-extension/

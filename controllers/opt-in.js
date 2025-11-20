@@ -11,7 +11,16 @@ import contactsService, { normalizePhone, isValidPhoneE164 } from '../services/c
  */
 export async function handleOptIn(req, res, next) {
   try {
-    const { phone, consent, shopDomain, source = 'theme-banner' } = req.body;
+    const {
+      phone,
+      consent,
+      shopDomain,
+      firstName,
+      lastName,
+      birthday,
+      gender,
+      source = 'theme-banner',
+    } = req.body;
 
     // Validate input
     if (!phone || !consent || !shopDomain) {
@@ -39,6 +48,46 @@ export async function handleOptIn(req, res, next) {
       throw new NotFoundError('Shop not found. Please ensure the app is installed on this store.');
     }
 
+    // Validate required fields
+    if (!firstName || !firstName.trim()) {
+      throw new ValidationError('First name is required');
+    }
+    if (!lastName || !lastName.trim()) {
+      throw new ValidationError('Last name is required');
+    }
+    if (!birthday || !birthday.trim()) {
+      throw new ValidationError('Birthday is required');
+    }
+    // Validate birthday format
+    if (!birthday.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      throw new ValidationError('Birthday must be in YYYY-MM-DD format');
+    }
+
+    // Prepare contact data
+    const contactData = {
+      phoneE164,
+      smsConsent: 'opted_in',
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      gender: gender || null,
+      birthDate: birthday.trim(), // Pass as string, createContact will handle Date conversion
+      tags: source ? [`opt-in-${source}`] : [],
+    };
+
+    // Log contact data for debugging
+    logger.info('Preparing contact data for opt-in', {
+      shopId: shop.id,
+      contactData: {
+        phoneE164: contactData.phoneE164,
+        firstName: contactData.firstName,
+        lastName: contactData.lastName,
+        gender: contactData.gender,
+        birthDate: contactData.birthDate,
+        smsConsent: contactData.smsConsent,
+        tags: contactData.tags,
+      },
+    });
+
     // Check for existing contact by phone
     let contact = await prisma.contact.findFirst({
       where: {
@@ -48,13 +97,45 @@ export async function handleOptIn(req, res, next) {
     });
 
     if (contact) {
-      // Update existing contact with SMS consent
+      // Update existing contact with SMS consent and new data
+      // Always update with new data if provided, otherwise keep existing
+      const updateData = {
+        smsConsent: 'opted_in',
+        updatedAt: new Date(),
+      };
+
+      // Update firstName if provided
+      if (contactData.firstName && contactData.firstName.trim()) {
+        updateData.firstName = contactData.firstName.trim();
+      }
+
+      // Update lastName if provided
+      if (contactData.lastName && contactData.lastName.trim()) {
+        updateData.lastName = contactData.lastName.trim();
+      }
+
+      // Update gender if provided
+      if (contactData.gender) {
+        updateData.gender = contactData.gender;
+      }
+
+      // Update birthDate if provided
+      if (contactData.birthDate && contactData.birthDate.trim()) {
+        const birthDate = new Date(contactData.birthDate);
+        if (!isNaN(birthDate.getTime()) && birthDate <= new Date()) {
+          updateData.birthDate = birthDate;
+        }
+      }
+
+      logger.info('Updating existing contact via opt-in', {
+        contactId: contact.id,
+        shopId: shop.id,
+        updateData,
+      });
+
       contact = await prisma.contact.update({
         where: { id: contact.id },
-        data: {
-          smsConsent: 'opted_in',
-          updatedAt: new Date(),
-        },
+        data: updateData,
       });
 
       logger.info('Contact updated with SMS consent via opt-in', {
@@ -65,11 +146,7 @@ export async function handleOptIn(req, res, next) {
     } else {
       // Create new contact with SMS consent
       try {
-        contact = await contactsService.createContact(shop.id, {
-          phoneE164,
-          smsConsent: 'opted_in',
-          tags: source ? [`opt-in-${source}`] : [],
-        });
+        contact = await contactsService.createContact(shop.id, contactData);
 
         logger.info('Contact created via opt-in', {
           contactId: contact.id,
@@ -87,12 +164,38 @@ export async function handleOptIn(req, res, next) {
           });
 
           if (contact) {
+            // Update existing contact with new data
+            const updateData = {
+              smsConsent: 'opted_in',
+              updatedAt: new Date(),
+            };
+
+            // Update firstName if provided
+            if (contactData.firstName && contactData.firstName.trim()) {
+              updateData.firstName = contactData.firstName.trim();
+            }
+
+            // Update lastName if provided
+            if (contactData.lastName && contactData.lastName.trim()) {
+              updateData.lastName = contactData.lastName.trim();
+            }
+
+            // Update gender if provided
+            if (contactData.gender) {
+              updateData.gender = contactData.gender;
+            }
+
+            // Update birthDate if provided
+            if (contactData.birthDate && contactData.birthDate.trim()) {
+              const birthDate = new Date(contactData.birthDate);
+              if (!isNaN(birthDate.getTime()) && birthDate <= new Date()) {
+                updateData.birthDate = birthDate;
+              }
+            }
+
             contact = await prisma.contact.update({
               where: { id: contact.id },
-              data: {
-                smsConsent: 'opted_in',
-                updatedAt: new Date(),
-              },
+              data: updateData,
             });
           }
         } else {
@@ -107,6 +210,10 @@ export async function handleOptIn(req, res, next) {
         contactId: contact.id,
         phone: contact.phoneE164,
         smsConsent: contact.smsConsent,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        birthday: contact.birthDate ? contact.birthDate.toISOString().split('T')[0] : null,
+        gender: contact.gender,
       },
       'Successfully opted in to SMS marketing',
     );
