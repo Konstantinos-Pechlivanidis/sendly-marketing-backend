@@ -8,6 +8,7 @@ r.get('/', ctrl.getUserAutomations);
 r.post('/', ctrl.createUserAutomation); // Create new automation
 r.get('/stats', ctrl.getAutomationStats);
 r.put('/:id', ctrl.updateUserAutomation);
+r.delete('/:id', ctrl.deleteUserAutomation); // Delete automation
 
 // Admin routes (system defaults)
 r.get('/defaults', ctrl.getSystemDefaults);

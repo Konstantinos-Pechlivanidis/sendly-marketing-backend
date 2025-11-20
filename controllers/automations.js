@@ -377,6 +377,62 @@ export async function syncSystemDefaults(req, res, next) {
 }
 
 /**
+ * Delete user automation
+ * @route DELETE /automations/:id
+ */
+export async function deleteUserAutomation(req, res, next) {
+  try {
+    const { id } = req.params;
+    // ✅ Security: Get storeId from context
+    const shopId = getStoreId(req);
+
+    // Check if the user automation exists and belongs to the shop
+    const existingUserAutomation = await prisma.userAutomation.findFirst({
+      where: {
+        id,
+        shopId,
+      },
+      include: {
+        automation: true,
+      },
+    });
+
+    if (!existingUserAutomation) {
+      throw new NotFoundError('Automation');
+    }
+
+    // Don't allow deletion of system default automations
+    if (existingUserAutomation.automation.isSystemDefault) {
+      throw new ValidationError('Cannot delete system default automation');
+    }
+
+    // Delete the user automation
+    await prisma.userAutomation.delete({
+      where: { id },
+    });
+
+    logger.info('User automation deleted', {
+      userAutomationId: id,
+      shopId,
+      automationId: existingUserAutomation.automationId,
+    });
+
+    return sendSuccess(res, null, 'Automation deleted successfully');
+  } catch (error) {
+    logger.error('Failed to delete user automation', {
+      error: error.message,
+      stack: error.stack,
+      userAutomationId: req.params.id,
+      shopId: getStoreId(req),
+      requestId: req.id,
+      path: req.path,
+      method: req.method,
+    });
+    next(error);
+  }
+}
+
+/**
  * Get automation statistics for a user
  */
 export async function getAutomationStats(req, res, next) {
@@ -427,6 +483,7 @@ export default {
   createUserAutomation,
   getUserAutomations,
   updateUserAutomation,
+  deleteUserAutomation,
   getSystemDefaults,
   syncSystemDefaults,
   getAutomationStats,
